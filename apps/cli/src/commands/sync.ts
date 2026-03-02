@@ -9,7 +9,6 @@ import {
   uninstallSkill,
   type InstallableSkill,
 } from "../lib/skills-installer";
-import { maybePromptUnsyncedLocalSkillsBackup } from "../lib/unsynced-local-skills";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
 
@@ -66,14 +65,7 @@ async function fetchAllSkills(): Promise<SkillListItem[]> {
   }
 }
 
-export async function syncSkills(
-  selectedAgents: SupportedAgent[],
-  options?: {
-    promptUnsyncedBackup?: boolean;
-  },
-): Promise<SyncRunResult> {
-  const promptUnsyncedBackup = options?.promptUnsyncedBackup ?? true;
-
+export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<SyncRunResult> {
   ui.log.info(`targets: ${selectedAgents.map((agent) => getAgentDisplayName(agent)).join(", ")}`);
 
   const authSpinner = ui.spinner();
@@ -114,9 +106,6 @@ export async function syncSkills(
 
   if (privateSkills.length === 0) {
     fetchSpinner.stop(pc.dim("no skills to sync"));
-    if (promptUnsyncedBackup) {
-      await maybePromptUnsyncedLocalSkillsBackup(selectedAgents);
-    }
     return {
       ok: true,
       authenticated: true,
@@ -176,10 +165,6 @@ export async function syncSkills(
 
   ui.log.info(pc.dim(`synced ${synced}/${privateSkills.length} skill(s)`));
 
-  if (promptUnsyncedBackup) {
-    await maybePromptUnsyncedLocalSkillsBackup(selectedAgents);
-  }
-
   return {
     ok: failed === 0,
     authenticated: true,
@@ -198,5 +183,5 @@ export async function syncCommand() {
     return;
   }
 
-  await syncSkills(selectedAgents, { promptUnsyncedBackup: true });
+  await syncSkills(selectedAgents);
 }

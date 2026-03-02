@@ -4,6 +4,8 @@ import { configCommand } from "./commands/config";
 import { createCommand } from "./commands/create";
 import { deleteCommand } from "./commands/delete";
 import { getCommand } from "./commands/get";
+import { getUnmanagedSkillsCommand } from "./commands/get-unmanaged-skills";
+import { referencesCommand } from "./commands/references";
 import { healthCommand } from "./commands/health";
 import { listCommand } from "./commands/list";
 import { loginCommand } from "./commands/login";
@@ -40,10 +42,12 @@ function printUsage() {
   ui.log.info("  better-skills list [search] [--all] [--limit N]");
   ui.log.info("  better-skills search <query> [--limit N]");
   ui.log.info("  better-skills get <slug-or-uuid>");
+  ui.log.info("  better-skills get-unmanaged-skills");
   ui.log.info("  better-skills clone <slug-or-uuid> [--to <dir>] [--force]");
   ui.log.info("  better-skills config");
   ui.log.info("  better-skills create --from <dir> [--slug <s>]");
   ui.log.info("  better-skills update <slug-or-uuid> --from <dir> [--slug <s>]");
+  ui.log.info("  better-skills references <slug-or-uuid>");
   ui.log.info("  better-skills delete <uuid> [--yes]");
 }
 
@@ -98,6 +102,9 @@ async function run(args: string[]) {
     case "get":
       await getCommand();
       return;
+    case "get-unmanaged-skills":
+      await getUnmanagedSkillsCommand();
+      return;
     case "clone":
       await cloneCommand();
       return;
@@ -109,6 +116,9 @@ async function run(args: string[]) {
       return;
     case "update":
       await updateCommand();
+      return;
+    case "references":
+      await referencesCommand();
       return;
     case "delete":
       await deleteCommand();

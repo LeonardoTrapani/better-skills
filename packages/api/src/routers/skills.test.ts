@@ -285,6 +285,22 @@ mock.module("drizzle-orm", () => ({
   asc: (col: unknown) => ({ direction: "asc", col }),
 }));
 
+// chainable column mock — every method returns itself so any chaining order works
+function chainableCol(dbName: string): Record<string, unknown> {
+  const col: Record<string, unknown> = { ...fakeCol(dbName) };
+  const self = () => col;
+  col.primaryKey = self;
+  col.notNull = self;
+  col.unique = self;
+  col.default = self;
+  col.defaultRandom = self;
+  col.defaultNow = self;
+  col.references = self;
+  col.$type = self;
+  col.$onUpdate = self;
+  return col;
+}
+
 // mock pg-core exports that the schema file imports
 mock.module("drizzle-orm/pg-core", () => ({
   pgTable: (name: string, _cols: unknown, _extra?: unknown) => {
@@ -305,58 +321,12 @@ mock.module("drizzle-orm/pg-core", () => ({
     fn.enumValues = values;
     return fn;
   },
-  text: (name: string) => fakeCol(name),
-  uuid: (name: string) => {
-    const col: Record<string, unknown> = { ...fakeCol(name) };
-    col.defaultRandom = () => {
-      const c = { ...col };
-      c.primaryKey = () => c;
-      c.notNull = () => c;
-      c.references = () => c;
-      return c;
-    };
-    col.primaryKey = () => col;
-    col.notNull = () => {
-      const c = { ...col };
-      c.references = () => c;
-      return c;
-    };
-    col.references = () => col;
-    return col;
-  },
-  timestamp: (name: string) => {
-    const col: Record<string, unknown> = { ...fakeCol(name) };
-    col.defaultNow = () => {
-      const c = { ...col };
-      c.notNull = () => c;
-      c.$onUpdate = () => c;
-      return c;
-    };
-    col.notNull = () => col;
-    col.$onUpdate = () => col;
-    return col;
-  },
-  jsonb: (name: string) => {
-    const col: Record<string, unknown> = { ...fakeCol(name) };
-    col.$type = () => {
-      const c = { ...col };
-      c.notNull = () => {
-        const c2 = { ...c };
-        c2.default = () => c2;
-        return c2;
-      };
-      c.default = () => c;
-      return c;
-    };
-    col.notNull = () => {
-      const c = { ...col };
-      c.default = () => c;
-      return c;
-    };
-    col.default = () => col;
-    return col;
-  },
-  boolean: (name: string) => fakeCol(name),
+  text: (name: string) => chainableCol(name),
+  uuid: (name: string) => chainableCol(name),
+  timestamp: (name: string) => chainableCol(name),
+  jsonb: (name: string) => chainableCol(name),
+  boolean: (name: string) => chainableCol(name),
+  integer: (name: string) => chainableCol(name),
   index: () => ({ on: () => ({ where: () => ({}) }) }),
   uniqueIndex: () => ({ on: () => ({ where: () => ({}) }) }),
   check: () => ({}),
@@ -1507,5 +1477,132 @@ describe("link auto-sync", () => {
 
     expect(linksToA).toHaveLength(0);
     expect(linksToB).toHaveLength(1);
+  });
+});
+
+// ============================================================
+// REFERENCES
+// ============================================================
+
+describe("skills.references", () => {
+  test("unauthenticated call returns UNAUTHORIZED", async () => {
+    await expect(anonCaller().skills.references({ skillId: randomUUID() })).rejects.toThrow();
+  });
+
+  test("returns NOT_FOUND for nonexistent skill", async () => {
+    await expect(authedCaller(USER_A).skills.references({ skillId: randomUUID() })).rejects.toThrow(
+      "Skill not found",
+    );
+  });
+
+  test("returns FORBIDDEN for skill owned by another user", async () => {
+    const s = seedSkill({ ownerUserId: USER_B });
+    await expect(authedCaller(USER_A).skills.references({ skillId: s.id })).rejects.toThrow(
+      "Not the skill owner",
+    );
+  });
+
+  test("returns empty when no other skills reference the target", async () => {
+    const target = seedSkill({ ownerUserId: USER_A });
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(0);
+  });
+
+  test("returns inbound skill-to-skill references", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+    const source = seedSkill({ ownerUserId: USER_A, name: "Source", slug: "source" });
+
+    seedLink({
+      sourceSkillId: source.id,
+      targetSkillId: target.id,
+      kind: "related",
+    });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(1);
+    expect(result.references[0]!.sourceSkillId).toBe(source.id);
+    expect(result.references[0]!.sourceSkillName).toBe("Source");
+    expect(result.references[0]!.sourceSkillSlug).toBe("source");
+    expect(result.references[0]!.sourceResourcePath).toBeNull();
+    expect(result.references[0]!.kind).toBe("related");
+  });
+
+  test("returns inbound resource-to-skill references", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+    const source = seedSkill({ ownerUserId: USER_A, name: "Source", slug: "source" });
+    const sourceRes = seedResource(source.id, { path: "references/guide.md" });
+
+    seedLink({
+      sourceResourceId: sourceRes.id,
+      targetSkillId: target.id,
+      kind: "mention",
+    });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(1);
+    expect(result.references[0]!.sourceSkillId).toBe(source.id);
+    expect(result.references[0]!.sourceResourcePath).toBe("references/guide.md");
+    expect(result.references[0]!.kind).toBe("mention");
+  });
+
+  test("returns references targeting the skill's resources", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+    const targetRes = seedResource(target.id, { path: "references/schema.md" });
+    const source = seedSkill({ ownerUserId: USER_A, name: "Source", slug: "source" });
+
+    seedLink({
+      sourceSkillId: source.id,
+      targetResourceId: targetRes.id,
+      kind: "related",
+    });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(1);
+    expect(result.references[0]!.sourceSkillId).toBe(source.id);
+  });
+
+  test("excludes self-references (skill linking to itself)", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+
+    // self-reference: skill links to itself
+    seedLink({
+      sourceSkillId: target.id,
+      targetSkillId: target.id,
+      kind: "related",
+    });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(0);
+  });
+
+  test("excludes internal resource-to-resource links within same skill", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+    const resA = seedResource(target.id, { path: "references/a.md" });
+    const resB = seedResource(target.id, { path: "references/b.md" });
+
+    // internal: resource A of target links to resource B of target
+    seedLink({
+      sourceResourceId: resA.id,
+      targetResourceId: resB.id,
+      kind: "related",
+    });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(0);
+  });
+
+  test("returns multiple references from different skills", async () => {
+    const target = seedSkill({ ownerUserId: USER_A, name: "Target" });
+    const sourceA = seedSkill({ ownerUserId: USER_A, name: "Source A", slug: "source-a" });
+    const sourceB = seedSkill({ ownerUserId: USER_A, name: "Source B", slug: "source-b" });
+
+    seedLink({ sourceSkillId: sourceA.id, targetSkillId: target.id, kind: "related" });
+    seedLink({ sourceSkillId: sourceB.id, targetSkillId: target.id, kind: "mention" });
+
+    const result = await authedCaller(USER_A).skills.references({ skillId: target.id });
+    expect(result.references).toHaveLength(2);
+
+    const slugs = result.references.map((r) => r.sourceSkillSlug).sort();
+    expect(slugs).toEqual(["source-a", "source-b"]);
   });
 });

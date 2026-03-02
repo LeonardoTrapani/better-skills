@@ -1164,6 +1164,136 @@ export const skillsRouter = router({
       return buildGraphPayload(allSkills, allResources, allLinks);
     }),
 
+  references: protectedProcedure
+    .input(z.object({ skillId: z.string().uuid() }))
+    .output(
+      z.object({
+        references: z.array(
+          z.object({
+            linkId: z.string().uuid(),
+            sourceSkillId: z.string().uuid(),
+            sourceSkillName: z.string(),
+            sourceSkillSlug: z.string(),
+            sourceResourcePath: z.string().nullable(),
+            kind: z.string(),
+          }),
+        ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [existing] = await db
+        .select({ id: skill.id, ownerUserId: skill.ownerUserId })
+        .from(skill)
+        .where(eq(skill.id, input.skillId));
+
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+      if (existing.ownerUserId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not the skill owner" });
+      }
+
+      // get this skill's resource IDs to detect resource-level inbound refs
+      const ownResources = await db
+        .select({ id: skillResource.id })
+        .from(skillResource)
+        .where(eq(skillResource.skillId, input.skillId));
+      const ownResourceIds = ownResources.map((r) => r.id);
+
+      // find all links targeting this skill or its resources
+      const targetConditions = [eq(skillLink.targetSkillId, input.skillId)];
+      if (ownResourceIds.length > 0) {
+        targetConditions.push(inArray(skillLink.targetResourceId, ownResourceIds));
+      }
+
+      const links = await db
+        .select({
+          linkId: skillLink.id,
+          sourceSkillId: skillLink.sourceSkillId,
+          sourceResourceId: skillLink.sourceResourceId,
+          kind: skillLink.kind,
+        })
+        .from(skillLink)
+        .where(or(...targetConditions));
+
+      // batch-resolve source skills and resources
+      const sourceSkillIds = new Set<string>();
+      const sourceResourceIds = new Set<string>();
+
+      for (const link of links) {
+        if (link.sourceSkillId && link.sourceSkillId !== input.skillId) {
+          sourceSkillIds.add(link.sourceSkillId);
+        } else if (link.sourceResourceId && !ownResourceIds.includes(link.sourceResourceId)) {
+          sourceResourceIds.add(link.sourceResourceId);
+        }
+      }
+
+      const sourceResources =
+        sourceResourceIds.size > 0
+          ? await db
+              .select({
+                id: skillResource.id,
+                skillId: skillResource.skillId,
+                path: skillResource.path,
+              })
+              .from(skillResource)
+              .where(inArray(skillResource.id, [...sourceResourceIds]))
+          : [];
+
+      const resourceMap = new Map(sourceResources.map((r) => [r.id, r]));
+
+      for (const r of sourceResources) {
+        sourceSkillIds.add(r.skillId);
+      }
+
+      const sourceSkills =
+        sourceSkillIds.size > 0
+          ? await db
+              .select({ id: skill.id, name: skill.name, slug: skill.slug })
+              .from(skill)
+              .where(inArray(skill.id, [...sourceSkillIds]))
+          : [];
+
+      const skillMap = new Map(sourceSkills.map((s) => [s.id, s]));
+
+      // build results, filtering out self-references
+      const results = [];
+
+      for (const link of links) {
+        let resolvedSkillId: string;
+        let sourceResourcePath: string | null = null;
+
+        if (link.sourceSkillId) {
+          if (link.sourceSkillId === input.skillId) continue;
+          resolvedSkillId = link.sourceSkillId;
+        } else if (link.sourceResourceId) {
+          if (ownResourceIds.includes(link.sourceResourceId)) continue;
+          const srcResource = resourceMap.get(link.sourceResourceId);
+          if (!srcResource) continue;
+          resolvedSkillId = srcResource.skillId;
+          sourceResourcePath = srcResource.path;
+        } else {
+          continue;
+        }
+
+        const srcSkill = skillMap.get(resolvedSkillId);
+        if (!srcSkill) continue;
+
+        results.push({
+          linkId: link.linkId,
+          sourceSkillId: srcSkill.id,
+          sourceSkillName: srcSkill.name,
+          sourceSkillSlug: srcSkill.slug,
+          sourceResourcePath,
+          kind: link.kind,
+        });
+      }
+
+      return { references: results };
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .output(z.object({ success: z.literal(true) }))

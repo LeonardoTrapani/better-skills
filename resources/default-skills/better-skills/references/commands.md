@@ -40,11 +40,15 @@ Both `create` and `update` resolve `\[[resource:new:...]]` mentions to
 `validate` checks frontmatter and `:new:` mention targets, and fails when
 resource files are missing mention references.
 
-## Delete
+## References and delete
 
 ```bash
+better-skills references <slug-or-uuid>
 better-skills delete <uuid> [--yes]
 ```
+
+`references` lists other vault skills that have `\[[skill:<uuid>]]` mentions
+pointing to the given skill. Use before delete to check for broken links.
 
 `--yes` skips confirmation. Required in non-interactive environments.
 

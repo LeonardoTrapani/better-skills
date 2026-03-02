@@ -1,29 +1,32 @@
 # Edit a Skill
 
-Use this when user wants to update an existing skill.
+Use when user wants to update an existing vault skill.
 
 ## Read first
 
 - [[resource:new:references/authoring.md]]
 
-## Steps
+## Step 1: Clone the skill
 
-1. Clone the current skill to a local folder:
+Clone to a folder in cwd:
 
 ```bash
-better-skills clone <slug-or-uuid> --to <folder> [--force]
+better-skills clone <slug-or-uuid> --to ./<folder> [--force]
 ```
 
-The clone writes the folder in update-ready format: `SKILL.md` +
-`references/` + `scripts/` + `assets/`. It prints a link context table
-(`uuid -> resource path`) for existing mentions.
+The clone writes the folder in update-ready format: `SKILL.md` + `references/`
 
-2. Edit local files (`SKILL.md` and resources).
+- `scripts/` + `assets/`. It prints a link context table (`uuid -> resource path`)
+  for existing mentions.
 
-3. If content was imported/copied from another source, run:
+## Step 2: Edit local files
+
+Edit `SKILL.md` and resource files as needed.
+
+If content was imported or copied from another source, run:
 
 ```bash
-better-skills rewrite-links <folder>
+better-skills rewrite-links ./<folder>
 ```
 
 Then wire mentions per [[resource:new:references/linking.md]]. If adding a new
@@ -31,18 +34,18 @@ file, create it under `references/`, `scripts/`, or `assets/` and add a
 `\[[resource:new:<path>]]` mention. Replace any remaining bare markdown links
 with mention tokens.
 
-4. Validate the folder:
+## Step 3: Validate
 
 ```bash
-better-skills validate <folder>
+better-skills validate ./<folder>
 ```
 
-Validation is strict: any warning fails. Fix all issues before proceeding.
+Validation is strict — any warning is a failure. Fix all issues before proceeding.
 
-5. Update the skill:
+## Step 4: Update
 
 ```bash
-better-skills update <slug-or-uuid> --from <folder> [--slug <slug>]
+better-skills update <slug-or-uuid> --from ./<folder> [--slug <slug>]
 ```
 
 The CLI will:
@@ -51,19 +54,14 @@ The CLI will:
 - Resolve `\[[resource:new:...]]` mentions to `\[[resource:<uuid>]]` in both
   SKILL.md and resource file content
 
-6. Sync:
+## Step 5: Sync and confirm
 
 ```bash
 better-skills sync
-```
-
-7. Confirm the update:
-
-```bash
 better-skills get <slug-or-uuid>
 ```
 
-End by telling the user to start a new session so updated skills are reloaded.
+Tell the user to start a new session so updated skills are reloaded.
 
 ## Behavior
 

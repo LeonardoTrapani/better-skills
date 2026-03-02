@@ -156,3 +156,4 @@ case ":$PATH:" in
 esac
 
 printf 'run `%s --version` to verify\n' "$BIN_NAME"
+printf 'then login with `%s login`\n' "$BIN_NAME"
