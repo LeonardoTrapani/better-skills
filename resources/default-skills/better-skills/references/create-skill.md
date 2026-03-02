@@ -76,15 +76,25 @@ Create `SKILL.md` at `"$skill_dir/SKILL.md"` and resource files inside
 
 Follow [[resource:new:references/linking.md]]. In short:
 
-1. Replace **every** reference to a local resource file with
+1. Run link rewrite first:
+
+```bash
+better-skills rewrite-links "$skill_dir"
+```
+
+This rewrites common local-link formats to `\[[resource:new:<path>]]` in
+`SKILL.md` and markdown-like resources. It skips fenced/inline code and
+backslash-escaped forms.
+
+2. Replace **every** remaining reference to a local resource file with
    `\[[resource:new:<path>]]` — in SKILL.md **and** inside resource files.
    Multiple mentions of the same file are valid; the CLI deduplicates.
 
-2. Bare markdown links (`[text](references/foo.md)`) and plain-text paths
+3. Bare markdown links (`[text](references/foo.md)`) and plain-text paths
    (`references/foo.md`) are both forbidden. Every occurrence must be a
    mention token.
 
-3. If any resource file still has no inbound mention, add a short list in
+4. If any resource file still has no inbound mention, add a short list in
    SKILL.md (for example `## Resource Index`) with one
    `\[[resource:new:<path>]]` mention per missing file.
 
@@ -111,9 +121,10 @@ better-skills validate "$skill_dir"
 Validation is strict: any warning fails. Fix all issues before proceeding.
 
 After validate passes, scan SKILL.md **and every resource file** for
-remaining bare markdown links (`[text](references/...)`) or plain-text
-paths to local files. `validate` catches missing mentions but does not
-detect leftover bare links — fix those manually.
+remaining bare markdown links (`[text](references/...)`) or plain-text paths
+to local files. If any remain, run `better-skills rewrite-links "$skill_dir"`
+again and manually patch edge cases. `validate` catches missing mentions but
+does not detect leftover bare links.
 
 ## Step 4: Create
 

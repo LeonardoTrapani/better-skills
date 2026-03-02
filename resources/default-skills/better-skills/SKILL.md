@@ -30,3 +30,5 @@ Existing local skill folders → Onboard.
 2. Never use bare markdown links for internal resource references.
 3. Always read [[resource:new:references/authoring.md]] before creating or
    editing a skill.
+4. For imported/copied folders, run `better-skills rewrite-links <dir>` before
+   `better-skills validate <dir>`.

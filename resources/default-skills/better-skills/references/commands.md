@@ -24,10 +24,15 @@ name/slug (ILIKE). `--limit N` caps results (default 20). `--all` fetches all.
 ## Create and update
 
 ```bash
+better-skills rewrite-links <dir> [--dry-run]
 better-skills create --from <dir> [--slug <slug>]
 better-skills update <slug-or-uuid> --from <dir> [--slug <slug>]
 better-skills validate <dir>
 ```
+
+`rewrite-links` rewrites internal local links (markdown links, bare paths,
+wiki links, and autolinks) into `\[[resource:new:<path>]]` mention tokens in
+`SKILL.md` plus markdown-like resources.
 
 Both `create` and `update` resolve `\[[resource:new:...]]` mentions to
 `\[[resource:<uuid>]]` in SKILL.md and all resource file content.

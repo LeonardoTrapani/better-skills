@@ -1,11 +1,16 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { extname, join, relative } from "node:path";
 
 import { parseMentions } from "@better-skills/markdown/persisted-mentions";
 
 import { collectNewResourceMentionPaths, normalizeResourcePath } from "./new-resource-mentions";
 
 const RESOURCE_DIRS = ["references", "scripts", "assets"] as const;
+const MENTION_MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".txt"]);
+
+function shouldScanMentionMarkdown(path: string): boolean {
+  return MENTION_MARKDOWN_EXTENSIONS.has(extname(path).toLowerCase());
+}
 
 export type SkillFolderValidationResult = {
   ok: boolean;
@@ -120,7 +125,7 @@ async function collectAllResourceMentions(
   scanMarkdown(skillMdBody);
 
   for (const resourcePath of localResources) {
-    if (!resourcePath.endsWith(".md")) continue;
+    if (!shouldScanMentionMarkdown(resourcePath)) continue;
     const content = await readFile(join(folder, resourcePath), "utf8").catch(() => null);
     if (!content) continue;
     scanMarkdown(content);

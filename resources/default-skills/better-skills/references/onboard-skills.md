@@ -42,11 +42,12 @@ inline links to draft mentions, verifying frontmatter) before create/update.
 
 For each selected skill:
 
-1. Wire mentions per [[resource:new:references/linking.md]] — rewrite bare
-   markdown links to `\[[resource:new:<path>]]` form and ensure every resource
-   file has a matching mention.
-2. Verify frontmatter has required `name` and `description` fields.
-3. Run `better-skills validate <work-folder>` — validation is strict; fix all issues.
+1. Run `better-skills rewrite-links <work-folder>` to bulk-convert local links
+   to `\[[resource:new:<path>]]` mention form.
+2. Wire mentions per [[resource:new:references/linking.md]] — patch any
+   leftovers and ensure every resource file has a matching mention.
+3. Verify frontmatter has required `name` and `description` fields.
+4. Run `better-skills validate <work-folder>` — validation is strict; fix all issues.
 
 ## Step 4: Route to create or update
 

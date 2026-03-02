@@ -8,6 +8,7 @@ import { healthCommand } from "./commands/health";
 import { listCommand } from "./commands/list";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
+import { rewriteLinksCommand } from "./commands/rewrite-links";
 import { searchCommand } from "./commands/search";
 import { syncCommand } from "./commands/sync";
 import { updateCommand } from "./commands/update";
@@ -34,6 +35,7 @@ function printUsage() {
   ui.log.info("  better-skills whoami");
   ui.log.info("  better-skills sync");
   ui.log.info("  better-skills validate <dir>");
+  ui.log.info("  better-skills rewrite-links <dir> [--dry-run]");
   ui.log.info("  better-skills backup [--source <dir>] [--out <tmp-dir>] [--agent <agent>]...");
   ui.log.info("  better-skills list [search] [--all] [--limit N]");
   ui.log.info("  better-skills search <query> [--limit N]");
@@ -80,6 +82,9 @@ async function run(args: string[]) {
       return;
     case "validate":
       await validateCommand();
+      return;
+    case "rewrite-links":
+      await rewriteLinksCommand();
       return;
     case "backup":
       await backupCommand();

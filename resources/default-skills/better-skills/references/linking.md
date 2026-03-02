@@ -78,6 +78,18 @@ covers a subtopic that overlaps with another skill, put the
 `\[[skill:<uuid>]]` link there — that way it loads just-in-time when the
 agent reads the reference, rather than always consuming context.
 
+## Bulk rewrite before validate
+
+For imported content, run:
+
+```bash
+better-skills rewrite-links <dir>
+```
+
+This bulk-rewrites common local-link formats to `\[[resource:new:<path>]]`
+in `SKILL.md` and markdown-like resources. It intentionally skips fenced code,
+inline code, and backslash-escaped examples.
+
 ## Rules
 
 1. Never use bare markdown links (`[text](references/foo.md)`) or
@@ -90,4 +102,4 @@ agent reads the reference, rather than always consuming context.
    path are fine.
 4. `better-skills validate` catches missing mentions and fails on warnings.
    Run it before every create or update. It does not detect leftover bare
-   links, so check those manually.
+   links, so run `rewrite-links` first, then patch any edge cases manually.

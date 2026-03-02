@@ -36,6 +36,9 @@ tokens (draft, persisted, and escaped forms).
 Key rule: every file under `references/`, `scripts/`, or `assets/` MUST have a
 matching mention. `better-skills validate` fails when any resource is unlinked.
 
+For imported/copied content, run `better-skills rewrite-links <dir>` before
+`better-skills validate` to bulk-convert local links into draft mention form.
+
 Update behavior:
 
 - Local folder is desired state for resources.

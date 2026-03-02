@@ -158,6 +158,36 @@ describe("validateSkillFolder", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  test("collects mentions from .mdx and .txt resources", async () => {
+    const folder = await createTempSkillFolder("better-skills-validate-markdown-like");
+    await mkdir(join(folder, "references"), { recursive: true });
+    await writeFile(
+      join(folder, "references", "a.mdx"),
+      "read [[resource:new:references/b.txt]] first\n",
+      "utf8",
+    );
+    await writeFile(join(folder, "references", "b.txt"), "details\n", "utf8");
+    await writeFile(
+      join(folder, "SKILL.md"),
+      [
+        "---",
+        "name: test skill",
+        "description: validate",
+        "---",
+        "",
+        "Start with [[resource:new:references/a.mdx]]",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await validateSkillFolder(folder);
+
+    expect(result.ok).toBe(true);
+    expect(result.resourceCount).toBe(2);
+    expect(result.mentionCount).toBe(2);
+    expect(result.warnings).toEqual([]);
+  });
+
   test("counts [[resource:<uuid>]] mentions as coverage", async () => {
     const folder = await createTempSkillFolder("better-skills-validate-uuid");
     await mkdir(join(folder, "references"), { recursive: true });

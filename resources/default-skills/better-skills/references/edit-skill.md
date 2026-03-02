@@ -20,10 +20,16 @@ The clone writes the folder in update-ready format: `SKILL.md` +
 
 2. Edit local files (`SKILL.md` and resources).
 
-3. Wire mentions per [[resource:new:references/linking.md]]. If adding a new
-   file, create it under `references/`, `scripts/`, or `assets/` and add a
-   `\[[resource:new:<path>]]` mention. Replace any bare markdown links with
-   mention tokens.
+3. If content was imported/copied from another source, run:
+
+```bash
+better-skills rewrite-links <folder>
+```
+
+Then wire mentions per [[resource:new:references/linking.md]]. If adding a new
+file, create it under `references/`, `scripts/`, or `assets/` and add a
+`\[[resource:new:<path>]]` mention. Replace any remaining bare markdown links
+with mention tokens.
 
 4. Validate the folder:
 

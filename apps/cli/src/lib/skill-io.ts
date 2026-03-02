@@ -1,5 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { extname, join, relative } from "node:path";
 
 import matter from "gray-matter";
 
@@ -20,6 +20,12 @@ const RESOURCE_DIRS: Record<string, "reference" | "script" | "asset"> = {
   assets: "asset",
 };
 
+const NEW_MENTION_MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".txt"]);
+
+function shouldResolveNewMentionsInResource(path: string): boolean {
+  return NEW_MENTION_MARKDOWN_EXTENSIONS.has(extname(path).toLowerCase());
+}
+
 export type ResourceInput = {
   path: string;
   kind: "reference" | "script" | "asset" | "other";
@@ -36,7 +42,7 @@ export type LocalSkillDraft = {
   newResourcePaths: string[];
   /** markdown with [[resource:new:...]] mentions stripped (safe to send on first mutation) */
   markdownForMutation: string;
-  /** resources with [[resource:new:...]] mentions stripped in .md content */
+  /** resources with [[resource:new:...]] mentions stripped in markdown-like content */
   resourcesForMutation: ResourceInput[];
 };
 
@@ -120,11 +126,11 @@ export async function loadLocalSkillDraft(from: string): Promise<LocalSkillDraft
   const resources = await scanResources(from);
   const markdown = markdownBody.trim();
 
-  // collect :new: mentions from SKILL.md and all .md resource files
+  // collect :new: mentions from SKILL.md and markdown-like resource files
   const mentionSet = new Set<string>();
   for (const p of collectNewResourceMentionPaths(markdown)) mentionSet.add(p);
   for (const r of resources) {
-    if (!r.path.endsWith(".md")) continue;
+    if (!shouldResolveNewMentionsInResource(r.path)) continue;
     for (const p of collectNewResourceMentionPaths(r.content)) mentionSet.add(p);
   }
   const newResourcePaths = [...mentionSet];
@@ -151,7 +157,7 @@ export async function loadLocalSkillDraft(from: string): Promise<LocalSkillDraft
 
   const resourcesForMutation = hasNewMentions
     ? resources.map((r) => {
-        if (!r.path.endsWith(".md")) return r;
+        if (!shouldResolveNewMentionsInResource(r.path)) return r;
         if (collectNewResourceMentionPaths(r.content).length === 0) return r;
         return { ...r, content: stripNewResourceMentionsForCreate(r.content) };
       })
@@ -191,10 +197,10 @@ export async function resolveNewResourceMentions(
   const resolvedSkillMd = resolveNewResourceMentionsToUuids(draft.markdown, resourceIdByPath);
   for (const p of resolvedSkillMd.missingPaths) allMissing.add(p);
 
-  // resolve .md resource files that had :new: mentions
+  // resolve markdown-like resource files that had :new: mentions
   const resolvedResources: UpdateResourcePayload[] = [];
   for (const resource of draft.resources) {
-    if (!resource.path.endsWith(".md")) continue;
+    if (!shouldResolveNewMentionsInResource(resource.path)) continue;
     if (collectNewResourceMentionPaths(resource.content).length === 0) continue;
 
     const serverId = resourceIdByPath.get(normalizeResourcePath(resource.path));
