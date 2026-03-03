@@ -266,7 +266,7 @@
         "Ambiguous plain slug produces deterministic error output listing matches",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "update cli sync for enabled multi-vault behavior",

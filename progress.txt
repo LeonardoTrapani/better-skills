@@ -18,6 +18,7 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - auth `userRelations` in `auth.ts` references tables from other schema files
 - enterprise vault management routes use a shared owner/admin guard (`assertCanManageEnterpriseVault`) and normalized email matching for invitations
 - destructive one-off data migrations in auth use `--apply` opt-in; default run is dry-run and deletion is blocked when unresolved mention targets remain
+- CLI identifier resolution should go through `resolveSkillIdentifier` to keep UUID/plain-slug/`<vault>/<slug>` handling consistent across commands
 
 ---
 
@@ -128,3 +129,9 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - `apps/cli/src/lib/vault-identifiers.test.ts` + helper `vault-identifiers.ts` for `<vault>/<slug>` parsing + deterministic ambiguous-slug messaging
   - `apps/cli/src/lib/vault-sync.test.ts` + helper `vault-sync.ts` for vault-scoped install keys and stale key pruning
 - verification run: `bun test packages/api/src/lib/link-sync.test.ts`, `bun test packages/api/src/routers/vaults.test.ts`, `bun test apps/cli/src/lib/vault-identifiers.test.ts apps/cli/src/lib/vault-sync.test.ts`, `bun run check-types`, `bun run check` (check reports pre-existing web warnings only)
+
+### Task 16: add cli multi-vault identifier handling — DONE
+- added `apps/cli/src/lib/resolve-skill-identifier.ts` and wired `get`, `update`, `clone`, and `references` to a shared resolver that supports UUID, plain slug, and `<vault-slug>/<skill-slug>` identifiers
+- updated CLI usage/help text to document vault-qualified identifiers for all affected commands
+- added `apps/cli/src/lib/resolve-skill-identifier.test.ts` to verify UUID and vault-slug routing behavior, and reused existing `vault-identifiers` tests for deterministic ambiguous-slug message formatting
+- verification run: `bun test apps/cli/src/lib/vault-identifiers.test.ts apps/cli/src/lib/resolve-skill-identifier.test.ts`, `bun cli get acme/deploy` (fails with expected auth error in this environment), `bun run check-types`, `bun run check` (pre-existing oxlint warnings remain in `apps/web`)

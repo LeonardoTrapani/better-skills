@@ -41,13 +41,17 @@ function printUsage() {
   ui.log.info("  better-skills backup [--source <dir>] [--out <tmp-dir>] [--agent <agent>]...");
   ui.log.info("  better-skills list [search] [--all] [--limit N]");
   ui.log.info("  better-skills search <query> [--limit N]");
-  ui.log.info("  better-skills get <slug-or-uuid>");
+  ui.log.info("  better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>");
   ui.log.info("  better-skills get-unmanaged-skills");
-  ui.log.info("  better-skills clone <slug-or-uuid> [--to <dir>] [--force]");
+  ui.log.info(
+    "  better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--force]",
+  );
   ui.log.info("  better-skills config");
   ui.log.info("  better-skills create --from <dir> [--slug <s>]");
-  ui.log.info("  better-skills update <slug-or-uuid> --from <dir> [--slug <s>]");
-  ui.log.info("  better-skills references <slug-or-uuid>");
+  ui.log.info(
+    "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
+  );
+  ui.log.info("  better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>");
   ui.log.info("  better-skills delete <uuid> [--yes]");
 }
 

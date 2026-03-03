@@ -5,10 +5,10 @@ import { parseMentions } from "@better-skills/markdown/persisted-mentions";
 import pc from "picocolors";
 
 import { readErrorMessage } from "../lib/errors";
+import { resolveSkillIdentifier } from "../lib/resolve-skill-identifier";
 import { type InstallableSkill, writeSkillFolder } from "../lib/skills-installer";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
-import { UUID_RE } from "../lib/uuid";
 
 type SkillDetails = Awaited<ReturnType<typeof trpc.skills.getById.query>>;
 type SkillGraph = Awaited<ReturnType<typeof trpc.skills.graphForSkill.query>>;
@@ -169,7 +169,9 @@ export async function cloneCommand() {
   const { identifier, to, force } = parseArgs(process.argv);
 
   if (!identifier) {
-    ui.log.error("usage: better-skills clone <slug-or-uuid> [--to <dir>] [--force]");
+    ui.log.error(
+      "usage: better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--force]",
+    );
     process.exit(1);
   }
 
@@ -178,9 +180,7 @@ export async function cloneCommand() {
 
   let skill: SkillDetails;
   try {
-    skill = UUID_RE.test(identifier)
-      ? await trpc.skills.getById.query({ id: identifier, linkMentions: false })
-      : await trpc.skills.getBySlug.query({ slug: identifier, linkMentions: false });
+    skill = await resolveSkillIdentifier(trpc, identifier, { linkMentions: false });
     s.stop(pc.dim(`loaded ${skill.slug}`));
   } catch (error) {
     s.stop(pc.red("load failed"));

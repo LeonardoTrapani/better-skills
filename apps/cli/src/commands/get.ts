@@ -1,15 +1,15 @@
 import pc from "picocolors";
 
 import { readErrorMessage } from "../lib/errors";
+import { resolveSkillIdentifier } from "../lib/resolve-skill-identifier";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
-import { UUID_RE } from "../lib/uuid";
 
 export async function getCommand() {
   const identifier = process.argv[3];
 
   if (!identifier) {
-    ui.log.error("usage: better-skills get <slug-or-uuid>");
+    ui.log.error("usage: better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>");
     process.exit(1);
   }
 
@@ -17,9 +17,7 @@ export async function getCommand() {
   s.start("fetching skill");
 
   try {
-    const skill = UUID_RE.test(identifier)
-      ? await trpc.skills.getById.query({ id: identifier, linkMentions: false })
-      : await trpc.skills.getBySlug.query({ slug: identifier, linkMentions: false });
+    const skill = await resolveSkillIdentifier(trpc, identifier, { linkMentions: false });
 
     s.stop(pc.dim(`fetched ${skill.name}`));
 
