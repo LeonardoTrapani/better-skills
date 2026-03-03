@@ -18,11 +18,12 @@ import {
   Sun,
   Trash2,
   User,
+  Users,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth/auth-client";
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -121,6 +123,21 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
   const [deletePending, setDeletePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [selectedManagedVaultId, setSelectedManagedVaultId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [vaultColorInput, setVaultColorInput] = useState("#6b7280");
+  const [pendingRoleChange, setPendingRoleChange] = useState<{
+    vaultId: string;
+    userId: string;
+    userName: string;
+    nextRole: "admin" | "member";
+  } | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    vaultId: string;
+    userId: string;
+    userName: string;
+  } | null>(null);
   const { theme, setTheme } = useTheme();
   const { data: session } = authClient.useSession();
   const membershipsQueryOptions = trpc.vaults.listMine.queryOptions();
@@ -175,6 +192,57 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
     }),
   );
 
+  const inviteMemberMutation = useMutation(
+    trpc.vaults.inviteMember.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        setInviteEmail("");
+        toast.success("Invitation sent");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to send invitation");
+      },
+    }),
+  );
+
+  const updateMemberRoleMutation = useMutation(
+    trpc.vaults.members.updateRole.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        setPendingRoleChange(null);
+        toast.success("Member role updated");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update member role");
+      },
+    }),
+  );
+
+  const removeMemberMutation = useMutation(
+    trpc.vaults.members.remove.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        setPendingRemoval(null);
+        toast.success("Member removed");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to remove member");
+      },
+    }),
+  );
+
+  const updateVaultColorMutation = useMutation(
+    trpc.vaults.updateColor.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        toast.success("Vault color updated");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update vault color");
+      },
+    }),
+  );
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -197,6 +265,42 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
       }),
     [memberships],
   );
+
+  const manageableEnterpriseMemberships = useMemo(
+    () =>
+      sortedMemberships.filter(
+        (membership) => membership.vault.type === "enterprise" && membership.canAdmin,
+      ),
+    [sortedMemberships],
+  );
+
+  const managedMembersQueries = useQueries({
+    queries: manageableEnterpriseMemberships.map((membership) =>
+      trpc.vaults.members.list.queryOptions({ vaultId: membership.vaultId }),
+    ),
+  });
+
+  const selectedManagedMembership = useMemo(() => {
+    if (!selectedManagedVaultId) return manageableEnterpriseMemberships[0] ?? null;
+    return (
+      manageableEnterpriseMemberships.find(
+        (membership) => membership.vaultId === selectedManagedVaultId,
+      ) ??
+      manageableEnterpriseMemberships[0] ??
+      null
+    );
+  }, [manageableEnterpriseMemberships, selectedManagedVaultId]);
+
+  const selectedManagedMembersQuery = useMemo(() => {
+    if (!selectedManagedMembership) return null;
+    const index = manageableEnterpriseMemberships.findIndex(
+      (membership) => membership.vaultId === selectedManagedMembership.vaultId,
+    );
+    if (index < 0) return null;
+    return managedMembersQueries[index] ?? null;
+  }, [manageableEnterpriseMemberships, managedMembersQueries, selectedManagedMembership]);
+
+  const selectedManagedMembers = selectedManagedMembersQuery?.data ?? [];
 
   const handleSignOut = async () => {
     if (signOutPending) return;
@@ -240,6 +344,63 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
   const handleInvitationDecline = (invitationId: string) => {
     declineInvitationMutation.mutate({ invitationId });
   };
+
+  const handleInviteSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedManagedMembership) return;
+
+    inviteMemberMutation.mutate({
+      vaultId: selectedManagedMembership.vaultId,
+      email: inviteEmail.trim(),
+      role: inviteRole,
+    });
+  };
+
+  const handleUpdateColor = () => {
+    if (!selectedManagedMembership) return;
+    updateVaultColorMutation.mutate({
+      vaultId: selectedManagedMembership.vaultId,
+      color: vaultColorInput,
+    });
+  };
+
+  const confirmRoleChange = () => {
+    if (!pendingRoleChange) return;
+    updateMemberRoleMutation.mutate({
+      vaultId: pendingRoleChange.vaultId,
+      userId: pendingRoleChange.userId,
+      role: pendingRoleChange.nextRole,
+    });
+  };
+
+  const confirmMemberRemoval = () => {
+    if (!pendingRemoval) return;
+    removeMemberMutation.mutate({
+      vaultId: pendingRemoval.vaultId,
+      userId: pendingRemoval.userId,
+    });
+  };
+
+  useEffect(() => {
+    if (manageableEnterpriseMemberships.length === 0) {
+      setSelectedManagedVaultId(null);
+      return;
+    }
+
+    if (
+      !selectedManagedVaultId ||
+      !manageableEnterpriseMemberships.some(
+        (membership) => membership.vaultId === selectedManagedVaultId,
+      )
+    ) {
+      setSelectedManagedVaultId(manageableEnterpriseMemberships[0].vaultId);
+    }
+  }, [manageableEnterpriseMemberships, selectedManagedVaultId]);
+
+  useEffect(() => {
+    if (!selectedManagedMembership) return;
+    setVaultColorInput(selectedManagedMembership.vault.color ?? "#6b7280");
+  }, [selectedManagedMembership]);
 
   return (
     <main className="relative min-h-screen bg-background">
@@ -583,6 +744,232 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                   );
                 })}
               </div>
+
+              {manageableEnterpriseMemberships.length > 0 ? (
+                <>
+                  <div className="border-t border-dashed border-border" />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                      <Users className="size-3.5" aria-hidden="true" />
+                      Enterprise admin
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {manageableEnterpriseMemberships.map((membership) => {
+                        const isSelected =
+                          membership.vaultId === selectedManagedMembership?.vaultId;
+                        return (
+                          <Button
+                            key={membership.vaultId}
+                            type="button"
+                            size="sm"
+                            variant={isSelected ? "default" : "outline"}
+                            className="h-8 gap-2"
+                            onClick={() => setSelectedManagedVaultId(membership.vaultId)}
+                          >
+                            {membership.vault.color ? (
+                              <span
+                                className="size-2 rounded-full border border-border/60"
+                                style={{ backgroundColor: membership.vault.color }}
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                            {membership.vault.name}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    {selectedManagedMembership ? (
+                      <div className="space-y-3 border border-border px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">
+                            {selectedManagedMembership.vault.name}
+                          </p>
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            /{selectedManagedMembership.vault.slug}
+                          </Badge>
+                        </div>
+
+                        <div className="grid gap-3 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                          <p className="text-xs text-muted-foreground">
+                            Vault color is used across badges and graph nodes.
+                          </p>
+                          <Input
+                            type="color"
+                            value={vaultColorInput}
+                            onChange={(event) => setVaultColorInput(event.target.value)}
+                            className="h-9 w-full sm:w-20"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleUpdateColor}
+                            disabled={updateVaultColorMutation.isPending}
+                          >
+                            {updateVaultColorMutation.isPending ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            ) : null}
+                            Save color
+                          </Button>
+                        </div>
+
+                        <form
+                          className="grid gap-2 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+                          onSubmit={handleInviteSubmit}
+                        >
+                          <Input
+                            type="email"
+                            placeholder="teammate@company.com"
+                            value={inviteEmail}
+                            onChange={(event) => setInviteEmail(event.target.value)}
+                            required
+                          />
+                          <select
+                            value={inviteRole}
+                            onChange={(event) =>
+                              setInviteRole(event.target.value as "admin" | "member")
+                            }
+                            className="h-9 border border-border bg-background px-3 text-sm"
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={
+                              inviteMemberMutation.isPending || inviteEmail.trim().length === 0
+                            }
+                          >
+                            {inviteMemberMutation.isPending ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            ) : null}
+                            Invite
+                          </Button>
+                        </form>
+
+                        <div className="space-y-2 border border-border px-3 py-3">
+                          <p className="text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                            Members
+                          </p>
+
+                          {selectedManagedMembersQuery?.isLoading ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                              Loading members...
+                            </div>
+                          ) : null}
+
+                          {!selectedManagedMembersQuery?.isLoading &&
+                          selectedManagedMembers.length === 0 ? (
+                            <div className="text-xs text-muted-foreground">No members found.</div>
+                          ) : null}
+
+                          {selectedManagedMembers.map((member) => {
+                            const roleToggle = member.role === "admin" ? "member" : "admin";
+                            const roleToggleLabel =
+                              member.role === "admin" ? "Set member" : "Set admin";
+
+                            const roleBusy =
+                              updateMemberRoleMutation.isPending &&
+                              updateMemberRoleMutation.variables?.vaultId ===
+                                selectedManagedMembership.vaultId &&
+                              updateMemberRoleMutation.variables?.userId === member.userId;
+
+                            const removeBusy =
+                              removeMemberMutation.isPending &&
+                              removeMemberMutation.variables?.vaultId ===
+                                selectedManagedMembership.vaultId &&
+                              removeMemberMutation.variables?.userId === member.userId;
+
+                            return (
+                              <div
+                                key={member.userId}
+                                className="flex flex-wrap items-center justify-between gap-2 border border-border px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm text-foreground">{member.name}</p>
+                                  <p className="truncate text-xs font-mono text-muted-foreground">
+                                    {member.email}
+                                  </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] uppercase font-mono"
+                                  >
+                                    {member.role}
+                                  </Badge>
+
+                                  {member.role !== "owner" ? (
+                                    <>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={roleBusy || removeBusy}
+                                        onClick={() =>
+                                          setPendingRoleChange({
+                                            vaultId: selectedManagedMembership.vaultId,
+                                            userId: member.userId,
+                                            userName: member.name,
+                                            nextRole: roleToggle,
+                                          })
+                                        }
+                                      >
+                                        {roleBusy ? (
+                                          <Loader2
+                                            className="size-3.5 animate-spin"
+                                            aria-hidden="true"
+                                          />
+                                        ) : null}
+                                        {roleToggleLabel}
+                                      </Button>
+
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-destructive"
+                                        disabled={roleBusy || removeBusy}
+                                        onClick={() =>
+                                          setPendingRemoval({
+                                            vaultId: selectedManagedMembership.vaultId,
+                                            userId: member.userId,
+                                            userName: member.name,
+                                          })
+                                        }
+                                      >
+                                        {removeBusy ? (
+                                          <Loader2
+                                            className="size-3.5 animate-spin"
+                                            aria-hidden="true"
+                                          />
+                                        ) : null}
+                                        Remove
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] uppercase font-mono"
+                                    >
+                                      Owner locked
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
             </div>
           </Section>
 
@@ -631,6 +1018,59 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
               onClick={handleDeleteAccount}
             >
               {deletePending ? "Deleting\u2026" : "Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pendingRoleChange)}
+        onOpenChange={(open) => !open && setPendingRoleChange(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm role change</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRoleChange
+                ? `Change ${pendingRoleChange.userName} to ${pendingRoleChange.nextRole}? This updates their write permissions immediately.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateMemberRoleMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateMemberRoleMutation.isPending}
+              onClick={confirmRoleChange}
+            >
+              {updateMemberRoleMutation.isPending ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pendingRemoval)}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove member</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRemoval
+                ? `Remove ${pendingRemoval.userName} from this vault? They will lose access immediately.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeMemberMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeMemberMutation.isPending}
+              onClick={confirmMemberRemoval}
+            >
+              {removeMemberMutation.isPending ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

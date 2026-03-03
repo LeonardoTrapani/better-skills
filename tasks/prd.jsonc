@@ -221,7 +221,7 @@
         "Typecheck passes",
         "Verify in browser using agent-browser skill",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "make web vault dashboard and graph vault-aware",
