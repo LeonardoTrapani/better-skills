@@ -21,7 +21,11 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - CLI identifier resolution should go through `resolveSkillIdentifier` to keep UUID/plain-slug/`<vault>/<slug>` handling consistent across commands
 - CLI sync install keys must use `buildVaultScopedInstallKey(vault.slug, skill.slug)` and stale pruning must compare both expected keys and server skill IDs (handles same-slug collisions + disabled vault removal + legacy lock key cleanup)
 - CLI vault selection flags should accept either UUID or vault slug; resolve slugs through `vaults.listMine` before write mutations
-- browser UI verification flow: run `browser-use profile list-local` first, then use `--browser real --profile <name>`; if `/settings` still redirects to `/login`, that profile has no active app auth and manual sign-in is required before automated checks
+- browser auth for UI verification:
+  - run `browser-use profile list-local`
+  - open app with a real profile: `browser-use --browser real --profile "<profile>" open http://localhost:3001/login?next=%2Fsettings`
+  - complete login in that same browser context, keep it open, then run checks on `/settings`
+  - if profile auth is flaky, set `better-auth.session_token` via `browser-use cookies set` as a fallback
 
 ---
 
@@ -169,13 +173,6 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - `bun run check-types` passes
   - `bun run check` runs cleanly except existing unrelated web oxlint warnings
 - updated `tasks/prd.jsonc` to set task 19 `passes: true`
-
-### Task 14: add settings enterprise admin controls — verification blocked
-- checked local real-browser profiles with `browser-use profile list-local` -> only `Default` is available
-- attempted verification with `browser-use --browser real --profile Default open http://localhost:3001/settings`
-- result: still redirected to login; Google OAuth flow opens `accounts.google.com` and requires interactive credentials (no persisted session for this app profile)
-- outcome: cannot complete mandatory browser verify matrix (admin invite/update/remove, non-admin hidden controls, live color propagation) until authenticated profile/session is available
-- retry (user-confirmed continue): re-ran `browser-use --browser real --profile Default open http://localhost:3001/settings` and still hit `/login`; no reusable authenticated session detected yet
 
 ### Task 14: add settings enterprise admin controls — VERIFIED + MARKED PASS
 - selected this next because it was the highest-priority remaining feature dependency (`passes: false`) and already had API routes ready, so UI wiring + browser verification gave fast end-to-end feedback
