@@ -55,6 +55,9 @@ Use `\[[skill:<uuid>]]` to point users toward a related skill. Placement
 matters — embed links where the reader actually needs the pointer, not in
 a generic "Related Skills" section at the bottom.
 
+Constraint: mention targets must be in the same vault as the source skill.
+Cross-vault `\[[skill:<uuid>]]` or `\[[resource:<uuid>]]` targets are rejected.
+
 Good: inline in the section where the context is relevant.
 
 ```

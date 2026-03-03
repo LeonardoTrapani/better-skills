@@ -26,15 +26,27 @@ Use the answers to draft a `description` following [[resource:new:references/aut
 - Third person, describes capability + when to use + when NOT to use
 - Include realistic user phrasings and common variants
 
-## Step 2: Check vault for related skills
+## Step 2: Pick target vault and check related skills
+
+List available vaults first so the user can choose where the skill should be
+created:
+
+```bash
+better-skills vaults
+```
+
+Record a vault selector (`<vault-slug>` or `<vault-id>`). If omitted, default
+to personal vault (omit `--vault` at create time).
 
 ```bash
 better-skills list --all
 ```
 
-If any existing skill covers a related domain, present them to the user:
+If any existing skill in the target vault covers a related domain, present them
+to the user:
 
-- "These vault skills look related — want to cross-link any of them?"
+- "These vault skills in the target vault look related — want to cross-link any
+  of them?"
 - Note approved UUIDs for Step 5.
 
 If nothing is relevant, move on.
@@ -72,19 +84,20 @@ Validation is strict — any warning is a failure. Fix all issues before proceed
 ## Step 5: Add cross-skill links
 
 If the user approved cross-links in Step 2, add `\[[skill:<uuid>]]` mentions
-in relevant sections — not in a generic "Related Skills" list.
+in relevant sections — not in a generic "Related Skills" list. Only link to
+skills in the same vault as the new skill.
 
 ## Step 6: Create
 
 ```bash
-better-skills create --from "./<skill-name>" [--slug <slug>]
+better-skills create --from "./<skill-name>" [--slug <slug>] [--vault <vault-slug|vault-id>]
 ```
 
 ## Step 7: Sync and confirm
 
 ```bash
 better-skills sync
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Tell the user to start a new session so updated skills are reloaded.

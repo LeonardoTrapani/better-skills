@@ -8,7 +8,7 @@ import {
 } from "../lib/skill-io";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
-import { UUID_RE } from "../lib/uuid";
+import { resolveVaultId } from "../lib/vault-lookup";
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(3);
@@ -28,24 +28,6 @@ function parseArgs(argv: string[]) {
   }
 
   return { from, slug, vault };
-}
-
-async function resolveVaultId(vault: string): Promise<string> {
-  const trimmedVault = vault.trim();
-  if (UUID_RE.test(trimmedVault)) {
-    return trimmedVault;
-  }
-
-  const memberships = await trpc.vaults.listMine.query();
-  const match = memberships.find(
-    (membership) => membership.vault.slug.toLowerCase() === trimmedVault.toLowerCase(),
-  );
-
-  if (!match) {
-    throw new Error(`Vault not found: ${vault}`);
-  }
-
-  return match.vaultId;
 }
 
 export async function createCommand() {

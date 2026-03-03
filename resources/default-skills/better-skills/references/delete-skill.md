@@ -7,7 +7,7 @@ Use when user wants to permanently remove a skill from the vault.
 Resolve the skill by slug or UUID:
 
 ```bash
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Confirm with the user that this is the correct skill.
@@ -15,7 +15,7 @@ Confirm with the user that this is the correct skill.
 ## Step 2: Check for inbound references
 
 ```bash
-better-skills references <slug-or-uuid>
+better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 This lists every other vault skill that has a `\[[skill:<uuid>]]` mention
@@ -40,7 +40,7 @@ If no references exist, move to Step 3.
 ## Step 3: Delete
 
 ```bash
-better-skills delete <uuid> [--yes]
+better-skills delete <vault-slug>/<skill-slug>|<slug>|<uuid> [--yes]
 ```
 
 `--yes` skips interactive confirmation. Required in non-interactive environments.

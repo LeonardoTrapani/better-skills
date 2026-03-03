@@ -9,12 +9,14 @@ import {
 import { resolveSkillIdentifier } from "../lib/resolve-skill-identifier";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
+import { resolveVaultId } from "../lib/vault-lookup";
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(3);
   let identifier: string | undefined;
   let from: string | undefined;
   let slug: string | undefined;
+  let vault: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -33,17 +35,22 @@ function parseArgs(argv: string[]) {
       slug = args[++i];
       continue;
     }
+
+    if (arg === "--vault" && args[i + 1]) {
+      vault = args[++i];
+      continue;
+    }
   }
 
-  return { identifier, from, slug };
+  return { identifier, from, slug, vault };
 }
 
 export async function updateCommand() {
-  const { identifier, from, slug } = parseArgs(process.argv);
+  const { identifier, from, slug, vault: vaultSelector } = parseArgs(process.argv);
 
   if (!identifier || !from) {
     ui.log.error(
-      "usage: better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
+      "usage: better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]",
     );
     process.exit(1);
   }
@@ -77,8 +84,14 @@ export async function updateCommand() {
   s.start("updating skill");
 
   let updatedSkill: Awaited<ReturnType<typeof trpc.skills.update.mutate>> | null = null;
+  let vaultId: string | undefined;
 
   try {
+    if (vaultSelector) {
+      s.message("resolving vault");
+      vaultId = await resolveVaultId(vaultSelector);
+    }
+
     updatedSkill = await trpc.skills.update.mutate({
       id: targetSkill.id,
       slug,
@@ -87,6 +100,7 @@ export async function updateCommand() {
       skillMarkdown: draft.markdownForMutation,
       frontmatter: draft.frontmatter,
       resources: resourcesPayload,
+      vaultId,
     });
 
     if (draft.newResourcePaths.length > 0) {

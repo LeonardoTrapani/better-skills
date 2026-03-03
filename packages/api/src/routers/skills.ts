@@ -13,6 +13,7 @@ import {
   syncAutoLinksForSources,
   validateMentionTargets,
 } from "../lib/link-sync";
+import { parseMentions } from "../lib/mentions";
 import { renderMentions, renderMentionsBatch } from "../lib/render-mentions";
 import {
   type VaultType,
@@ -108,6 +109,30 @@ const skillListItem = skillOutput.omit({
 
 const paginatedSkillList = z.object({
   items: z.array(skillListItem),
+  nextCursor: z.string().uuid().nullable(),
+});
+
+const syncResourceOutput = z.object({
+  path: z.string(),
+  renderedContent: z.string(),
+});
+
+const syncSkillItemOutput = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  originalMarkdown: z.string(),
+  renderedMarkdown: z.string(),
+  frontmatter: z.record(z.string(), z.unknown()),
+  resources: z.array(syncResourceOutput),
+  vault: vaultMetaOutput,
+  sourceUrl: z.string().nullable(),
+  sourceIdentifier: z.string().nullable(),
+});
+
+const paginatedSyncSkillList = z.object({
+  items: z.array(syncSkillItemOutput),
   nextCursor: z.string().uuid().nullable(),
 });
 
@@ -876,6 +901,130 @@ export const skillsRouter = router({
       };
     }),
 
+  syncPage: protectedProcedure
+    .input(cursorPaginationInput)
+    .output(paginatedSyncSkillList)
+    .query(async ({ ctx, input }) => {
+      const { cursor, limit } = input;
+      const userId = ctx.session.user.id;
+      const { vaultIds, membershipByVaultId } = await getUserVaultScope(userId);
+      if (vaultIds.length === 0) return { items: [], nextCursor: null };
+
+      const conditions = [inArray(skill.ownerVaultId, vaultIds)];
+
+      if (cursor) {
+        const cursorRows = await db
+          .select({ id: skill.id, createdAt: skill.createdAt })
+          .from(skill)
+          .where(and(eq(skill.id, cursor), ...conditions));
+
+        const cursorRow = cursorRows[0];
+        if (!cursorRow) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid cursor" });
+        }
+
+        conditions.push(
+          or(
+            lt(skill.createdAt, cursorRow.createdAt),
+            and(eq(skill.createdAt, cursorRow.createdAt), gt(skill.id, cursorRow.id)),
+          )!,
+        );
+      }
+
+      const rows = await db
+        .select()
+        .from(skill)
+        .where(and(...conditions))
+        .orderBy(desc(skill.createdAt), skill.id)
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+
+      if (items.length === 0) {
+        return {
+          items: [],
+          nextCursor: null,
+        };
+      }
+
+      const skillIds = items.map((row) => row.id);
+      const resourceRows = await db
+        .select()
+        .from(skillResource)
+        .where(inArray(skillResource.skillId, skillIds));
+
+      const resourcesBySkillId = new Map<string, (typeof resourceRows)[number][]>();
+      for (const resourceRow of resourceRows) {
+        const existing = resourcesBySkillId.get(resourceRow.skillId);
+        if (existing) {
+          existing.push(resourceRow);
+        } else {
+          resourcesBySkillId.set(resourceRow.skillId, [resourceRow]);
+        }
+      }
+
+      for (const [skillId, groupedResources] of resourcesBySkillId) {
+        resourcesBySkillId.set(
+          skillId,
+          groupedResources.toSorted((a, b) => a.path.localeCompare(b.path)),
+        );
+      }
+
+      const renderInputs: Array<{ markdown: string; currentSkillId: string }> = [];
+      const renderRefs: Array<
+        | { kind: "skill"; id: string; fallback: string }
+        | { kind: "resource"; id: string; fallback: string }
+      > = [];
+
+      for (const row of items) {
+        renderInputs.push({ markdown: row.skillMarkdown, currentSkillId: row.id });
+        renderRefs.push({ kind: "skill", id: row.id, fallback: row.skillMarkdown });
+
+        for (const resourceRow of resourcesBySkillId.get(row.id) ?? []) {
+          renderInputs.push({ markdown: resourceRow.content, currentSkillId: row.id });
+          renderRefs.push({ kind: "resource", id: resourceRow.id, fallback: resourceRow.content });
+        }
+      }
+
+      const renderedEntries = await renderMentionsBatch(renderInputs, { linkMentions: false });
+      const renderedSkillMarkdownById = new Map<string, string>();
+      const renderedResourceContentById = new Map<string, string>();
+
+      for (const [index, renderRef] of renderRefs.entries()) {
+        const rendered = renderedEntries[index] ?? renderRef.fallback;
+        if (renderRef.kind === "skill") {
+          renderedSkillMarkdownById.set(renderRef.id, rendered);
+        } else {
+          renderedResourceContentById.set(renderRef.id, rendered);
+        }
+      }
+
+      const vaultMap = await getVaultMetadataByIds(items.map((row) => row.ownerVaultId));
+
+      return {
+        items: items.map((row) => ({
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          originalMarkdown: row.skillMarkdown,
+          renderedMarkdown: renderedSkillMarkdownById.get(row.id) ?? row.skillMarkdown,
+          frontmatter: row.frontmatter,
+          resources: (resourcesBySkillId.get(row.id) ?? []).map((resourceRow) => ({
+            path: resourceRow.path,
+            renderedContent: renderedResourceContentById.get(resourceRow.id) ?? resourceRow.content,
+          })),
+          vault: buildVaultMeta(row.ownerVaultId, vaultMap, {
+            isEnabled: membershipByVaultId.get(row.ownerVaultId)?.isEnabled,
+          }),
+          sourceUrl: row.sourceUrl,
+          sourceIdentifier: row.sourceIdentifier,
+        })),
+        nextCursor: hasMore ? items[items.length - 1]!.id : null,
+      };
+    }),
+
   getById: protectedProcedure
     .input(
       z.object({
@@ -1216,6 +1365,7 @@ export const skillsRouter = router({
         metadata: z.record(z.string(), z.unknown()).optional(),
         sourceUrl: z.string().url().nullish(),
         sourceIdentifier: z.string().nullish(),
+        vaultId: z.string().uuid().optional(),
         resources: z
           .array(
             resourceInput.extend({
@@ -1237,9 +1387,12 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
 
-      let writableMembership;
+      const targetVaultId = input.vaultId ?? existing.ownerVaultId;
+      const isVaultMove = targetVaultId !== existing.ownerVaultId;
+
+      let sourceWritableMembership;
       try {
-        writableMembership = await assertCanWrite(userId, existing.ownerVaultId);
+        sourceWritableMembership = await assertCanWrite(userId, existing.ownerVaultId);
       } catch (e) {
         if (e instanceof VaultAccessError) {
           throw new TRPCError({ code: "FORBIDDEN", message: e.message });
@@ -1247,22 +1400,122 @@ export const skillsRouter = router({
         throw e;
       }
 
-      if (input.skillMarkdown !== undefined) {
+      let writableMembership = sourceWritableMembership;
+
+      if (isVaultMove) {
         try {
-          await validateMentionTargets(input.skillMarkdown, existing.ownerVaultId);
+          writableMembership = await assertCanWrite(userId, targetVaultId);
+        } catch (e) {
+          if (e instanceof VaultAccessError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: e.message });
+          }
+          throw e;
+        }
+      }
+
+      const existingResources = await db
+        .select({ id: skillResource.id, content: skillResource.content })
+        .from(skillResource)
+        .where(eq(skillResource.skillId, input.id));
+      const existingResourceIds = new Set(existingResources.map((resource) => resource.id));
+
+      const toDeleteResourceIds = new Set(
+        input.resources
+          ?.filter((resource) => resource.delete && resource.id)
+          .map((resource) => resource.id!) ?? [],
+      );
+
+      const allowedSkillIds = new Set([existing.id]);
+      const allowedResourceIds = new Set(
+        existingResources
+          .map((resource) => resource.id)
+          .filter((resourceId) => !toDeleteResourceIds.has(resourceId)),
+      );
+
+      const assertNoDeletedResourceMentions = (markdown: string) => {
+        if (toDeleteResourceIds.size === 0) return;
+
+        const deletedResourceMentions = parseMentions(markdown)
+          .filter((mention) => mention.type === "resource")
+          .filter((mention) => toDeleteResourceIds.has(mention.targetId));
+
+        if (deletedResourceMentions.length === 0) return;
+
+        throw new MentionValidationError(
+          deletedResourceMentions.map((mention) => ({
+            type: "resource" as const,
+            targetId: mention.targetId,
+            reason: "target_not_found" as const,
+          })),
+        );
+      };
+
+      const validateMarkdownTargets = async (markdown: string) => {
+        assertNoDeletedResourceMentions(markdown);
+        await validateMentionTargets(markdown, targetVaultId, {
+          allowSkillIds: allowedSkillIds,
+          allowResourceIds: allowedResourceIds,
+        });
+      };
+
+      const effectiveSkillMarkdown = input.skillMarkdown ?? existing.skillMarkdown;
+      const shouldValidateSkillMarkdown =
+        input.skillMarkdown !== undefined || input.resources !== undefined || isVaultMove;
+
+      if (shouldValidateSkillMarkdown) {
+        try {
+          await validateMarkdownTargets(effectiveSkillMarkdown);
         } catch (error) {
           throwMentionValidationError(error);
         }
       }
 
-      if (input.resources) {
-        for (const resource of input.resources) {
-          if (resource.delete) continue;
+      const shouldValidateResources = input.resources !== undefined || isVaultMove;
+
+      if (shouldValidateResources) {
+        const updatedContentById = new Map(
+          input.resources
+            ?.filter((resource) => resource.id && !resource.delete)
+            .map((resource) => [resource.id!, resource.content]) ?? [],
+        );
+
+        for (const resource of existingResources) {
+          if (toDeleteResourceIds.has(resource.id)) continue;
+
+          const nextContent = updatedContentById.get(resource.id) ?? resource.content;
 
           try {
-            await validateMentionTargets(resource.content, existing.ownerVaultId);
+            await validateMarkdownTargets(nextContent);
           } catch (error) {
             throwMentionValidationError(error);
+          }
+        }
+
+        const insertedResources = input.resources?.filter(
+          (resource) => !resource.id && !resource.delete,
+        );
+
+        if (insertedResources) {
+          for (const resource of insertedResources) {
+            try {
+              await validateMarkdownTargets(resource.content);
+            } catch (error) {
+              throwMentionValidationError(error);
+            }
+          }
+        }
+
+        const unmatchedUpdatedResources = input.resources?.filter(
+          (resource) => resource.id && !resource.delete && !existingResourceIds.has(resource.id),
+        );
+
+        if (unmatchedUpdatedResources) {
+          for (const resource of unmatchedUpdatedResources) {
+            try {
+              await validateMarkdownTargets(resource.content);
+            } catch (error) {
+              throwMentionValidationError(error);
+            }
           }
         }
       }
@@ -1278,6 +1531,7 @@ export const skillsRouter = router({
       if (input.sourceUrl !== undefined) updates.sourceUrl = input.sourceUrl ?? null;
       if (input.sourceIdentifier !== undefined)
         updates.sourceIdentifier = input.sourceIdentifier ?? null;
+      if (isVaultMove) updates.ownerVaultId = targetVaultId;
 
       let updatedSkill = existing;
 
@@ -1292,7 +1546,7 @@ export const skillsRouter = router({
         linkSyncSources.push({
           type: "skill",
           sourceId: input.id,
-          sourceOwnerVaultId: existing.ownerVaultId,
+          sourceOwnerVaultId: targetVaultId,
           markdown: input.skillMarkdown,
         });
       }
@@ -1329,7 +1583,7 @@ export const skillsRouter = router({
           linkSyncSources.push({
             type: "resource",
             sourceId: r.id!,
-            sourceOwnerVaultId: existing.ownerVaultId,
+            sourceOwnerVaultId: targetVaultId,
             markdown: r.content,
           });
         }
@@ -1352,7 +1606,7 @@ export const skillsRouter = router({
             linkSyncSources.push({
               type: "resource",
               sourceId: insertedResource.id,
-              sourceOwnerVaultId: existing.ownerVaultId,
+              sourceOwnerVaultId: targetVaultId,
               markdown: insertedResource.content,
             });
           }
@@ -1373,8 +1627,8 @@ export const skillsRouter = router({
         .from(skillResource)
         .where(eq(skillResource.skillId, input.id));
 
-      const vaultMap = await getVaultMetadataByIds([existing.ownerVaultId]);
-      const vaultMeta = buildVaultMeta(existing.ownerVaultId, vaultMap, {
+      const vaultMap = await getVaultMetadataByIds([targetVaultId]);
+      const vaultMeta = buildVaultMeta(targetVaultId, vaultMap, {
         overrideReadOnly: false,
         isEnabled: writableMembership.isEnabled,
       });

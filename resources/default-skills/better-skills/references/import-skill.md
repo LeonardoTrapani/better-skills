@@ -8,7 +8,17 @@ or any external source to bring into the vault as a skill.
 - [[resource:new:references/authoring.md]]
 - [[resource:new:references/linking.md]]
 
-## Step 1: Check vault for related skills
+## Step 1: Pick target vault and check related skills
+
+List available vaults first so the user can choose where the imported skill
+should be created:
+
+```bash
+better-skills vaults
+```
+
+Record a vault selector (`<vault-slug>` or `<vault-id>`). If omitted, default
+to personal vault (omit `--vault` at create time).
 
 List existing skills to identify potential cross-links:
 
@@ -16,9 +26,11 @@ List existing skills to identify potential cross-links:
 better-skills list --all
 ```
 
-If any existing skill covers a related domain, present them to the user:
+If any existing skill in the target vault covers a related domain, present them
+to the user:
 
-- "These vault skills look related — want to cross-link any of them to the new skill?"
+- "These vault skills in the target vault look related — want to cross-link any
+  of them to the new skill?"
 - Note approved UUIDs for Step 6.
 
 If nothing is relevant, move on.
@@ -115,19 +127,20 @@ If errors:
 
 If the user approved cross-links in Step 1, add `\[[skill:<uuid>]]` mentions
 in the relevant sections of SKILL.md or reference files — not in a generic
-"Related Skills" list at the bottom.
+"Related Skills" list at the bottom. Only add links to skills in the same
+vault as the imported skill.
 
 ## Step 7: Create
 
 ```bash
-better-skills create --from "$skill_dir" [--slug <slug>]
+better-skills create --from "$skill_dir" [--slug <slug>] [--vault <vault-slug|vault-id>]
 ```
 
 ## Step 8: Sync and confirm
 
 ```bash
 better-skills sync
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Clean up the cloned repo folder if it is separate from the skill directory.

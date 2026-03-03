@@ -17,7 +17,7 @@ better-skills list --all
 ## Step 2: Inspect candidates
 
 ```bash
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Review the skill content to understand overlap and relevance.
@@ -27,10 +27,12 @@ Review the skill content to understand overlap and relevance.
 Present to the user:
 
 1. Candidate skill(s) and why they match.
-2. For each proposed link: the specific file and section where the
+2. Confirm vault compatibility for each proposed link. `\[[skill:<uuid>]]` targets
+   must be in the same vault as the source skill.
+3. For each proposed link: the specific file and section where the
    `\[[skill:<uuid>]]` mention should go — prefer the most relevant
    reference file and section over SKILL.md. See
    [[resource:new:references/linking.md]] for placement rules.
-3. Exact commands to run once approved.
+4. Exact commands to run once approved.
 
 For linking, update the target skill via the Edit flow.

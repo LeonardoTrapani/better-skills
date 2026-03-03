@@ -1,16 +1,16 @@
 import pc from "picocolors";
 
 import { readErrorMessage } from "../lib/errors";
+import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
 import { listVaultMemberships, matchesVaultSelector } from "../lib/vault-lookup";
 import { formatVaultName } from "../lib/vault-display";
-import { trpc } from "../lib/trpc";
 
-export async function disableCommand() {
+export async function enableCommand() {
   const targetArg = process.argv[3]?.trim();
 
   if (!targetArg) {
-    ui.log.error("usage: better-skills disable <vault-slug|vault-id>");
+    ui.log.error("usage: better-skills enable <vault-slug|vault-id>");
     process.exit(1);
   }
 
@@ -27,19 +27,19 @@ export async function disableCommand() {
       process.exit(1);
     }
 
-    if (!membership.isEnabled) {
-      spinner.stop(pc.dim(`${formatVaultName(membership.vault)} is already disabled`));
+    if (membership.isEnabled) {
+      spinner.stop(pc.dim(`${formatVaultName(membership.vault)} is already enabled`));
       return;
     }
 
-    spinner.stop(pc.dim(`disabling ${formatVaultName(membership.vault)}`));
+    spinner.stop(pc.dim(`enabling ${formatVaultName(membership.vault)}`));
 
     const updateSpinner = ui.spinner();
     updateSpinner.start("updating vault status");
-    await trpc.vaults.setEnabled.mutate({ vaultId: membership.vaultId, isEnabled: false });
-    updateSpinner.stop(pc.green(`disabled ${formatVaultName(membership.vault)}`));
+    await trpc.vaults.setEnabled.mutate({ vaultId: membership.vaultId, isEnabled: true });
+    updateSpinner.stop(pc.green(`enabled ${formatVaultName(membership.vault)}`));
   } catch (error) {
-    spinner.stop(pc.red("disable failed"));
+    spinner.stop(pc.red("enable failed"));
     ui.log.error(readErrorMessage(error));
     process.exit(1);
   }

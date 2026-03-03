@@ -21,7 +21,19 @@ This scans every configured agent's skill directory and lists local skill
 folders that have no `.better-skills-install.json` (i.e. not managed by the
 vault). If the output is empty, tell the user and stop.
 
-## Step 2: Check vault for related skills
+## Step 2: Pick target vault and check related skills
+
+List available vaults first so the user can choose where onboarded skills should
+live:
+
+```bash
+better-skills vaults
+```
+
+Record a vault selector (`<vault-slug>` or `<vault-id>`). If the user does not
+specify one, default to personal vault (omit `--vault` later).
+
+Then inspect existing skills:
 
 ```bash
 better-skills list --all
@@ -31,12 +43,12 @@ Note existing skills for:
 
 - Avoiding duplicates — if a local skill already exists in the vault, route to
   the Edit flow instead
-- Proposing cross-links later in Step 6
+- Proposing cross-links later in Step 6 (same-vault only)
 
 If any existing vault skill covers a related domain, present them to the user:
 
-- "These vault skills look related — want to cross-link any of them to the
-  onboarded skill?"
+- "These vault skills in the target vault look related — want to cross-link any
+  of them to the onboarded skill?"
 - Note approved UUIDs for Step 6.
 
 If nothing is relevant, move on.
@@ -93,7 +105,8 @@ better-skills validate <skill-folder>
 
 If the user approved cross-links in Step 2, add `\[[skill:<uuid>]]` mentions
 in the relevant sections of SKILL.md or reference files — not in a generic
-"Related Skills" list at the bottom.
+"Related Skills" list at the bottom. Only add links to skills in the same
+vault as the onboarded skill.
 
 ## Step 7: Create or update (per skill)
 
@@ -102,20 +115,20 @@ For each skill:
 - If it does not exist in the vault:
 
 ```bash
-better-skills create --from <skill-folder> [--slug <slug>]
+better-skills create --from <skill-folder> [--slug <slug>] [--vault <vault-slug|vault-id>]
 ```
 
 - If it already exists:
 
 ```bash
-better-skills update <slug-or-uuid> --from <skill-folder>
+better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <skill-folder> [--vault <vault-slug|vault-id>]
 ```
 
 ## Step 8: Sync and confirm
 
 ```bash
 better-skills sync
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 ## Step 9: Report

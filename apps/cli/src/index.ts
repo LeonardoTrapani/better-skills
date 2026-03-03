@@ -4,6 +4,7 @@ import { configCommand } from "./commands/config";
 import { createCommand } from "./commands/create";
 import { deleteCommand } from "./commands/delete";
 import { disableCommand } from "./commands/disable";
+import { enableCommand } from "./commands/enable";
 import { getCommand } from "./commands/get";
 import { getUnmanagedSkillsCommand } from "./commands/get-unmanaged-skills";
 import { referencesCommand } from "./commands/references";
@@ -16,6 +17,7 @@ import { searchCommand } from "./commands/search";
 import { syncCommand } from "./commands/sync";
 import { updateCommand } from "./commands/update";
 import { validateCommand } from "./commands/validate";
+import { vaultsCommand } from "./commands/vaults";
 import { whoamiCommand } from "./commands/whoami";
 import { readErrorMessage } from "./lib/errors";
 import * as ui from "./lib/ui";
@@ -36,6 +38,7 @@ function printUsage() {
   ui.log.info("  better-skills login");
   ui.log.info("  better-skills logout");
   ui.log.info("  better-skills whoami");
+  ui.log.info("  better-skills vaults");
   ui.log.info("  better-skills sync");
   ui.log.info("  better-skills validate <dir>");
   ui.log.info("  better-skills rewrite-links <dir> [--dry-run]");
@@ -49,9 +52,10 @@ function printUsage() {
   );
   ui.log.info("  better-skills config");
   ui.log.info("  better-skills create --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]");
+  ui.log.info("  better-skills enable <vault-slug|vault-id>");
   ui.log.info("  better-skills disable <vault-slug|vault-id>");
   ui.log.info(
-    "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
+    "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]",
   );
   ui.log.info("  better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>");
   ui.log.info("  better-skills delete <vault-slug>/<skill-slug>|<slug>|<uuid> [--yes]");
@@ -86,6 +90,9 @@ async function run(args: string[]) {
       return;
     case "whoami":
       await whoamiCommand();
+      return;
+    case "vaults":
+      await vaultsCommand();
       return;
     case "sync":
       await syncCommand();
@@ -122,6 +129,9 @@ async function run(args: string[]) {
       return;
     case "disable":
       await disableCommand();
+      return;
+    case "enable":
+      await enableCommand();
       return;
     case "update":
       await updateCommand();

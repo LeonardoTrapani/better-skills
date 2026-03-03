@@ -36,6 +36,9 @@ tokens (draft, persisted, and escaped forms).
 Key rule: every file under `references/`, `scripts/`, or `assets/` MUST have a
 matching mention. `better-skills validate` fails when any resource is unlinked.
 
+Vault rule: persisted UUID mentions (`\[[skill:<uuid>]]`, `\[[resource:<uuid>]]`)
+must target entities in the same vault as the source skill.
+
 For imported/copied content, run `better-skills rewrite-links <dir>` before
 `better-skills validate` to bulk-convert local links into draft mention form.
 

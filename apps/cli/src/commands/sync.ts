@@ -16,9 +16,8 @@ import * as ui from "../lib/ui";
 
 const SYNC_PAGE_LIMIT = 100;
 
-type SkillListOutput = Awaited<ReturnType<typeof trpc.skills.listByOwner.query>>;
-type SkillListItem = SkillListOutput["items"][number];
-type SkillDetails = Awaited<ReturnType<typeof trpc.skills.getBySlug.query>>;
+type SyncPageOutput = Awaited<ReturnType<typeof trpc.skills.syncPage.query>>;
+type SyncSkillItem = SyncPageOutput["items"][number];
 
 export type SyncRunResult = {
   ok: boolean;
@@ -29,7 +28,7 @@ export type SyncRunResult = {
   removedStaleSkills: number;
 };
 
-function toInstallableSkill(skill: SkillDetails): InstallableSkill {
+function toInstallableSkill(skill: SyncSkillItem): InstallableSkill {
   return {
     id: skill.id,
     slug: skill.slug,
@@ -46,26 +45,6 @@ function toInstallableSkill(skill: SkillDetails): InstallableSkill {
     sourceUrl: skill.sourceUrl,
     sourceIdentifier: skill.sourceIdentifier,
   };
-}
-
-async function fetchAllSkills(): Promise<SkillListItem[]> {
-  const items: SkillListItem[] = [];
-  let cursor: string | undefined;
-
-  for (;;) {
-    const result = await trpc.skills.listByOwner.query({
-      limit: SYNC_PAGE_LIMIT,
-      cursor,
-    });
-
-    items.push(...result.items);
-
-    if (!result.nextCursor) {
-      return items;
-    }
-
-    cursor = result.nextCursor;
-  }
 }
 
 export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<SyncRunResult> {
@@ -92,9 +71,9 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
   const fetchSpinner = ui.spinner();
   fetchSpinner.start("loading skills");
 
-  let skillsToSync: SkillListItem[];
+  let page: SyncPageOutput;
   try {
-    skillsToSync = await fetchAllSkills();
+    page = await trpc.skills.syncPage.query({ limit: SYNC_PAGE_LIMIT });
   } catch (error) {
     fetchSpinner.stop(pc.red(`failed to load skills: ${readErrorMessage(error)}`));
     return {
@@ -107,7 +86,7 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  if (skillsToSync.length === 0) {
+  if (page.items.length === 0) {
     fetchSpinner.stop(pc.dim("no skills to sync"));
     return {
       ok: true,
@@ -119,31 +98,73 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  fetchSpinner.stop(pc.green(`syncing ${skillsToSync.length} skill(s)`));
+  fetchSpinner.stop(pc.green("syncing skills"));
 
-  const serverSkillIds = new Set(skillsToSync.map((s) => s.id));
-  const expectedServerKeys = new Set(
-    skillsToSync.map((skill) => buildVaultScopedInstallKey(skill.vault.slug, skill.slug)),
-  );
+  const serverSkillIds = new Set<string>();
+  const expectedServerKeys = new Set<string>();
 
+  let totalSkills = 0;
   let synced = 0;
   let failed = 0;
+  const failedSkillMessages: string[] = [];
 
-  for (const [index, item] of skillsToSync.entries()) {
-    const installKey = buildVaultScopedInstallKey(item.vault.slug, item.slug);
-    const skillLabel = formatVaultSkillLabel(item.vault, item.name);
-    const spinner = ui.spinner();
-    spinner.start(`syncing ${skillLabel} (${index + 1}/${skillsToSync.length})`);
+  const syncSpinner = ui.spinner();
+  syncSpinner.start("syncing skills (0)");
+
+  for (;;) {
+    for (const item of page.items) {
+      totalSkills += 1;
+      const installKey = buildVaultScopedInstallKey(item.vault.slug, item.slug);
+      const skillLabel = formatVaultSkillLabel(item.vault, item.name);
+      serverSkillIds.add(item.id);
+      expectedServerKeys.add(installKey);
+
+      syncSpinner.message(`syncing ${skillLabel} (${totalSkills})`);
+
+      try {
+        await installSkill(toInstallableSkill(item), selectedAgents, { skillFolder: installKey });
+        synced += 1;
+      } catch (error) {
+        failed += 1;
+        failedSkillMessages.push(`${skillLabel}: ${readErrorMessage(error)}`);
+      }
+    }
+
+    if (!page.nextCursor) {
+      break;
+    }
 
     try {
-      const skill = await trpc.skills.getById.query({ id: item.id, linkMentions: false });
-      await installSkill(toInstallableSkill(skill), selectedAgents, { skillFolder: installKey });
-      synced += 1;
-      spinner.stop(pc.green(`synced ${skillLabel}`));
+      page = await trpc.skills.syncPage.query({
+        limit: SYNC_PAGE_LIMIT,
+        cursor: page.nextCursor,
+      });
     } catch (error) {
-      failed += 1;
-      spinner.stop(pc.red(`failed ${skillLabel}: ${readErrorMessage(error)}`));
+      syncSpinner.stop(pc.red(`failed to load more skills: ${readErrorMessage(error)}`));
+
+      for (const failure of failedSkillMessages) {
+        ui.log.error(pc.red(`failed ${failure}`));
+      }
+
+      return {
+        ok: false,
+        authenticated: true,
+        totalSkills,
+        syncedSkills: synced,
+        failedSkills: failed,
+        removedStaleSkills: 0,
+      };
     }
+  }
+
+  syncSpinner.stop(
+    failed === 0
+      ? pc.green(`synced ${synced}/${totalSkills} skill(s)`)
+      : pc.yellow(`synced ${synced}/${totalSkills} skill(s), ${failed} failed`),
+  );
+
+  for (const failure of failedSkillMessages) {
+    ui.log.error(pc.red(`failed ${failure}`));
   }
 
   // prune skills that no longer exist on the server
@@ -167,30 +188,44 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     );
 
   let removedStaleSkills = 0;
+  const staleRemovalFailures: string[] = [];
 
   if (staleEntries.length > 0) {
-    for (const [folder, entry] of staleEntries) {
-      const spinner = ui.spinner();
-      spinner.start(`removing ${entry.name}`);
+    const removeSpinner = ui.spinner();
+    removeSpinner.start(`removing stale skills (0/${staleEntries.length})`);
+
+    for (const [index, [folder, entry]] of staleEntries.entries()) {
+      removeSpinner.message(`removing ${entry.name} (${index + 1}/${staleEntries.length})`);
 
       try {
         await uninstallSkill(folder);
         removedStaleSkills += 1;
-        spinner.stop(pc.green(`removed ${entry.name}`));
       } catch (error) {
-        spinner.stop(pc.red(`failed to remove ${entry.name}: ${readErrorMessage(error)}`));
+        staleRemovalFailures.push(`${entry.name}: ${readErrorMessage(error)}`);
       }
+    }
+
+    removeSpinner.stop(
+      staleRemovalFailures.length === 0
+        ? pc.green(`removed ${removedStaleSkills}/${staleEntries.length} stale skill(s)`)
+        : pc.yellow(
+            `removed ${removedStaleSkills}/${staleEntries.length} stale skill(s), ${staleRemovalFailures.length} failed`,
+          ),
+    );
+
+    for (const failure of staleRemovalFailures) {
+      ui.log.error(pc.red(`failed to remove ${failure}`));
     }
 
     ui.log.info(pc.dim(`removed ${removedStaleSkills} skill(s) no longer on server`));
   }
 
-  ui.log.info(pc.dim(`synced ${synced}/${skillsToSync.length} skill(s)`));
+  ui.log.info(pc.dim(`synced ${synced}/${totalSkills} skill(s)`));
 
   return {
     ok: failed === 0,
     authenticated: true,
-    totalSkills: skillsToSync.length,
+    totalSkills,
     syncedSkills: synced,
     failedSkills: failed,
     removedStaleSkills,

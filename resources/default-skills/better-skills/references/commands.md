@@ -1,5 +1,9 @@
 # CLI Commands
 
+Quick syntax reference. For step-by-step execution flows, use the dedicated
+flow docs (`create-skill.md`, `edit-skill.md`, `import-skill.md`,
+`onboard-skills.md`, `delete-skill.md`, `search-and-propose.md`).
+
 ## Auth
 
 ```bash
@@ -9,59 +13,63 @@ better-skills whoami
 better-skills logout
 ```
 
-## Discovery
+## Vaults
+
+```bash
+better-skills vaults
+better-skills enable <vault-slug|vault-id>
+better-skills disable <vault-slug|vault-id>
+```
+
+- Run `vaults` first to discover vault `slug`/`id` values and access.
+- `enable` and `disable` toggle vault status for the current user.
+- Enterprise member admin actions are API/web-only (not top-level CLI commands).
+
+## Skill discovery
 
 ```bash
 better-skills list [search] [--all] [--limit N]
 better-skills search "<query>" [--limit N]
-better-skills get <slug-or-uuid>
-better-skills clone <slug-or-uuid> [--to <dir>] [--force]
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
+better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--force]
 ```
 
-`list` shows the authenticated user's skills. Optional search text filters by
-name/slug (ILIKE). `--limit N` caps results (default 20). `--all` fetches all.
+- In multi-vault setups, prefer fully qualified `<vault-slug>/<skill-slug>`.
 
 ## Create and update
 
 ```bash
 better-skills rewrite-links <dir> [--dry-run]
-better-skills create --from <dir> [--slug <slug>]
-better-skills update <slug-or-uuid> --from <dir> [--slug <slug>]
+better-skills create --from <dir> [--slug <slug>] [--vault <vault-slug|vault-id>]
+better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <slug>] [--vault <vault-slug|vault-id>]
 better-skills validate <dir>
 ```
 
-`rewrite-links` rewrites internal local links (markdown links, bare paths,
-wiki links, and autolinks) into `\[[resource:new:<path>]]` mention tokens in
-`SKILL.md` plus markdown-like resources.
-
-Both `create` and `update` resolve `\[[resource:new:...]]` mentions to
-`\[[resource:<uuid>]]` in SKILL.md and all resource file content.
-
-`validate` checks frontmatter and `:new:` mention targets, and fails when
-resource files are missing mention references.
+- `create` without `--vault` targets personal vault.
+- `update --vault` moves a skill to another writable vault.
+- Use `rewrite-links` + `validate` before create/update when editing/importing.
 
 ## References and delete
 
 ```bash
-better-skills references <slug-or-uuid>
-better-skills delete <uuid> [--yes]
+better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>
+better-skills delete <vault-slug>/<skill-slug>|<slug>|<uuid> [--yes]
 ```
 
-`references` lists other vault skills that have `\[[skill:<uuid>]]` mentions
-pointing to the given skill. Use before delete to check for broken links.
+- Check `references` before delete to avoid orphaned links.
+- `--yes` is required for non-interactive delete.
 
-`--yes` skips confirmation. Required in non-interactive environments.
-
-## Config and sync
+## Config, onboarding, sync
 
 ```bash
 better-skills config
-better-skills disable <vault-slug|vault-id>
+better-skills get-unmanaged-skills
+better-skills backup [--source <dir>] [--out <tmp-dir>] [--agent <agent>]...
 better-skills sync
 ```
 
-`disable` marks one vault membership as disabled in settings/list output while
-keeping its skills visible in list/search/graph/sync.
+`get-unmanaged-skills` lists local skill folders not managed by better-skills
+yet (used before onboarding).
 
 ## Non-interactive usage
 

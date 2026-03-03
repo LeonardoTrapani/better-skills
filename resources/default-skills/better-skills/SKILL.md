@@ -3,7 +3,8 @@ name: better-skills
 description: |
   Index and route better-skills vault operations from the CLI.
   Trigger when users ask to manage better-skills or a skill vault
-  (create, edit, delete, disable, remove, search, import, clone, link, sync, backup, onboard).
+  (create, edit, delete, remove, search, import, clone, link, sync, backup,
+  onboard, enable/disable vaults, inspect available vaults, move a skill across vaults).
   Do not use when asked to use a skill.
 ---
 
@@ -19,6 +20,7 @@ description: |
 | Asked to onboard, Existing local skill folders not yet in the vault | [[resource:new:references/onboard-skills.md]]     |
 | User wants to delete/remove a skill                                 | [[resource:new:references/delete-skill.md]]       |
 | "What skills do I have?", find related skills, linking requests     | [[resource:new:references/search-and-propose.md]] |
+| Anything not included above                                         | [[resource:new:references/commands.md]]           |
 
 ## Shared references
 

@@ -11,7 +11,7 @@ Use when user wants to update an existing vault skill.
 Clone to a folder in cwd:
 
 ```bash
-better-skills clone <slug-or-uuid> --to ./<folder> [--force]
+better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> --to ./<folder> [--force]
 ```
 
 The clone writes the folder in update-ready format: `SKILL.md` + `references/`
@@ -45,7 +45,7 @@ Validation is strict — any warning is a failure. Fix all issues before proceed
 ## Step 4: Update
 
 ```bash
-better-skills update <slug-or-uuid> --from ./<folder> [--slug <slug>]
+better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from ./<folder> [--slug <slug>] [--vault <vault-slug|vault-id>]
 ```
 
 The CLI will:
@@ -53,12 +53,14 @@ The CLI will:
 - Diff local resources against the server (insert/update/delete)
 - Resolve `\[[resource:new:...]]` mentions to `\[[resource:<uuid>]]` in both
   SKILL.md and resource file content
+- Move the skill to another writable vault when `--vault` is provided
+- Re-validate mention targets against the destination vault when moving
 
 ## Step 5: Sync and confirm
 
 ```bash
 better-skills sync
-better-skills get <slug-or-uuid>
+better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Tell the user to start a new session so updated skills are reloaded.
