@@ -48,6 +48,9 @@ export async function searchCommand() {
 
       console.log(`[${i + 1}] ${item.name} (${item.matchType} ${pct}%)`);
       console.log(`    ${item.description}`);
+      console.log(
+        `    vault: ${item.vault.slug} (${item.vault.type})${item.vault.isReadOnly ? " [read-only]" : ""}`,
+      );
       console.log(`    id: ${item.id} | slug: ${item.slug} | updated: ${updated}`);
       if (item.snippet) {
         console.log(`    snippet: ${item.snippet}`);

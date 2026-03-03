@@ -47,12 +47,12 @@ function printUsage() {
     "  better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--force]",
   );
   ui.log.info("  better-skills config");
-  ui.log.info("  better-skills create --from <dir> [--slug <s>]");
+  ui.log.info("  better-skills create --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]");
   ui.log.info(
     "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
   );
   ui.log.info("  better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>");
-  ui.log.info("  better-skills delete <uuid> [--yes]");
+  ui.log.info("  better-skills delete <vault-slug>/<skill-slug>|<slug>|<uuid> [--yes]");
 }
 
 function printVersion() {

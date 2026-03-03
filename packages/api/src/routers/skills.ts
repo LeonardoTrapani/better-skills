@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { db } from "@better-skills/db";
 import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
-import { vault, vaultMembership } from "@better-skills/db/schema/vaults";
 
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
@@ -20,6 +19,8 @@ import {
   getEnabledVaultIds,
   getVaultMetadataByIds,
   assertCanRead,
+  assertCanWrite,
+  getPersonalVaultId,
   resolvePermissions,
   VaultAccessError,
 } from "../lib/vault-access";
@@ -117,6 +118,22 @@ function throwMentionValidationError(error: unknown): never {
   }
 
   throw error;
+}
+
+function formatAmbiguousSlugMessage(
+  slug: string,
+  candidates: Array<{ vaultSlug: string; vaultName: string }>,
+): string {
+  const lines = [
+    `ambiguous skill slug "${slug}"; provide <vault-slug>/<skill-slug>`,
+    "matches:",
+    ...candidates
+      .slice()
+      .sort((a, b) => a.vaultSlug.localeCompare(b.vaultSlug))
+      .map((candidate) => `- ${candidate.vaultSlug}/${slug} (${candidate.vaultName})`),
+  ];
+
+  return lines.join("\n");
 }
 
 // -- graph helpers --
@@ -378,6 +395,7 @@ const searchResultItem = z.object({
   slug: z.string(),
   name: z.string(),
   description: z.string(),
+  vault: vaultMetaOutput,
   matchType: z.enum(["title", "description", "content"]),
   score: z.number(),
   snippet: z.string().nullable(),
@@ -490,6 +508,9 @@ export const skillsRouter = router({
       ]);
 
       const total = countResult[0]?.count ?? 0;
+      const vaultMap = await getVaultMetadataByIds([
+        ...new Set(rows.map((row) => row.ownerVaultId)),
+      ]);
 
       const items = rows.map((row) => {
         const matchType: "title" | "description" | "content" =
@@ -509,6 +530,7 @@ export const skillsRouter = router({
           slug: row.slug,
           name: row.name,
           description: row.description,
+          vault: buildVaultMeta(row.ownerVaultId, vaultMap),
           matchType,
           score: Math.round(row.score * 100) / 100,
           snippet,
@@ -557,10 +579,33 @@ export const skillsRouter = router({
       const enabledVaultIds = await getEnabledVaultIds(userId);
       if (enabledVaultIds.length === 0) return { items: [] };
 
+      let readableVaultIds = enabledVaultIds;
+      if (skillId) {
+        const [editingSkill] = await db
+          .select({ ownerVaultId: skill.ownerVaultId })
+          .from(skill)
+          .where(eq(skill.id, skillId));
+
+        if (!editingSkill) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+
+        try {
+          await assertCanWrite(userId, editingSkill.ownerVaultId);
+        } catch (e) {
+          if (e instanceof VaultAccessError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: e.message });
+          }
+          throw e;
+        }
+
+        readableVaultIds = [editingSkill.ownerVaultId];
+      }
+
       const items: MentionItem[] = [];
 
       // --- skill results ---
-      const skillConditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
+      const skillConditions = [inArray(skill.ownerVaultId, readableVaultIds)];
       if (query.length > 0) {
         const pattern = `%${query}%`;
         skillConditions.push(or(ilike(skill.name, pattern), ilike(skill.slug, pattern))!);
@@ -588,7 +633,7 @@ export const skillsRouter = router({
       }
 
       // --- resource results ---
-      const resourceConditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
+      const resourceConditions = [inArray(skill.ownerVaultId, readableVaultIds)];
       if (query.length > 0) {
         const pattern = `%${query}%`;
         resourceConditions.push(
@@ -777,12 +822,15 @@ export const skillsRouter = router({
     .input(
       z.object({
         slug: z.string().min(1),
+        vaultSlug: z.string().min(1).optional(),
         linkMentions: z.boolean().optional(),
       }),
     )
     .output(skillOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const normalizedSlug = input.slug.trim().toLowerCase();
+      const normalizedVaultSlug = input.vaultSlug?.trim().toLowerCase();
 
       // slug is unique per vault — find all matches across enabled vaults
       const enabledVaultIds = await getEnabledVaultIds(userId);
@@ -793,21 +841,52 @@ export const skillsRouter = router({
       const rows = await db
         .select()
         .from(skill)
-        .where(and(eq(skill.slug, input.slug), inArray(skill.ownerVaultId, enabledVaultIds)));
+        .where(and(eq(skill.slug, normalizedSlug), inArray(skill.ownerVaultId, enabledVaultIds)));
 
-      const row = rows[0];
-      if (!row) {
+      if (rows.length === 0) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
 
-      const membership = await assertCanRead(userId, row.ownerVaultId);
-      const vaultMap = await getVaultMetadataByIds([row.ownerVaultId]);
+      const vaultMap = await getVaultMetadataByIds(rows.map((row) => row.ownerVaultId));
+
+      let selectedRow: (typeof rows)[number] | undefined = rows[0];
+      if (normalizedVaultSlug) {
+        selectedRow =
+          rows.find(
+            (candidate) => vaultMap.get(candidate.ownerVaultId)?.slug === normalizedVaultSlug,
+          ) ?? undefined;
+        if (!selectedRow) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+      } else if (rows.length > 1) {
+        const candidates = rows
+          .map((candidate) => ({
+            vaultSlug: vaultMap.get(candidate.ownerVaultId)?.slug,
+            vaultName: vaultMap.get(candidate.ownerVaultId)?.name,
+          }))
+          .filter((candidate): candidate is { vaultSlug: string; vaultName: string } => {
+            return Boolean(candidate.vaultSlug && candidate.vaultName);
+          });
+
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: formatAmbiguousSlugMessage(normalizedSlug, candidates),
+        });
+      }
+
+      if (!selectedRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
+      const membership = await assertCanRead(userId, selectedRow.ownerVaultId);
       const permissions = resolvePermissions(membership.vaultType, membership.role);
-      const vaultMeta = buildVaultMeta(row.ownerVaultId, vaultMap, permissions.isReadOnly);
+      const vaultMeta = buildVaultMeta(selectedRow.ownerVaultId, vaultMap, permissions.isReadOnly);
 
-      const resources = await loadSkillResources(row.id);
+      const resources = await loadSkillResources(selectedRow.id);
 
-      return await toSkillOutput(row, resources, vaultMeta, { linkMentions: input.linkMentions });
+      return await toSkillOutput(selectedRow, resources, vaultMeta, {
+        linkMentions: input.linkMentions,
+      });
     }),
 
   getResourceByPath: protectedProcedure
@@ -903,37 +982,51 @@ export const skillsRouter = router({
         sourceUrl: z.string().url().nullish(),
         sourceIdentifier: z.string().nullish(),
         resources: z.array(resourceInput).default([]),
+        vaultId: z.string().uuid().optional(),
       }),
     )
     .output(skillOutput)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [personalVault] = await db
-        .select({ id: vault.id })
-        .from(vault)
-        .innerJoin(vaultMembership, eq(vaultMembership.vaultId, vault.id))
-        .where(
-          and(
-            eq(vaultMembership.userId, userId),
-            eq(vault.type, "personal"),
-            eq(vaultMembership.role, "owner"),
-          ),
-        );
-
-      if (!personalVault) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Personal vault not found" });
+      // resolve target vault: explicit vaultId or default to personal
+      let targetVaultId: string;
+      if (input.vaultId) {
+        try {
+          await assertCanWrite(userId, input.vaultId);
+        } catch (e) {
+          if (e instanceof VaultAccessError) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: e.message,
+            });
+          }
+          throw e;
+        }
+        targetVaultId = input.vaultId;
+      } else {
+        try {
+          targetVaultId = await getPersonalVaultId(userId);
+        } catch (e) {
+          if (e instanceof VaultAccessError) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Personal vault not found",
+            });
+          }
+          throw e;
+        }
       }
 
       try {
-        await validateMentionTargets(input.skillMarkdown, userId);
+        await validateMentionTargets(input.skillMarkdown, targetVaultId);
       } catch (error) {
         throwMentionValidationError(error);
       }
 
       for (const resource of input.resources) {
         try {
-          await validateMentionTargets(resource.content, userId);
+          await validateMentionTargets(resource.content, targetVaultId);
         } catch (error) {
           throwMentionValidationError(error);
         }
@@ -943,7 +1036,7 @@ export const skillsRouter = router({
         .insert(skill)
         .values({
           ownerUserId: userId,
-          ownerVaultId: personalVault.id,
+          ownerVaultId: targetVaultId,
           slug: input.slug,
           name: input.name,
           description: input.description,
@@ -981,13 +1074,13 @@ export const skillsRouter = router({
           {
             type: "skill",
             sourceId: created.id,
-            sourceOwnerUserId: created.ownerUserId,
+            sourceOwnerVaultId: created.ownerVaultId,
             markdown: input.skillMarkdown,
           },
           ...resources.map((resource) => ({
             type: "resource" as const,
             sourceId: resource.id,
-            sourceOwnerUserId: created.ownerUserId,
+            sourceOwnerVaultId: created.ownerVaultId,
             markdown: resource.content,
           })),
         ];
@@ -1001,8 +1094,8 @@ export const skillsRouter = router({
         throw error;
       }
 
-      const vaultMap = await getVaultMetadataByIds([personalVault.id]);
-      const vaultMeta = buildVaultMeta(personalVault.id, vaultMap, false);
+      const vaultMap = await getVaultMetadataByIds([targetVaultId]);
+      const vaultMeta = buildVaultMeta(targetVaultId, vaultMap, false);
       return await toSkillOutput(created, resources, vaultMeta);
     }),
 
@@ -1033,22 +1126,24 @@ export const skillsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // fetch and verify ownership
       const [existing] = await db.select().from(skill).where(eq(skill.id, input.id));
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
-      if (existing.ownerUserId !== userId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the skill owner" });
-      }
-      if (existing.isDefault) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Default skills are read-only" });
+
+      try {
+        await assertCanWrite(userId, existing.ownerVaultId);
+      } catch (e) {
+        if (e instanceof VaultAccessError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: e.message });
+        }
+        throw e;
       }
 
       if (input.skillMarkdown !== undefined) {
         try {
-          await validateMentionTargets(input.skillMarkdown, existing.ownerUserId);
+          await validateMentionTargets(input.skillMarkdown, existing.ownerVaultId);
         } catch (error) {
           throwMentionValidationError(error);
         }
@@ -1059,7 +1154,7 @@ export const skillsRouter = router({
           if (resource.delete) continue;
 
           try {
-            await validateMentionTargets(resource.content, existing.ownerUserId);
+            await validateMentionTargets(resource.content, existing.ownerVaultId);
           } catch (error) {
             throwMentionValidationError(error);
           }
@@ -1091,7 +1186,7 @@ export const skillsRouter = router({
         linkSyncSources.push({
           type: "skill",
           sourceId: input.id,
-          sourceOwnerUserId: existing.ownerUserId,
+          sourceOwnerVaultId: existing.ownerVaultId,
           markdown: input.skillMarkdown,
         });
       }
@@ -1128,7 +1223,7 @@ export const skillsRouter = router({
           linkSyncSources.push({
             type: "resource",
             sourceId: r.id!,
-            sourceOwnerUserId: existing.ownerUserId,
+            sourceOwnerVaultId: existing.ownerVaultId,
             markdown: r.content,
           });
         }
@@ -1151,7 +1246,7 @@ export const skillsRouter = router({
             linkSyncSources.push({
               type: "resource",
               sourceId: insertedResource.id,
-              sourceOwnerUserId: existing.ownerUserId,
+              sourceOwnerVaultId: existing.ownerVaultId,
               markdown: insertedResource.content,
             });
           }
@@ -1462,18 +1557,21 @@ export const skillsRouter = router({
       const userId = ctx.session.user.id;
 
       const [existing] = await db
-        .select({ id: skill.id, ownerUserId: skill.ownerUserId, isDefault: skill.isDefault })
+        .select({ id: skill.id, ownerVaultId: skill.ownerVaultId })
         .from(skill)
         .where(eq(skill.id, input.id));
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
-      if (existing.ownerUserId !== userId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the skill owner" });
-      }
-      if (existing.isDefault) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Default skills cannot be deleted" });
+
+      try {
+        await assertCanWrite(userId, existing.ownerVaultId);
+      } catch (e) {
+        if (e instanceof VaultAccessError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: e.message });
+        }
+        throw e;
       }
 
       // hard delete — FK cascades handle resources and links

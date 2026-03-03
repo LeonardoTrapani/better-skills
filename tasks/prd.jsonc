@@ -205,7 +205,7 @@
         "Typecheck passes",
         "Verify in browser using agent-browser skill",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "add settings enterprise admin controls",
