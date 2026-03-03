@@ -8,6 +8,12 @@ import { useQuery } from "@tanstack/react-query";
 import { buildSkillHref } from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+
+function vaultTypeLabel(type: "personal" | "enterprise" | "system_default") {
+  if (type === "system_default") return "default";
+  return type;
+}
 
 interface MySkillsTableProps {
   height?: number;
@@ -39,13 +45,13 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <input
             type="text"
-            placeholder="Search your skills…"
+            placeholder="Search visible skills..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             name="skills-search"
             autoComplete="off"
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            aria-label="Search your skills"
+            aria-label="Search visible skills"
           />
         </div>
       </div>
@@ -81,6 +87,26 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
                 <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
                   {skill.description}
                 </span>
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                  {skill.vault.color ? (
+                    <span
+                      className="inline-block size-2 border border-border/70"
+                      style={{ backgroundColor: skill.vault.color }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-mono">
+                    /{skill.vault.slug}
+                  </Badge>
+                </span>
+                <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
+                  {vaultTypeLabel(skill.vault.type)}
+                </Badge>
+                {skill.vault.isReadOnly ? (
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
+                    Read only
+                  </Badge>
+                ) : null}
               </div>
             </Link>
           ))}

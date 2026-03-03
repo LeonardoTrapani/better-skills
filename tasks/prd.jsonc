@@ -237,7 +237,7 @@
         "Typecheck passes",
         "Verify in browser using agent-browser skill",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "make web skill detail vault-aware and permission-aware",

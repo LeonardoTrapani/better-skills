@@ -94,7 +94,7 @@ export default function DashboardView() {
           onClick={() => setMobileTab("vault")}
         >
           <Warehouse className="size-3" aria-hidden="true" />
-          My Vault
+          Vaults
         </button>
       </div>
 

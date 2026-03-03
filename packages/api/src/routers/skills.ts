@@ -558,6 +558,7 @@ export const skillsRouter = router({
             label: z.string(),
             subtitle: z.string().nullable(),
             parentSkillId: z.string().uuid().nullable(),
+            vault: vaultMetaOutput.nullable(),
           }),
         ),
       }),
@@ -574,6 +575,7 @@ export const skillsRouter = router({
         label: string;
         subtitle: string | null;
         parentSkillId: string | null;
+        vault: VaultMeta | null;
       };
 
       const enabledVaultIds = await getEnabledVaultIds(userId);
@@ -616,11 +618,21 @@ export const skillsRouter = router({
       }
 
       const skillRows = await db
-        .select({ id: skill.id, name: skill.name, slug: skill.slug })
+        .select({
+          id: skill.id,
+          name: skill.name,
+          slug: skill.slug,
+          ownerVaultId: skill.ownerVaultId,
+        })
         .from(skill)
         .where(and(...skillConditions))
         .orderBy(skill.name)
         .limit(halfLimit);
+
+      const mentionVaultIds = new Set<string>();
+      for (const row of skillRows) {
+        mentionVaultIds.add(row.ownerVaultId);
+      }
 
       for (const row of skillRows) {
         items.push({
@@ -629,6 +641,7 @@ export const skillsRouter = router({
           label: row.name,
           subtitle: row.slug,
           parentSkillId: null,
+          vault: null,
         });
       }
 
@@ -647,6 +660,7 @@ export const skillsRouter = router({
           path: skillResource.path,
           skillId: skillResource.skillId,
           skillName: skill.name,
+          ownerVaultId: skill.ownerVaultId,
         })
         .from(skillResource)
         .innerJoin(skill, eq(skillResource.skillId, skill.id))
@@ -655,12 +669,27 @@ export const skillsRouter = router({
         .limit(halfLimit);
 
       for (const row of resourceRows) {
+        mentionVaultIds.add(row.ownerVaultId);
+      }
+
+      const mentionVaultMap =
+        mentionVaultIds.size > 0 ? await getVaultMetadataByIds([...mentionVaultIds]) : new Map();
+
+      for (const item of items) {
+        if (item.type !== "skill") continue;
+        const row = skillRows.find((candidate) => candidate.id === item.id);
+        if (!row) continue;
+        item.vault = buildVaultMeta(row.ownerVaultId, mentionVaultMap);
+      }
+
+      for (const row of resourceRows) {
         items.push({
           type: "resource",
           id: row.id,
           label: row.path,
           subtitle: row.skillName,
           parentSkillId: row.skillId,
+          vault: buildVaultMeta(row.ownerVaultId, mentionVaultMap),
         });
       }
 

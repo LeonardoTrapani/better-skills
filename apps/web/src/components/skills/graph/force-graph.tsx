@@ -21,6 +21,14 @@ export interface GraphNode extends d3.SimulationNodeDatum {
   kind: string | null;
   contentSnippet: string | null;
   updatedAt: string | null;
+  vault?: {
+    id: string;
+    slug: string;
+    name: string;
+    type: "personal" | "enterprise" | "system_default";
+    color: string | null;
+    isReadOnly: boolean;
+  } | null;
 }
 
 export interface GraphEdge extends d3.SimulationLinkDatum<GraphNode> {
@@ -211,12 +219,12 @@ export function ForceGraph({
         .append("circle")
         .attr("r", (d) => (isFocus(d) ? focusRadius(d) : baseRadius(d)))
         .attr("fill", (d) => {
-          if (d.type === "skill") return "var(--primary)";
+          if (d.type === "skill") return d.vault?.color ?? "var(--primary)";
           return isFocus(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
         })
         .attr("fill-opacity", (d) => (d.type === "skill" ? 1 : 1))
         .attr("stroke", (d) => {
-          return d.type === "skill" ? "var(--primary)" : "none";
+          return d.type === "skill" ? (d.vault?.color ?? "var(--primary)") : "none";
         })
         .attr("stroke-width", (d) => (d.type === "skill" ? 1.5 : 0))
         .attr("stroke-opacity", (d) => {
@@ -254,7 +262,7 @@ export function ForceGraph({
           .transition()
           .duration(TRANSITION_MS)
           .attr("fill", (d) => {
-            if (d.type === "skill") return "var(--primary)"; // skills always primary
+            if (d.type === "skill") return d.vault?.color ?? "var(--primary)";
             if (isFocus(d)) return resourceNodeColors.activeFill;
             return isActive(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
           })
@@ -283,7 +291,7 @@ export function ForceGraph({
           .transition()
           .duration(TRANSITION_MS)
           .attr("fill", (d) => {
-            if (d.type === "skill") return "var(--primary)";
+            if (d.type === "skill") return d.vault?.color ?? "var(--primary)";
             return isFocus(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
           })
           .attr("r", (d) => (isFocus(d) ? focusRadius(d) : baseRadius(d)));

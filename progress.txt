@@ -26,6 +26,7 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - open app with a real profile: `browser-use --browser real --profile "<profile>" open http://localhost:3001/login?next=%2Fsettings`
   - complete login in that same browser context, keep it open, then run checks on `/settings`
   - if profile auth is flaky, set `better-auth.session_token` via `browser-use cookies set` as a fallback
+  - local fallback token file: `.env.ralph.local` (`BETTER_AUTH_SESSION_TOKEN`), then run `source .env.ralph.local && browser-use --session ralph-vault cookies set better-auth.session_token "$BETTER_AUTH_SESSION_TOKEN" --domain localhost --path / --secure --http-only --same-site None`
 
 ---
 
@@ -184,4 +185,19 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - admin member removal works with confirmation (`Member removed` toast; reloaded settings shows member removed)
   - non-admin enterprise memberships are excluded from admin controls (only admin-manageable vault appears in Enterprise admin selector)
   - color update persists from settings and propagates live chip color without page refresh (saved `#dc2626`, DOM swatches updated, DB confirms vault color)
+- verification run: `bun run check-types` passes; `bun run check` passes with pre-existing unrelated web warnings
+
+### Task 15: make web vault dashboard and graph vault-aware — VERIFIED + MARKED PASS
+- selected this next because it was the highest-priority remaining product feature (`passes: false`) and it validates multi-vault UX end-to-end across dashboard + graph + command palette before docs
+- dashboard/ui changes:
+  - `apps/web/src/app/vault/_components/dashboard-view.tsx`: renamed mobile tab label `My Vault` -> `Vaults`
+  - `apps/web/src/app/vault/_components/my-skills-table.tsx`: added vault badges for slug/type/read-only so vault provenance is explicit in list rows
+  - `apps/web/src/components/navigation/skill-command-palette.tsx`: added vault badges (slug/type/read-only) to skill/resource rows in suggestions + vault search mode
+  - leveraged existing graph vault color + legend behavior in `apps/web/src/app/vault/_components/skill-graph.tsx` and `apps/web/src/components/skills/graph/force-graph.tsx` plus `skills.searchMentions` vault payload in `packages/api/src/routers/skills.ts`
+- browser verification (with cookie fallback from `.env.ralph.local`):
+  - set `better-auth.session_token` via `browser-use --session ralph-vault cookies set ...` and opened `/vault`
+  - verified dashboard shows enabled skills from personal + enterprise (`cli-verification-vault`) + default (`system-default`) together
+  - verified vault badges/read-only markers appear in dashboard rows and command palette results
+  - toggled enterprise vault disabled in `/settings` and confirmed it is removed from dashboard surfaces (rows + command palette results)
+  - re-enabled enterprise vault and confirmed visibility restored
 - verification run: `bun run check-types` passes; `bun run check` passes with pre-existing unrelated web warnings
