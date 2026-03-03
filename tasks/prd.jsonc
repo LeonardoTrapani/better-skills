@@ -78,7 +78,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "migrate duplicated default skill references to canonical default vault",

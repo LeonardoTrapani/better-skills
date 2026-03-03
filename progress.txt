@@ -4,6 +4,8 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 
 ## Codebase Patterns
 
+- `ownerUserId` on skill table is now nullable (system-default vault skills have no user owner)
+- output zod schema for skill uses `ownerUserId: z.string().nullable()`
 - schema files live in `packages/db/src/schema/`, barrel-exported from `index.ts`
 - tables use uuid PKs with `defaultRandom()` (except auth tables which use text PKs)
 - snake_case in DB, camelCase in JS; timestamps always `created_at` + `updated_at`
@@ -44,4 +46,14 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - updated `packages/auth/src/index.ts` user creation hook: now creates personal vault → attaches to system-default vault → seeds default skills (in order, since seedDefaultSkillsForUser needs the personal vault to exist)
 - updated `packages/auth/src/sync-default-skills.ts` to call `backfillSystemDefaultVaultMemberships()` before syncing default skills — runs on every deploy/build so new users who slipped through also get attached
 - no migration needed: vault creation + membership backfill is runtime-idempotent via the sync entrypoint
+- `bun run check-types` and `bun run check` pass
+
+### Task 5: replace per-user default skill seeding with default-vault sync — DONE
+- removed `seedDefaultSkillsForUser` from `packages/auth/src/default-skills.ts` and its call from the user creation hook in `packages/auth/src/index.ts`
+- replaced `syncDefaultSkillsForAllUsers` with `syncDefaultSkillsToDefaultVault` — upserts templates into the single system-default vault instead of syncing per-user copies
+- added `createDefaultSkillInVault` helper for first-time creation of canonical default skills (ownerUserId=null, ownerVaultId=default vault)
+- made `skill.ownerUserId` nullable in schema (migration 0009): drops NOT NULL, changes onDelete to SET NULL, removes legacy `skill_private_owner_slug_idx` unique index
+- updated skill output zod schema: `ownerUserId: z.string().nullable()`
+- deploy/build pipeline unchanged — `sync-default-skills.ts` entrypoint now calls the new `syncDefaultSkillsToDefaultVault`
+- idempotency preserved: version hash check skips unchanged templates, unique (ownerVaultId, slug) prevents duplicates
 - `bun run check-types` and `bun run check` pass

@@ -1,6 +1,6 @@
 import { sql } from "@better-skills/db";
 
-import { syncDefaultSkillsForAllUsers } from "./default-skills";
+import { syncDefaultSkillsToDefaultVault } from "./default-skills";
 import { backfillSystemDefaultVaultMemberships } from "./system-default-vault";
 
 async function main(): Promise<void> {
@@ -12,7 +12,7 @@ async function main(): Promise<void> {
     );
 
     const startedAt = Date.now();
-    const result = await syncDefaultSkillsForAllUsers();
+    const result = await syncDefaultSkillsToDefaultVault();
     const durationMs = Date.now() - startedAt;
 
     console.log(

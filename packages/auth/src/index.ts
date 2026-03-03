@@ -6,7 +6,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { deviceAuthorization } from "better-auth/plugins/device-authorization";
 
-import { seedDefaultSkillsForUser } from "./default-skills";
 import { attachUserToSystemDefaultVault, ensurePersonalVault } from "./system-default-vault";
 
 function isLocalHost(host: string): boolean {
@@ -99,21 +98,6 @@ export const auth = betterAuth({
           } catch (error) {
             console.error(
               `[vault] failed to attach user ${createdUser.id} to system-default vault`,
-              error,
-            );
-          }
-
-          try {
-            const seeded = await seedDefaultSkillsForUser(createdUser.id);
-
-            if (seeded.failed > 0) {
-              console.error(
-                `[default-skills] seeded ${seeded.created}, skipped ${seeded.skipped}, failed ${seeded.failed} for user ${createdUser.id}`,
-              );
-            }
-          } catch (error) {
-            console.error(
-              `[default-skills] failed to seed default skills for user ${createdUser.id}`,
               error,
             );
           }

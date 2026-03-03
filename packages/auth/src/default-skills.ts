@@ -8,7 +8,8 @@ import matter from "gray-matter";
 
 import { db } from "@better-skills/db";
 import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
-import { vault, vaultMembership } from "@better-skills/db/schema/vaults";
+
+import { ensureSystemDefaultVault } from "./system-default-vault";
 import {
   collectNewResourceMentionPaths,
   normalizeResourcePath,
@@ -44,12 +45,6 @@ interface SkillTemplate {
   markdown: string;
   frontmatter: Record<string, unknown>;
   resources: SkillTemplateResource[];
-}
-
-interface SeedDefaultSkillsResult {
-  created: number;
-  skipped: number;
-  failed: number;
 }
 
 interface SyncDefaultSkillsResult {
@@ -540,128 +535,6 @@ function extractSkillSourceData(frontmatter: Record<string, unknown>): {
   };
 }
 
-export async function seedDefaultSkillsForUser(userId: string): Promise<SeedDefaultSkillsResult> {
-  const templates = await loadDefaultSkillTemplates();
-  if (templates.length === 0) {
-    return { created: 0, skipped: 0, failed: 0 };
-  }
-
-  const [personalVault] = await db
-    .select({ id: vault.id })
-    .from(vault)
-    .innerJoin(vaultMembership, eq(vaultMembership.vaultId, vault.id))
-    .where(
-      and(
-        eq(vaultMembership.userId, userId),
-        eq(vault.type, "personal"),
-        eq(vaultMembership.role, "owner"),
-      ),
-    );
-
-  if (!personalVault) {
-    throw new Error(`personal vault not found for user "${userId}"`);
-  }
-
-  let created = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const template of templates) {
-    try {
-      const [existing] = await db
-        .select({ id: skill.id })
-        .from(skill)
-        .where(and(eq(skill.ownerUserId, userId), eq(skill.slug, template.slug)));
-
-      if (existing) {
-        skipped++;
-        continue;
-      }
-
-      assertTemplateMentionPathsExist(template);
-      const templateVersion = buildTemplateVersion(template);
-
-      await db.transaction(async (tx) => {
-        const { sourceIdentifier, sourceUrl } = extractSkillSourceData(template.frontmatter);
-
-        const [createdSkill] = await tx
-          .insert(skill)
-          .values({
-            ownerUserId: userId,
-            ownerVaultId: personalVault.id,
-            slug: template.slug,
-            name: template.name,
-            description: template.description,
-            skillMarkdown: template.markdown,
-            frontmatter: template.frontmatter,
-            metadata: withDefaultTemplateVersion({}, templateVersion),
-            isDefault: true,
-            sourceUrl,
-            sourceIdentifier,
-          })
-          .returning({ id: skill.id });
-
-        if (!createdSkill) {
-          throw new Error(`failed to insert default skill "${template.slug}"`);
-        }
-
-        const insertedResources =
-          template.resources.length > 0
-            ? await tx
-                .insert(skillResource)
-                .values(
-                  template.resources.map((resource) => ({
-                    skillId: createdSkill.id,
-                    path: resource.path,
-                    kind: resource.kind,
-                    content: resource.content,
-                    metadata: {},
-                  })),
-                )
-                .returning({ id: skillResource.id, path: skillResource.path })
-            : [];
-
-        const resourceIdByPath = new Map(
-          insertedResources.map((resource) => [normalizeResourcePath(resource.path), resource.id]),
-        );
-
-        const resolvedMentions = resolveTemplateMentions(template, resourceIdByPath);
-
-        for (const insertedResource of insertedResources) {
-          const resolvedResourceMarkdown = resolvedMentions.resourceContentByPath.get(
-            normalizeResourcePath(insertedResource.path),
-          );
-
-          if (!resolvedResourceMarkdown) {
-            continue;
-          }
-
-          await tx
-            .update(skillResource)
-            .set({ content: resolvedResourceMarkdown })
-            .where(eq(skillResource.id, insertedResource.id));
-        }
-
-        if (resolvedMentions.skillMarkdown !== template.markdown) {
-          await tx
-            .update(skill)
-            .set({ skillMarkdown: resolvedMentions.skillMarkdown, updatedAt: new Date() })
-            .where(eq(skill.id, createdSkill.id));
-        }
-
-        await resyncMarkdownAutoLinksForSkill(tx, createdSkill.id, userId);
-      });
-
-      created++;
-    } catch (error) {
-      failed++;
-      console.error(`[default-skills] failed seeding "${template.slug}" for user ${userId}`, error);
-    }
-  }
-
-  return { created, skipped, failed };
-}
-
 async function syncExistingDefaultSkill(
   existingSkill: {
     id: string;
@@ -789,7 +662,7 @@ async function syncExistingDefaultSkill(
   return "updated";
 }
 
-export async function syncDefaultSkillsForAllUsers(): Promise<SyncDefaultSkillsResult> {
+export async function syncDefaultSkillsToDefaultVault(): Promise<SyncDefaultSkillsResult> {
   const templates = await loadDefaultSkillTemplates();
   if (templates.length === 0) {
     return {
@@ -801,6 +674,8 @@ export async function syncDefaultSkillsForAllUsers(): Promise<SyncDefaultSkillsR
     };
   }
 
+  const defaultVaultId = await ensureSystemDefaultVault();
+
   let matched = 0;
   let updated = 0;
   let skipped = 0;
@@ -811,19 +686,23 @@ export async function syncDefaultSkillsForAllUsers(): Promise<SyncDefaultSkillsR
       assertTemplateMentionPathsExist(template);
       const templateVersion = buildTemplateVersion(template);
 
-      const existingDefaultSkills = await db
+      const [existingSkill] = await db
         .select({
           id: skill.id,
-          slug: skill.slug,
           ownerUserId: skill.ownerUserId,
           metadata: skill.metadata,
         })
         .from(skill)
-        .where(and(eq(skill.slug, template.slug), eq(skill.isDefault, true)));
+        .where(
+          and(
+            eq(skill.ownerVaultId, defaultVaultId),
+            eq(skill.slug, template.slug),
+            eq(skill.isDefault, true),
+          ),
+        );
 
-      matched += existingDefaultSkills.length;
-
-      for (const existingSkill of existingDefaultSkills) {
+      if (existingSkill) {
+        matched++;
         try {
           const outcome = await syncExistingDefaultSkill(
             {
@@ -843,7 +722,19 @@ export async function syncDefaultSkillsForAllUsers(): Promise<SyncDefaultSkillsR
         } catch (error) {
           failed++;
           console.error(
-            `[default-skills] failed syncing "${template.slug}" for skill ${existingSkill.id} (owner ${existingSkill.ownerUserId ?? "null"})`,
+            `[default-skills] failed syncing "${template.slug}" (skill ${existingSkill.id})`,
+            error,
+          );
+        }
+      } else {
+        // first time — create the canonical default skill in the default vault
+        try {
+          await createDefaultSkillInVault(defaultVaultId, template, templateVersion);
+          updated++;
+        } catch (error) {
+          failed++;
+          console.error(
+            `[default-skills] failed creating "${template.slug}" in default vault`,
             error,
           );
         }
@@ -861,4 +752,81 @@ export async function syncDefaultSkillsForAllUsers(): Promise<SyncDefaultSkillsR
     skipped,
     failed,
   };
+}
+
+async function createDefaultSkillInVault(
+  vaultId: string,
+  template: SkillTemplate,
+  templateVersion: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const { sourceIdentifier, sourceUrl } = extractSkillSourceData(template.frontmatter);
+
+    const [createdSkill] = await tx
+      .insert(skill)
+      .values({
+        ownerUserId: null,
+        ownerVaultId: vaultId,
+        slug: template.slug,
+        name: template.name,
+        description: template.description,
+        skillMarkdown: template.markdown,
+        frontmatter: template.frontmatter,
+        metadata: withDefaultTemplateVersion({}, templateVersion),
+        isDefault: true,
+        sourceUrl,
+        sourceIdentifier,
+      })
+      .returning({ id: skill.id });
+
+    if (!createdSkill) {
+      throw new Error(`failed to insert default skill "${template.slug}"`);
+    }
+
+    const insertedResources =
+      template.resources.length > 0
+        ? await tx
+            .insert(skillResource)
+            .values(
+              template.resources.map((resource) => ({
+                skillId: createdSkill.id,
+                path: resource.path,
+                kind: resource.kind,
+                content: resource.content,
+                metadata: {},
+              })),
+            )
+            .returning({ id: skillResource.id, path: skillResource.path })
+        : [];
+
+    const resourceIdByPath = new Map(
+      insertedResources.map((resource) => [normalizeResourcePath(resource.path), resource.id]),
+    );
+
+    const resolvedMentions = resolveTemplateMentions(template, resourceIdByPath);
+
+    for (const insertedResource of insertedResources) {
+      const resolvedResourceMarkdown = resolvedMentions.resourceContentByPath.get(
+        normalizeResourcePath(insertedResource.path),
+      );
+
+      if (!resolvedResourceMarkdown) {
+        continue;
+      }
+
+      await tx
+        .update(skillResource)
+        .set({ content: resolvedResourceMarkdown })
+        .where(eq(skillResource.id, insertedResource.id));
+    }
+
+    if (resolvedMentions.skillMarkdown !== template.markdown) {
+      await tx
+        .update(skill)
+        .set({ skillMarkdown: resolvedMentions.skillMarkdown, updatedAt: new Date() })
+        .where(eq(skill.id, createdSkill.id));
+    }
+
+    await resyncMarkdownAutoLinksForSkill(tx, createdSkill.id, null);
+  });
 }

@@ -62,7 +62,7 @@ const resourceInSkillOutput = resourceOutput.extend({
 
 const skillOutput = z.object({
   id: z.string().uuid(),
-  ownerUserId: z.string(),
+  ownerUserId: z.string().nullable(),
   slug: z.string(),
   name: z.string(),
   description: z.string(),

@@ -26,9 +26,7 @@ export const skill = pgTable(
   "skill",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    ownerUserId: text("owner_user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "set null" }),
     ownerVaultId: uuid("owner_vault_id")
       .notNull()
       .references(() => vault.id, { onDelete: "cascade" }),
@@ -55,7 +53,6 @@ export const skill = pgTable(
   },
   (table) => [
     index("skill_owner_user_id_idx").on(table.ownerUserId),
-    uniqueIndex("skill_private_owner_slug_idx").on(table.ownerUserId, table.slug),
     index("skill_owner_vault_id_idx").on(table.ownerVaultId),
     uniqueIndex("skill_vault_slug_idx").on(table.ownerVaultId, table.slug),
     // pg_trgm GIN indexes for fuzzy search
