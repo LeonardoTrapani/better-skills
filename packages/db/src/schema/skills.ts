@@ -29,10 +29,9 @@ export const skill = pgTable(
     ownerUserId: text("owner_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    // nullable until backfill migration (task 3) makes it non-null
-    ownerVaultId: uuid("owner_vault_id").references(() => vault.id, {
-      onDelete: "cascade",
-    }),
+    ownerVaultId: uuid("owner_vault_id")
+      .notNull()
+      .references(() => vault.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     description: text("description").notNull(),
@@ -58,9 +57,7 @@ export const skill = pgTable(
     index("skill_owner_user_id_idx").on(table.ownerUserId),
     uniqueIndex("skill_private_owner_slug_idx").on(table.ownerUserId, table.slug),
     index("skill_owner_vault_id_idx").on(table.ownerVaultId),
-    uniqueIndex("skill_vault_slug_idx")
-      .on(table.ownerVaultId, table.slug)
-      .where(sql`${table.ownerVaultId} is not null`),
+    uniqueIndex("skill_vault_slug_idx").on(table.ownerVaultId, table.slug),
     // pg_trgm GIN indexes for fuzzy search
     index("skill_name_trgm_idx").using("gin", sql`${table.name} gin_trgm_ops`),
     index("skill_description_trgm_idx").using("gin", sql`${table.description} gin_trgm_ops`),

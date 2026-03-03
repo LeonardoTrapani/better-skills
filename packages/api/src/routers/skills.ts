@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { db } from "@better-skills/db";
 import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
+import { vault, vaultMembership } from "@better-skills/db/schema/vaults";
 
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
@@ -786,6 +787,22 @@ export const skillsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      const [personalVault] = await db
+        .select({ id: vault.id })
+        .from(vault)
+        .innerJoin(vaultMembership, eq(vaultMembership.vaultId, vault.id))
+        .where(
+          and(
+            eq(vaultMembership.userId, userId),
+            eq(vault.type, "personal"),
+            eq(vaultMembership.role, "owner"),
+          ),
+        );
+
+      if (!personalVault) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Personal vault not found" });
+      }
+
       try {
         await validateMentionTargets(input.skillMarkdown, userId);
       } catch (error) {
@@ -804,6 +821,7 @@ export const skillsRouter = router({
         .insert(skill)
         .values({
           ownerUserId: userId,
+          ownerVaultId: personalVault.id,
           slug: input.slug,
           name: input.name,
           description: input.description,

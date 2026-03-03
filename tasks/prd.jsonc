@@ -46,7 +46,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "bootstrap global system-default vault and memberships",

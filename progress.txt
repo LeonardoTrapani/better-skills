@@ -26,3 +26,11 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - added `ownerVault` one-relation in skillRelations and `skills` many-relation in vaultRelations
 - kept legacy `ownerUserId` column and its indexes intact for migration compatibility
 - `bun run check-types` and `bun run check` pass
+
+### Task 3: create migration to backfill personal vaults — DONE
+- generated migration 0007: creates vault tables + enums + ownerVaultId column (schema from tasks 1&2 was applied via db:push, this captures it as a migration)
+- 0007 also includes backfill SQL: creates personal vault per user (slug=`personal-<userId>`), owner membership rows, and updates skill.owner_vault_id from user's personal vault
+- generated migration 0008: makes owner_vault_id NOT NULL and rebuilds skill_vault_slug_idx without the partial WHERE clause
+- updated schema: `ownerVaultId` is now `.notNull()`, removed partial index WHERE clause
+- fixed type errors in `packages/api/src/routers/skills.ts` (create mutation) and `packages/auth/src/default-skills.ts` (seedDefaultSkillsForUser) — both now look up the user's personal vault before inserting skills
+- `bun run check-types` and `bun run check` pass

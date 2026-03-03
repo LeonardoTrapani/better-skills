@@ -8,6 +8,7 @@ import matter from "gray-matter";
 
 import { db } from "@better-skills/db";
 import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
+import { vault, vaultMembership } from "@better-skills/db/schema/vaults";
 import {
   collectNewResourceMentionPaths,
   normalizeResourcePath,
@@ -545,6 +546,22 @@ export async function seedDefaultSkillsForUser(userId: string): Promise<SeedDefa
     return { created: 0, skipped: 0, failed: 0 };
   }
 
+  const [personalVault] = await db
+    .select({ id: vault.id })
+    .from(vault)
+    .innerJoin(vaultMembership, eq(vaultMembership.vaultId, vault.id))
+    .where(
+      and(
+        eq(vaultMembership.userId, userId),
+        eq(vault.type, "personal"),
+        eq(vaultMembership.role, "owner"),
+      ),
+    );
+
+  if (!personalVault) {
+    throw new Error(`personal vault not found for user "${userId}"`);
+  }
+
   let created = 0;
   let skipped = 0;
   let failed = 0;
@@ -571,6 +588,7 @@ export async function seedDefaultSkillsForUser(userId: string): Promise<SeedDefa
           .insert(skill)
           .values({
             ownerUserId: userId,
+            ownerVaultId: personalVault.id,
             slug: template.slug,
             name: template.name,
             description: template.description,
