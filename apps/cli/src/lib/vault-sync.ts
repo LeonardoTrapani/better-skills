@@ -14,13 +14,14 @@ export function buildVaultScopedInstallKey(vaultSlug: string, skillSlug: string)
 }
 
 export function collectStaleVaultScopedKeys(
+  expectedServerKeys: Set<string>,
   serverSkillIds: Set<string>,
   lockSkillIdsByKey: Map<string, string>,
 ): string[] {
   const stale: string[] = [];
 
   for (const [key, skillId] of lockSkillIdsByKey) {
-    if (!serverSkillIds.has(skillId)) {
+    if (!expectedServerKeys.has(key) || !serverSkillIds.has(skillId)) {
       stale.push(key);
     }
   }

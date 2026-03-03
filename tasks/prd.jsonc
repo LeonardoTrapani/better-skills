@@ -281,7 +281,7 @@
         "Disabling a vault removes/omits its installed skills on next sync",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "update cli create update delete for vault permissions",

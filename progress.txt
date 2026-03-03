@@ -19,6 +19,7 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - enterprise vault management routes use a shared owner/admin guard (`assertCanManageEnterpriseVault`) and normalized email matching for invitations
 - destructive one-off data migrations in auth use `--apply` opt-in; default run is dry-run and deletion is blocked when unresolved mention targets remain
 - CLI identifier resolution should go through `resolveSkillIdentifier` to keep UUID/plain-slug/`<vault>/<slug>` handling consistent across commands
+- CLI sync install keys must use `buildVaultScopedInstallKey(vault.slug, skill.slug)` and stale pruning must compare both expected keys and server skill IDs (handles same-slug collisions + disabled vault removal + legacy lock key cleanup)
 
 ---
 
@@ -135,3 +136,10 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - updated CLI usage/help text to document vault-qualified identifiers for all affected commands
 - added `apps/cli/src/lib/resolve-skill-identifier.test.ts` to verify UUID and vault-slug routing behavior, and reused existing `vault-identifiers` tests for deterministic ambiguous-slug message formatting
 - verification run: `bun test apps/cli/src/lib/vault-identifiers.test.ts apps/cli/src/lib/resolve-skill-identifier.test.ts`, `bun cli get acme/deploy` (fails with expected auth error in this environment), `bun run check-types`, `bun run check` (pre-existing oxlint warnings remain in `apps/web`)
+
+### Task 17: update cli sync for enabled multi-vault behavior — DONE
+- updated `apps/cli/src/commands/sync.ts` to install with vault-scoped keys (`<vault>--<slug>`) and to show vault-qualified progress labels
+- sync now passes vault metadata through install payloads and persists it in lock/install metadata via `apps/cli/src/lib/skills-installer.ts`
+- stale pruning now uses `collectStaleVaultScopedKeys(expectedKeys, serverSkillIds, lockMap)` to remove disabled-vault skills and clean up legacy non-vault lock keys
+- added/updated tests in `apps/cli/src/lib/vault-sync.test.ts` to cover same-slug vault namespacing, stale key pruning, and legacy key cleanup
+- verification run: `bun test apps/cli/src/lib/vault-sync.test.ts`, `bun run check-types`, `bun run check` (`bun run check` still reports pre-existing web oxlint warnings)

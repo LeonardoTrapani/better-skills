@@ -15,6 +15,7 @@ describe("buildVaultScopedInstallKey", () => {
 
 describe("collectStaleVaultScopedKeys", () => {
   test("returns stale keys only", () => {
+    const expectedServerKeys = new Set(["acme--deploy", "default--readme"]);
     const serverSkillIds = new Set(["skill-1", "skill-3"]);
     const lockSkillIdsByKey = new Map<string, string>([
       ["acme--deploy", "skill-1"],
@@ -22,7 +23,27 @@ describe("collectStaleVaultScopedKeys", () => {
       ["default--readme", "skill-3"],
     ]);
 
-    const stale = collectStaleVaultScopedKeys(serverSkillIds, lockSkillIdsByKey);
+    const stale = collectStaleVaultScopedKeys(
+      expectedServerKeys,
+      serverSkillIds,
+      lockSkillIdsByKey,
+    );
     expect(stale).toEqual(["personal-jane--deploy"]);
+  });
+
+  test("treats legacy non-vault keys as stale", () => {
+    const expectedServerKeys = new Set(["acme--deploy"]);
+    const serverSkillIds = new Set(["skill-1"]);
+    const lockSkillIdsByKey = new Map<string, string>([
+      ["deploy", "skill-1"],
+      ["acme--deploy", "skill-1"],
+    ]);
+
+    const stale = collectStaleVaultScopedKeys(
+      expectedServerKeys,
+      serverSkillIds,
+      lockSkillIdsByKey,
+    );
+    expect(stale).toEqual(["deploy"]);
   });
 });

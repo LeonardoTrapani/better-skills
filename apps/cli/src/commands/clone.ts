@@ -60,6 +60,7 @@ function toInstallableSkill(skill: SkillDetails): InstallableSkill {
       path: resource.path,
       content: resource.content,
     })),
+    vault: skill.vault,
     sourceUrl: skill.sourceUrl,
     sourceIdentifier: skill.sourceIdentifier,
   };

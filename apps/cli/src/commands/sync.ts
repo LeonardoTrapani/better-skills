@@ -9,6 +9,7 @@ import {
   uninstallSkill,
   type InstallableSkill,
 } from "../lib/skills-installer";
+import { buildVaultScopedInstallKey, collectStaleVaultScopedKeys } from "../lib/vault-sync";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
 
@@ -40,6 +41,7 @@ function toInstallableSkill(skill: SkillDetails): InstallableSkill {
       path: resource.path,
       content: resource.renderedContent,
     })),
+    vault: skill.vault,
     sourceUrl: skill.sourceUrl,
     sourceIdentifier: skill.sourceIdentifier,
   };
@@ -89,9 +91,9 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
   const fetchSpinner = ui.spinner();
   fetchSpinner.start("loading skills");
 
-  let privateSkills: SkillListItem[];
+  let visibleSkills: SkillListItem[];
   try {
-    privateSkills = await fetchAllSkills();
+    visibleSkills = await fetchAllSkills();
   } catch (error) {
     fetchSpinner.stop(pc.red(`failed to load skills: ${readErrorMessage(error)}`));
     return {
@@ -104,7 +106,7 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  if (privateSkills.length === 0) {
+  if (visibleSkills.length === 0) {
     fetchSpinner.stop(pc.dim("no skills to sync"));
     return {
       ok: true,
@@ -116,33 +118,51 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  fetchSpinner.stop(pc.green(`syncing ${privateSkills.length} skill(s)`));
+  fetchSpinner.stop(pc.green(`syncing ${visibleSkills.length} skill(s)`));
 
-  const serverSkillIds = new Set(privateSkills.map((s) => s.id));
+  const serverSkillIds = new Set(visibleSkills.map((s) => s.id));
+  const expectedServerKeys = new Set(
+    visibleSkills.map((skill) => buildVaultScopedInstallKey(skill.vault.slug, skill.slug)),
+  );
 
   let synced = 0;
   let failed = 0;
 
-  for (const [index, item] of privateSkills.entries()) {
+  for (const [index, item] of visibleSkills.entries()) {
+    const installKey = buildVaultScopedInstallKey(item.vault.slug, item.slug);
     const spinner = ui.spinner();
-    spinner.start(`syncing ${item.slug} (${index + 1}/${privateSkills.length})`);
+    spinner.start(`syncing ${item.vault.slug}/${item.slug} (${index + 1}/${visibleSkills.length})`);
 
     try {
       const skill = await trpc.skills.getById.query({ id: item.id, linkMentions: false });
-      await installSkill(toInstallableSkill(skill), selectedAgents);
+      await installSkill(toInstallableSkill(skill), selectedAgents, { skillFolder: installKey });
       synced += 1;
-      spinner.stop(pc.green(`synced ${item.slug}`));
+      spinner.stop(pc.green(`synced ${item.vault.slug}/${item.slug}`));
     } catch (error) {
       failed += 1;
-      spinner.stop(pc.red(`failed ${item.slug}: ${readErrorMessage(error)}`));
+      spinner.stop(pc.red(`failed ${item.vault.slug}/${item.slug}: ${readErrorMessage(error)}`));
     }
   }
 
   // prune skills that no longer exist on the server
   const latestLock = await readInstallLock();
-  const staleEntries = Object.entries(latestLock.skills).filter(
-    ([, entry]) => !serverSkillIds.has(entry.skillId),
+  const lockSkillIdsByKey = new Map(
+    Object.entries(latestLock.skills).map(([key, entry]) => [key, entry.skillId]),
   );
+  const staleKeys = collectStaleVaultScopedKeys(
+    expectedServerKeys,
+    serverSkillIds,
+    lockSkillIdsByKey,
+  );
+  const staleEntries = staleKeys
+    .map((key) => {
+      const entry = latestLock.skills[key];
+      if (!entry) return null;
+      return [key, entry] as const;
+    })
+    .filter((entry): entry is readonly [string, (typeof latestLock.skills)[string]] =>
+      Boolean(entry),
+    );
 
   let removedStaleSkills = 0;
 
@@ -163,12 +183,12 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     ui.log.info(pc.dim(`removed ${removedStaleSkills} skill(s) no longer on server`));
   }
 
-  ui.log.info(pc.dim(`synced ${synced}/${privateSkills.length} skill(s)`));
+  ui.log.info(pc.dim(`synced ${synced}/${visibleSkills.length} skill(s)`));
 
   return {
     ok: failed === 0,
     authenticated: true,
-    totalSkills: privateSkills.length,
+    totalSkills: visibleSkills.length,
     syncedSkills: synced,
     failedSkills: failed,
     removedStaleSkills,
