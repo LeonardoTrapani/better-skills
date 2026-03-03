@@ -88,3 +88,19 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - for list/graph outputs, `isReadOnly` defaults to true for system_default and enterprise (conservative); for single-item fetches (getById/getBySlug), exact role-based isReadOnly is computed
 - `bun run check-types` and `bun run check` pass
 - vault-access unit tests (16) still pass
+
+### Task 10: update skill write queries for role-based multi-vault auth — DONE
+- replaced all ad-hoc `ownerUserId` ownership checks in write mutations with `assertCanWrite` from vault-access helpers
+- `skills.create`: added optional `vaultId` input param; when provided, `assertCanWrite(userId, vaultId)` verifies membership + role; when omitted, defaults to personal vault via `getPersonalVaultId(userId)`
+- `skills.update`: replaced `ownerUserId !== userId` + `isDefault` guards with `assertCanWrite(userId, existing.ownerVaultId)` — system_default, enterprise-member read-only, and non-member cases are all handled by the permission matrix
+- `skills.delete`: same pattern — `assertCanWrite` replaces ownerUserId + isDefault checks
+- all `VaultAccessError` exceptions are caught and re-thrown as `TRPCError` with the original descriptive message (distinguishes role-based vs system-managed denial)
+- removed direct `vault`/`vaultMembership` table imports from skills router (no longer needed)
+- `bun run check-types`, `bun run check`, and vault-access unit tests (16) all pass
+
+### Task 11: add vault router for membership preferences and listing — DONE
+- added `packages/api/src/routers/vaults.ts` and mounted it at `appRouter.vaults`
+- implemented `vaults.listMine` to return all memberships (enabled + disabled), vault metadata, role, and permission flags derived via `resolvePermissions`
+- implemented `vaults.setEnabled` to toggle membership `isEnabled` for the calling user only and return deterministic `NOT_FOUND` for non-memberships
+- implemented `vaults.invitations.listPending` to power settings inbox by returning pending invites for the signed-in email with joined vault metadata
+- verification: `bun run check-types` passes; `bun run check` passes (repo has unrelated oxlint warnings in web files)
