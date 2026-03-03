@@ -1,24 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
+  Building2,
   Check,
+  Clock3,
+  EyeOff,
   Laptop,
   Loader2,
   Lock,
   LogOut,
   Moon,
+  Palette,
+  UserCheck,
   ShieldCheck,
   Sun,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth/auth-client";
+import { trpc } from "@/lib/api/trpc";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +45,12 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark", icon: Moon },
   { value: "system", label: "System", icon: Laptop },
 ] as const;
+
+const VAULT_TYPE_META = {
+  personal: { label: "Personal" },
+  enterprise: { label: "Enterprise" },
+  system_default: { label: "Default" },
+} as const;
 
 /* ------------------------------------------------------------------ */
 /*  Section shell — mirrors the GitHub settings card pattern            */
@@ -102,12 +116,64 @@ interface SettingsViewProps {
 
 export default function SettingsView({ userName, userEmail }: SettingsViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const { data: session } = authClient.useSession();
+  const membershipsQueryOptions = trpc.vaults.listMine.queryOptions();
+  const invitationsQueryOptions = trpc.vaults.invitations.listPending.queryOptions();
+  const membershipsQuery = useQuery(membershipsQueryOptions);
+  const invitationsQuery = useQuery(invitationsQueryOptions);
+
+  const refreshVaultState = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: membershipsQueryOptions.queryKey }),
+      queryClient.invalidateQueries({ queryKey: invitationsQueryOptions.queryKey }),
+      queryClient.invalidateQueries({ queryKey: trpc.skills.list.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.skills.listByOwner.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.skills.search.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.skills.graph.queryKey() }),
+    ]);
+  };
+
+  const setVaultEnabledMutation = useMutation(
+    trpc.vaults.setEnabled.mutationOptions({
+      onSuccess: async (_, input) => {
+        await refreshVaultState();
+        toast.success(input.isEnabled ? "Vault enabled" : "Vault disabled");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update vault visibility");
+      },
+    }),
+  );
+
+  const acceptInvitationMutation = useMutation(
+    trpc.vaults.invitations.acceptInvitation.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        toast.success("Invitation accepted");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to accept invitation");
+      },
+    }),
+  );
+
+  const declineInvitationMutation = useMutation(
+    trpc.vaults.invitations.declineInvitation.mutationOptions({
+      onSuccess: async () => {
+        await refreshVaultState();
+        toast.success("Invitation declined");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to decline invitation");
+      },
+    }),
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -116,6 +182,21 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
   const selectedTheme = mounted ? (theme ?? "system") : "system";
   const userInitial = userName.trim().charAt(0).toUpperCase() || "U";
   const userImage = session?.user.image;
+  const memberships = membershipsQuery.data ?? [];
+  const pendingInvitations = invitationsQuery.data ?? [];
+
+  const sortedMemberships = useMemo(
+    () =>
+      [...memberships].sort((a, b) => {
+        if (a.vault.type === b.vault.type) {
+          return a.vault.name.localeCompare(b.vault.name);
+        }
+
+        const rank = { personal: 0, enterprise: 1, system_default: 2 };
+        return rank[a.vault.type] - rank[b.vault.type];
+      }),
+    [memberships],
+  );
 
   const handleSignOut = async () => {
     if (signOutPending) return;
@@ -146,6 +227,18 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
       setDeletePending(false);
       setDeleteDialogOpen(false);
     }
+  };
+
+  const handleVaultEnabled = (vaultId: string, isEnabled: boolean) => {
+    setVaultEnabledMutation.mutate({ vaultId, isEnabled });
+  };
+
+  const handleInvitationAccept = (invitationId: string) => {
+    acceptInvitationMutation.mutate({ invitationId });
+  };
+
+  const handleInvitationDecline = (invitationId: string) => {
+    declineInvitationMutation.mutate({ invitationId });
   };
 
   return (
@@ -311,6 +404,185 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                   Enable
                 </Button>
               </Row>
+            </div>
+          </Section>
+
+          {/* ── Vaults ── */}
+          <Section
+            icon={<Building2 className="size-4 text-muted-foreground" aria-hidden="true" />}
+            title="Vaults"
+            description="Manage visible vaults and pending invitations. Disabled vaults stay in your membership list."
+          >
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {membershipsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    Loading vault memberships...
+                  </div>
+                ) : null}
+
+                {!membershipsQuery.isLoading && sortedMemberships.length === 0 ? (
+                  <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
+                    No vault memberships found.
+                  </div>
+                ) : null}
+
+                {sortedMemberships.map((membership) => {
+                  const vaultType = VAULT_TYPE_META[membership.vault.type];
+                  const busy =
+                    setVaultEnabledMutation.isPending &&
+                    setVaultEnabledMutation.variables?.vaultId === membership.vaultId;
+
+                  return (
+                    <Row key={membership.membershipId}>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {membership.vault.name}
+                          </p>
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            {vaultType.label}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            {membership.role}
+                          </Badge>
+                          {membership.isReadOnly ? (
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              Read only
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
+                          {membership.vault.color ? (
+                            <span
+                              className="inline-block size-2.5 border border-border/70"
+                              style={{ backgroundColor: membership.vault.color }}
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Palette className="size-3" aria-hidden="true" />
+                          )}
+                          <span>/{membership.vault.slug}</span>
+                          {membership.vault.isSystemManaged ? (
+                            <span className="inline-flex items-center gap-1">
+                              <UserCheck className="size-3" aria-hidden="true" />
+                              System-managed
+                            </span>
+                          ) : null}
+                          {!membership.isEnabled ? (
+                            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                              <EyeOff className="size-3" aria-hidden="true" />
+                              Hidden from list/search/graph
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <Button
+                        variant={membership.isEnabled ? "outline" : "default"}
+                        size="sm"
+                        className="shrink-0"
+                        disabled={busy}
+                        onClick={() =>
+                          handleVaultEnabled(membership.vaultId, !membership.isEnabled)
+                        }
+                      >
+                        {busy ? (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                        ) : membership.isEnabled ? (
+                          "Disable"
+                        ) : (
+                          "Enable"
+                        )}
+                      </Button>
+                    </Row>
+                  );
+                })}
+              </div>
+
+              <div className="border-t border-dashed border-border" />
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                  <Clock3 className="size-3.5" aria-hidden="true" />
+                  Pending invitations
+                </div>
+
+                {invitationsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    Loading invitations...
+                  </div>
+                ) : null}
+
+                {!invitationsQuery.isLoading && pendingInvitations.length === 0 ? (
+                  <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
+                    No pending invitations.
+                  </div>
+                ) : null}
+
+                {pendingInvitations.map((invitation) => {
+                  const busyAccepting =
+                    acceptInvitationMutation.isPending &&
+                    acceptInvitationMutation.variables?.invitationId === invitation.id;
+                  const busyDeclining =
+                    declineInvitationMutation.isPending &&
+                    declineInvitationMutation.variables?.invitationId === invitation.id;
+
+                  return (
+                    <Row key={invitation.id}>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {invitation.vaultName}
+                          </p>
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            {VAULT_TYPE_META[invitation.vaultType].label}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            {invitation.role}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] font-mono text-muted-foreground">
+                          /{invitation.vaultSlug}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="gap-1.5"
+                          disabled={busyAccepting || busyDeclining}
+                          onClick={() => handleInvitationAccept(invitation.id)}
+                        >
+                          {busyAccepting ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Check className="size-3.5" aria-hidden="true" />
+                          )}
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={busyAccepting || busyDeclining}
+                          onClick={() => handleInvitationDecline(invitation.id)}
+                        >
+                          {busyDeclining ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <X className="size-3.5" aria-hidden="true" />
+                          )}
+                          Decline
+                        </Button>
+                      </div>
+                    </Row>
+                  );
+                })}
+              </div>
             </div>
           </Section>
 
