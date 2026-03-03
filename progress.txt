@@ -158,3 +158,13 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - `bun run check-types` and `bun run check` pass (`check` reports pre-existing web warnings only)
 - notes for next iteration:
   - verification helper enterprise vault created: `cli-verification-vault` (owner: current user)
+
+### Task 19: update cli create update delete for vault permissions — VERIFIED + MARKED PASS
+- selected this next because it was the only remaining CLI/API integration task still marked `passes: false`, and it is lower-risk to close before larger web UI work
+- re-ran required verifies:
+  - `bun cli create --from ../../resources/default-skills/better-skills --slug cli-verify-create-2 --vault cli-verification-vault` -> created id `68bb16eb-e9e7-4c1e-9952-b557541016d9`
+  - `bun cli update system-default/better-skills --from ../../resources/default-skills/better-skills` -> exits non-zero with `System default vault is read-only`
+  - `bun cli delete system-default/better-skills --yes` -> exits non-zero with `System default vault is read-only`
+  - `bun run check-types` passes
+  - `bun run check` runs cleanly except existing unrelated web oxlint warnings
+- updated `tasks/prd.jsonc` to set task 19 `passes: true`

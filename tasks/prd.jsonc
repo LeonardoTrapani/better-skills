@@ -295,7 +295,7 @@
         "Update/delete on read-only vault skill exits non-zero with clear reason",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "expand automated tests for vault matrix",
