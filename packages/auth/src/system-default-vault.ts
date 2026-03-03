@@ -6,6 +6,7 @@ import { vault, vaultMembership } from "@better-skills/db/schema/vaults";
 
 const SYSTEM_DEFAULT_VAULT_SLUG = "system-default";
 const SYSTEM_DEFAULT_VAULT_NAME = "Default Skills";
+const SYSTEM_DEFAULT_VAULT_COLOR = "#0f766e";
 
 /**
  * Ensures exactly one system_default vault exists. Returns its id.
@@ -13,11 +14,18 @@ const SYSTEM_DEFAULT_VAULT_NAME = "Default Skills";
  */
 export async function ensureSystemDefaultVault(): Promise<string> {
   const [existing] = await db
-    .select({ id: vault.id })
+    .select({ id: vault.id, color: vault.color })
     .from(vault)
     .where(and(eq(vault.type, "system_default"), eq(vault.slug, SYSTEM_DEFAULT_VAULT_SLUG)));
 
   if (existing) {
+    if (existing.color !== SYSTEM_DEFAULT_VAULT_COLOR) {
+      await db
+        .update(vault)
+        .set({ color: SYSTEM_DEFAULT_VAULT_COLOR })
+        .where(eq(vault.id, existing.id));
+    }
+
     return existing.id;
   }
 
@@ -27,6 +35,7 @@ export async function ensureSystemDefaultVault(): Promise<string> {
       slug: SYSTEM_DEFAULT_VAULT_SLUG,
       name: SYSTEM_DEFAULT_VAULT_NAME,
       type: "system_default",
+      color: SYSTEM_DEFAULT_VAULT_COLOR,
       isSystemManaged: true,
       metadata: {},
     })

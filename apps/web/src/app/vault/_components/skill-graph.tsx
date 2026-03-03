@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ForceGraph } from "@/components/skills/graph/force-graph";
 import { GridBackground } from "@/components/ui/grid-background";
 import { trpc } from "@/lib/api/trpc";
+import { getEffectiveVaultColor } from "@/lib/skills/vault-colors";
 import { cn } from "@/lib/utils";
 
 interface SkillGraphProps {
@@ -109,7 +110,7 @@ export default function SkillGraph({ height, className, variant = "panel" }: Ski
                   className="inline-block size-2 border border-border/70"
                   style={{
                     backgroundColor: vault.isEnabled
-                      ? (vault.color ?? "var(--primary)")
+                      ? (getEffectiveVaultColor(vault) ?? "var(--primary)")
                       : "var(--muted-foreground)",
                   }}
                   aria-hidden="true"

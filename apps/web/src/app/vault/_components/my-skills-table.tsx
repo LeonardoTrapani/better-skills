@@ -8,12 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { buildSkillHref } from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-
-function vaultTypeLabel(type: "personal" | "enterprise" | "system_default") {
-  if (type === "system_default") return "default";
-  return type;
-}
 
 interface MySkillsTableProps {
   height?: number;
@@ -73,7 +67,14 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
         {!isLoading &&
           !isError &&
           skills.map((skill, index) => {
-            const isDisabled = !skill.vault.isEnabled;
+            const isDisabled =
+              "isEnabled" in skill.vault &&
+              typeof skill.vault.isEnabled === "boolean" &&
+              !skill.vault.isEnabled;
+            const enterpriseColor =
+              skill.vault.type === "enterprise"
+                ? (skill.vault.color?.trim() ?? "var(--primary)")
+                : null;
 
             return (
               <Link
@@ -94,34 +95,16 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
                   >
                     {skill.name}
                   </span>
+                  {enterpriseColor ? (
+                    <span
+                      className="inline-block size-2 border border-border/70"
+                      style={{ backgroundColor: enterpriseColor }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
                     {skill.description}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                    {skill.vault.color ? (
-                      <span
-                        className="inline-block size-2 border border-border/70"
-                        style={{ backgroundColor: skill.vault.color }}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-mono">
-                      {skill.vault.name}
-                    </Badge>
-                  </span>
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-                    {vaultTypeLabel(skill.vault.type)}
-                  </Badge>
-                  {skill.vault.isReadOnly ? (
-                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-                      Read only
-                    </Badge>
-                  ) : null}
-                  {isDisabled ? (
-                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-                      Disabled
-                    </Badge>
-                  ) : null}
                 </div>
               </Link>
             );

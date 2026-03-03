@@ -265,6 +265,11 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
     [memberships],
   );
 
+  const visibleSettingsMemberships = useMemo(
+    () => sortedMemberships.filter((membership) => membership.vault.type !== "system_default"),
+    [sortedMemberships],
+  );
+
   const manageableEnterpriseMemberships = useMemo(
     () =>
       sortedMemberships.filter(
@@ -593,13 +598,13 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                   </div>
                 ) : null}
 
-                {!membershipsQuery.isLoading && sortedMemberships.length === 0 ? (
+                {!membershipsQuery.isLoading && visibleSettingsMemberships.length === 0 ? (
                   <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
-                    No vault memberships found.
+                    No personal or enterprise vault memberships found.
                   </div>
                 ) : null}
 
-                {sortedMemberships.map((membership) => {
+                {visibleSettingsMemberships.map((membership) => {
                   const vaultType = VAULT_TYPE_META[membership.vault.type];
                   const busy =
                     setVaultEnabledMutation.isPending &&
@@ -701,41 +706,55 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
 
                     {manageableEnterpriseMemberships.length > 0 ? (
                       <>
-                        <div className="flex flex-wrap gap-2">
-                          {manageableEnterpriseMemberships.map((membership) => {
-                            const isSelected =
-                              membership.vaultId === selectedManagedMembership?.vaultId;
-                            return (
-                              <Button
-                                key={membership.vaultId}
-                                type="button"
-                                size="sm"
-                                variant={isSelected ? "default" : "outline"}
-                                className="h-8 gap-2"
-                                onClick={() => setSelectedManagedVaultId(membership.vaultId)}
-                              >
-                                {membership.vault.color ? (
+                        {selectedManagedMembership ? (
+                          <div className="space-y-4 border border-border px-4 py-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                {selectedManagedMembership.vault.color ? (
                                   <span
                                     className="size-2 rounded-full border border-border/60"
-                                    style={{ backgroundColor: membership.vault.color }}
+                                    style={{
+                                      backgroundColor: selectedManagedMembership.vault.color,
+                                    }}
                                     aria-hidden="true"
                                   />
-                                ) : null}
-                                {membership.vault.name}
-                              </Button>
-                            );
-                          })}
-                        </div>
+                                ) : (
+                                  <Palette
+                                    className="size-3 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                <p className="truncate text-sm font-medium text-foreground">
+                                  {selectedManagedMembership.vault.name}
+                                </p>
+                                <span className="truncate text-xs font-mono text-muted-foreground">
+                                  /{selectedManagedMembership.vault.slug}
+                                </span>
+                              </div>
 
-                        {selectedManagedMembership ? (
-                          <div className="space-y-3 border border-border px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-foreground">
-                                {selectedManagedMembership.vault.name}
-                              </p>
+                              {manageableEnterpriseMemberships.length > 1 ? (
+                                <label className="grid gap-1.5">
+                                  <span className="sr-only">Managed enterprise</span>
+                                  <select
+                                    value={selectedManagedMembership.vaultId}
+                                    onChange={(event) =>
+                                      setSelectedManagedVaultId(event.target.value)
+                                    }
+                                    className="h-9 w-full border border-border bg-background px-3 text-sm sm:w-auto sm:min-w-52"
+                                  >
+                                    {manageableEnterpriseMemberships.map((membership) => (
+                                      <option key={membership.vaultId} value={membership.vaultId}>
+                                        {membership.vault.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null}
                             </div>
 
-                            <div className="grid gap-3 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                            <div className="border-t border-dashed border-border" />
+
+                            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
                               <p className="text-xs text-muted-foreground">
                                 Vault color is used across badges and graph nodes.
                               </p>
@@ -758,8 +777,10 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                               </Button>
                             </div>
 
+                            <div className="border-t border-dashed border-border" />
+
                             <form
-                              className="grid gap-2 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+                              className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center"
                               onSubmit={handleInviteSubmit}
                             >
                               <Input
@@ -793,7 +814,9 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                               </Button>
                             </form>
 
-                            <div className="space-y-2 border border-border px-3 py-3">
+                            <div className="border-t border-dashed border-border" />
+
+                            <div className="space-y-2">
                               <p className="text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
                                 Members
                               </p>
@@ -812,7 +835,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                                 </div>
                               ) : null}
 
-                              {selectedManagedMembers.map((member) => {
+                              {selectedManagedMembers.map((member, index) => {
                                 const roleToggle = member.role === "admin" ? "member" : "admin";
                                 const roleToggleLabel =
                                   member.role === "admin" ? "Set member" : "Set admin";
@@ -832,7 +855,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                                 return (
                                   <div
                                     key={member.userId}
-                                    className="flex flex-wrap items-center justify-between gap-2 border border-border px-3 py-2"
+                                    className={`flex flex-wrap items-center justify-between gap-2 py-2 ${index > 0 ? "border-t border-border/70" : ""}`}
                                   >
                                     <div className="min-w-0">
                                       <p className="truncate text-sm text-foreground">

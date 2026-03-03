@@ -5,6 +5,7 @@ import { SkillDescription } from "@/components/skills/skill-description";
 import { Button } from "@/components/ui/button";
 import { formatDisplayDate } from "@/lib/format-display-date";
 import { dashboardRoute } from "@/lib/skills/routes";
+import { getEffectiveVaultColor } from "@/lib/skills/vault-colors";
 
 export function SkillDetailHeader({
   slug,
@@ -47,6 +48,7 @@ export function SkillDetailHeader({
   const viewingResourceName = viewingResource
     ? (viewingResource.split("/").filter(Boolean).at(-1) ?? viewingResource)
     : null;
+  const displayVaultColor = getEffectiveVaultColor({ type: vaultType, color: vaultColor });
 
   if (compact) {
     return (
@@ -105,10 +107,10 @@ export function SkillDetailHeader({
               </span>
             )}
             <span className="inline-flex items-center gap-1 border border-border px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-              {vaultColor ? (
+              {displayVaultColor ? (
                 <span
                   className="inline-block size-2 border border-border/70"
-                  style={{ backgroundColor: vaultColor }}
+                  style={{ backgroundColor: displayVaultColor }}
                   aria-hidden="true"
                 />
               ) : null}
@@ -228,10 +230,10 @@ export function SkillDetailHeader({
           </>
         )}
         <span className="inline-flex items-center gap-1">
-          {vaultColor ? (
+          {displayVaultColor ? (
             <span
               className="inline-block size-2 border border-border/70"
-              style={{ backgroundColor: vaultColor }}
+              style={{ backgroundColor: displayVaultColor }}
               aria-hidden="true"
             />
           ) : null}

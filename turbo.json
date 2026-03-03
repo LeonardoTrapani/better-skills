@@ -23,7 +23,8 @@
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "CORS_ORIGIN",
-    "POSTGRES_DATABASE"
+    "POSTGRES_DATABASE",
+    "BETTER_SKILLS_ADMIN_TOKEN"
   ],
   "tasks": {
     "build": {

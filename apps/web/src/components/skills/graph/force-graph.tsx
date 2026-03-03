@@ -9,6 +9,7 @@ import * as d3 from "d3";
 import { canRenderResourceAsMarkdown } from "@/components/markdown/resource-file";
 import { NodePreviewCard } from "@/components/skills/graph/node-preview-card";
 import { buildResourceHref, buildSkillHref } from "@/lib/skills/routes";
+import { getEffectiveVaultColor } from "@/lib/skills/vault-colors";
 import { cn } from "@/lib/utils";
 
 export interface GraphNode extends d3.SimulationNodeDatum {
@@ -103,7 +104,7 @@ function getNodeVaultColor(node: GraphNode, isDarkMode: boolean) {
     return getDisabledSkillColor(isDarkMode);
   }
 
-  return node.vault?.color?.trim() || null;
+  return getEffectiveVaultColor(node.vault);
 }
 
 function getSkillNodeColor(node: GraphNode, isDarkMode: boolean) {
