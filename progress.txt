@@ -201,3 +201,12 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - toggled enterprise vault disabled in `/settings` and confirmed it is removed from dashboard surfaces (rows + command palette results)
   - re-enabled enterprise vault and confirmed visibility restored
 - verification run: `bun run check-types` passes; `bun run check` passes with pre-existing unrelated web warnings
+
+### Task 16: make web skill detail vault-aware and permission-aware — VERIFIED + MARKED PASS
+- selected this next because it was the highest-priority remaining product task (`passes: false`) and directly unblocked completion of the web multi-vault UX work before docs
+- no code changes were required: existing skill detail header already renders vault source (`vault slug/type/color`) and permission status (`read only` vs `editable`) from `skills.getById` payload
+- browser verification (using `browser-use`):
+  - default vault skill (`/vault/skills/921ef407-c233-4093-a84c-70ffb2476406`) shows `/system-default`, default/source context, and `read only`
+  - enterprise skill (`/vault/skills/68bb16eb-e9e7-4c1e-9952-b557541016d9`) shows `/cli-verification-vault` and `editable` while role is owner/admin
+  - simulated enterprise-member view by temporarily setting enterprise membership role `owner -> member` in DB, reloading skill detail, confirming `read only`, then restoring role back to `owner`
+- verification run: `bun run check-types` passes; `bun run check` reports only pre-existing unrelated web warnings

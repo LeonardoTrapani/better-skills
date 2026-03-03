@@ -252,7 +252,7 @@
         "Typecheck passes",
         "Verify in browser using agent-browser skill",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "add cli multi-vault identifier handling",
