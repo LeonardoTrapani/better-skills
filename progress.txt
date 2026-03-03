@@ -17,6 +17,7 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - circular imports between schema files are fine (drizzle relations are lazy)
 - auth `userRelations` in `auth.ts` references tables from other schema files
 - enterprise vault management routes use a shared owner/admin guard (`assertCanManageEnterpriseVault`) and normalized email matching for invitations
+- destructive one-off data migrations in auth use `--apply` opt-in; default run is dry-run and deletion is blocked when unresolved mention targets remain
 
 ---
 
@@ -112,3 +113,10 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - invitation lifecycle statuses now transition through pending -> accepted/declined and auto-mark expired when an expired invite is acted on
 - added router tests in `packages/api/src/routers/vaults.test.ts` covering: admin invite + accept flow, non-admin rejection on admin procedures, and color updates reflected in `vaults.listMine`
 - verification: `bun test packages/api/src/routers/vaults.test.ts`, `bun run check-types`, and `bun run check` all pass (`bun run check` still reports pre-existing oxlint warnings in `apps/web`)
+
+### Task 6: migrate duplicated default skill references to canonical default vault — DONE
+- added one-off migration script `packages/auth/src/migrate-default-skill-references.ts` to map duplicated per-user default skill/resource IDs to canonical system-default IDs by `slug` + `path`
+- script rewrites persisted mentions in all skill markdown + resource markdown via `remapMentionTargetIds`, then rebuilds `markdown-auto` links for touched skill/resource sources
+- safety guard: deletion is refused if any markdown blob still references duplicated IDs after remap; supports dry-run by default and `--apply` for writes
+- added root command `bun run migrate-default-skill-references` (runs script with `--apply` and server env file)
+- verification: `bun run db:migrate`, `bun run sync-default-skills`, `bun run migrate-default-skill-references` => `remainingPerUserDefaultSkills=0`, remap stats show non-zero remaps and `mentions.unresolved=0`; `bun run check-types` and `bun run check` pass (`bun run check` still has unrelated oxlint warnings in `apps/web`)
