@@ -1,6 +1,8 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index, integer } from "drizzle-orm/pg-core";
 
+import { vaultMembership, vaultInvitation } from "./vaults";
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -103,6 +105,8 @@ export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   deviceCodes: many(deviceCode),
+  vaultMemberships: many(vaultMembership),
+  vaultInvitations: many(vaultInvitation),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

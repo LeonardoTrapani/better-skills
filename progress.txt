@@ -1,0 +1,20 @@
+# Ralph Progress Log
+Started: Tue Mar  3 10:23:37 AM CET 2026
+---
+
+## Codebase Patterns
+
+- schema files live in `packages/db/src/schema/`, barrel-exported from `index.ts`
+- tables use uuid PKs with `defaultRandom()` (except auth tables which use text PKs)
+- snake_case in DB, camelCase in JS; timestamps always `created_at` + `updated_at`
+- relations defined in same file as tables, named relation keys for disambiguation
+- circular imports between schema files are fine (drizzle relations are lazy)
+- auth `userRelations` in `auth.ts` references tables from other schema files
+
+---
+
+### Task 1: add core vault schema tables and enums — DONE
+- created `packages/db/src/schema/vaults.ts` with 3 enums (vault_type, vault_membership_role, vault_invitation_status) and 3 tables (vault, vault_membership, vault_invitation)
+- vault slug is unique, invitation dedup uses partial unique index on (vault_id, email) WHERE status='pending'
+- added vault membership/invitation relations to user in auth.ts
+- `bun run check-types` and `bun run check` pass
