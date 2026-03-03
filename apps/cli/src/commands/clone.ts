@@ -19,6 +19,14 @@ type ContextRow = {
   target: string;
 };
 
+function toIsoTimestamp(value: Date | string): string {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  return parsed.toISOString();
+}
+
 function parseArgs(argv: string[]) {
   const args = argv.slice(3);
   let identifier: string | undefined;
@@ -53,6 +61,7 @@ function toInstallableSkill(skill: SkillDetails): InstallableSkill {
     slug: skill.slug,
     name: skill.name,
     description: skill.description,
+    remoteUpdatedAt: toIsoTimestamp(skill.updatedAt),
     originalMarkdown: skill.originalMarkdown,
     renderedMarkdown: skill.renderedMarkdown,
     frontmatter: skill.frontmatter,

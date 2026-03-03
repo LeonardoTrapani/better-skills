@@ -32,6 +32,7 @@ export type InstallableSkill = {
   slug: string;
   name: string;
   description: string;
+  remoteUpdatedAt: string;
   originalMarkdown: string;
   renderedMarkdown: string;
   frontmatter: Record<string, unknown>;
@@ -73,6 +74,7 @@ type InstallLockSkillEntry = {
     type: "better-skills-api";
     serverUrl: string;
     vault: InstallableSkillVault;
+    remoteUpdatedAt?: string;
     sourceUrl: string | null;
     sourceIdentifier: string | null;
   };
@@ -90,7 +92,7 @@ type InstallLockSkillTarget = {
 function sanitizeName(name: string): string {
   const sanitized = name
     .toLowerCase()
-    .replace(/[^a-z0-9._]+/g, "-")
+    .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^[.-]+|[.-]+$/g, "");
 
   return sanitized.slice(0, 255) || "unnamed-skill";
@@ -274,6 +276,7 @@ async function writeInstallLock(
       type: "better-skills-api",
       serverUrl: env.SERVER_URL,
       vault: skill.vault,
+      remoteUpdatedAt: skill.remoteUpdatedAt,
       sourceUrl: skill.sourceUrl,
       sourceIdentifier: skill.sourceIdentifier,
     },
