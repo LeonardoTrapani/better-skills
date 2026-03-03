@@ -5,7 +5,6 @@ import Footer from "@/app/_landing/footer";
 import { PageOverlay, SectionDivider } from "@/app/_landing/grid-background";
 import HeroSection from "@/app/_landing/hero-section";
 import HowItWorks from "@/app/_landing/how-it-works";
-import Pricing from "@/app/_landing/pricing";
 import { getSkillCount } from "@/lib/landing/get-skill-count";
 
 const TOTAL_SECTIONS = 5;

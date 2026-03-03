@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Box, Check, ChevronRight, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy } from "lucide-react";
 import type { Route } from "next";
 
 import { SectionBackdrop } from "./grid-background";

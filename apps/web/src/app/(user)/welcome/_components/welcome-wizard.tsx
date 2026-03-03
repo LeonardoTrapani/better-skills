@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Copy, Sparkles, Terminal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Copy, Terminal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { GridBackground } from "@/components/ui/grid-background";

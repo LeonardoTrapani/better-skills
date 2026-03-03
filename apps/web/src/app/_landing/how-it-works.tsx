@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "motion/react";
 import { Terminal, Network, Bot, type LucideIcon } from "lucide-react";
 import { SectionHeader, SectionBackdrop } from "./grid-background";
 import { LandingContainer, SectionTailSpacer } from "./design-system";
@@ -113,7 +112,7 @@ export default function HowItWorks() {
         />
 
         <div className="flex flex-wrap gap-px border border-border bg-border">
-          {steps.map((step, i) => (
+          {steps.map((step) => (
             <div
               key={step.num}
               className="flex min-w-[280px] flex-1 basis-full flex-col items-center gap-6 bg-background px-8 py-10 text-center lg:basis-[calc(33.333%-1px)]"
