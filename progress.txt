@@ -18,3 +18,11 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - vault slug is unique, invitation dedup uses partial unique index on (vault_id, email) WHERE status='pending'
 - added vault membership/invitation relations to user in auth.ts
 - `bun run check-types` and `bun run check` pass
+
+### Task 2: add vault ownership columns to skills schema — DONE
+- added `ownerVaultId` (uuid, nullable FK to vault.id, onDelete cascade) to skill table in `packages/db/src/schema/skills.ts`
+- nullable for now — task 3 backfill migration will make it non-null
+- added `skill_owner_vault_id_idx` index and `skill_vault_slug_idx` partial unique index on (owner_vault_id, slug) WHERE owner_vault_id IS NOT NULL
+- added `ownerVault` one-relation in skillRelations and `skills` many-relation in vaultRelations
+- kept legacy `ownerUserId` column and its indexes intact for migration compatibility
+- `bun run check-types` and `bun run check` pass

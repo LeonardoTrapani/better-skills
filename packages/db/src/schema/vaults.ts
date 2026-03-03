@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+import { skill } from "./skills";
 
 export const vaultTypeEnum = pgEnum("vault_type", ["personal", "enterprise", "system_default"]);
 
@@ -112,6 +113,7 @@ export const vaultInvitation = pgTable(
 export const vaultRelations = relations(vault, ({ many }) => ({
   memberships: many(vaultMembership),
   invitations: many(vaultInvitation),
+  skills: many(skill),
 }));
 
 export const vaultMembershipRelations = relations(vaultMembership, ({ one }) => ({

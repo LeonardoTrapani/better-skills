@@ -30,7 +30,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "create migration to backfill personal vaults",
