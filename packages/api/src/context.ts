@@ -9,12 +9,14 @@ export type CreateContextOptions = {
 type Session = typeof auth.$Infer.Session;
 
 export async function createContext({ context }: CreateContextOptions) {
+  const requestHeaders = context.req.raw.headers;
   const session = (await auth.api.getSession({
-    headers: context.req.raw.headers,
+    headers: requestHeaders,
   })) as Session;
 
   return {
     session,
+    requestHeaders,
   };
 }
 

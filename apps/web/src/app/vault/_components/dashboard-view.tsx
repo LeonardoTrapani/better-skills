@@ -6,12 +6,14 @@ import { Hexagon, Warehouse } from "lucide-react";
 import { GridBackground } from "@/components/ui/grid-background";
 import MySkillsTable from "@/app/vault/_components/my-skills-table";
 import SkillGraph from "@/app/vault/_components/skill-graph";
+import { useIsDesktopLg } from "@/hooks/use-is-desktop-lg";
 import { cn } from "@/lib/utils";
 
 export default function DashboardView() {
   const [mobileTab, setMobileTab] = useState<"graph" | "vault">("graph");
   const [panelHeight, setPanelHeight] = useState(620);
   const [backgroundHeight, setBackgroundHeight] = useState(680);
+  const isDesktopLg = useIsDesktopLg();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const panelsGridRef = useRef<HTMLDivElement>(null);
 
@@ -46,13 +48,15 @@ export default function DashboardView() {
     <div ref={dashboardRef} className="relative overflow-hidden">
       <GridBackground className="opacity-32" />
 
-      <div
-        className="absolute inset-0 hidden lg:block"
-        style={{ height: backgroundHeight }}
-        aria-hidden
-      >
-        <SkillGraph height={backgroundHeight} variant="background" />
-      </div>
+      {isDesktopLg && (
+        <div
+          className="absolute inset-0 hidden lg:block"
+          style={{ height: backgroundHeight }}
+          aria-hidden
+        >
+          <SkillGraph height={backgroundHeight} variant="background" />
+        </div>
+      )}
 
       {/* Top tab bar – mobile only */}
       <div
@@ -101,15 +105,17 @@ export default function DashboardView() {
       <div className="relative z-10 mx-auto space-y-6 lg:pr-6 lg:pointer-events-none">
         <div ref={panelsGridRef} className="relative">
           <div className="lg:hidden space-y-6 lg:pointer-events-auto">
-            <div
-              id="dashboard-content-panel-graph"
-              role="tabpanel"
-              aria-labelledby="dashboard-content-tab-graph"
-              hidden={mobileTab !== "graph"}
-              className={mobileTab === "graph" ? "" : "hidden"}
-            >
-              <SkillGraph height={panelHeight} />
-            </div>
+            {!isDesktopLg && (
+              <div
+                id="dashboard-content-panel-graph"
+                role="tabpanel"
+                aria-labelledby="dashboard-content-tab-graph"
+                hidden={mobileTab !== "graph"}
+                className={mobileTab === "graph" ? "" : "hidden"}
+              >
+                <SkillGraph height={panelHeight} />
+              </div>
+            )}
 
             <div
               id="dashboard-content-panel-vault"

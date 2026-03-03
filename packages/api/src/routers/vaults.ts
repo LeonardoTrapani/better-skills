@@ -7,7 +7,7 @@ import { user } from "@better-skills/db/schema/auth";
 import { vault, vaultInvitation, vaultMembership } from "@better-skills/db/schema/vaults";
 
 import { getMembershipForVault, getUserMemberships, resolvePermissions } from "../lib/vault-access";
-import { protectedProcedure, router } from "../trpc";
+import { adminApiProcedure, protectedProcedure, router } from "../trpc";
 
 const vaultTypeEnum = z.enum(["personal", "enterprise", "system_default"]);
 const membershipRoleEnum = z.enum(["owner", "admin", "member"]);
@@ -55,7 +55,9 @@ const enterpriseVaultOutput = z.object({
   name: z.string(),
   type: z.literal("enterprise"),
   color: z.string().nullable(),
-  role: z.literal("owner"),
+  defaultAdminEmail: z.string().email(),
+  bootstrapStatus: z.enum(["membership_created", "invitation_created"]),
+  invitationId: z.string().uuid().nullable(),
 });
 
 const invitationActionOutput = z.object({
@@ -345,60 +347,107 @@ export const vaultsRouter = router({
       }),
   }),
 
-  createEnterprise: protectedProcedure
+  createEnterprise: adminApiProcedure
     .input(
       z.object({
         name: z.string().min(1),
         slug: z.string().min(1).max(64).optional(),
         color: z.string().nullable().optional(),
+        defaultAdminEmail: z.string().email(),
       }),
     )
     .output(enterpriseVaultOutput)
-    .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
+    .mutation(async ({ input }) => {
       const name = input.name.trim();
       const slug = toSlug(input.slug ?? name);
+      const defaultAdminEmail = normalizeEmail(input.defaultAdminEmail);
 
       if (!slug) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid enterprise vault slug" });
       }
 
       try {
-        const [created] = await db
-          .insert(vault)
-          .values({
-            slug,
-            name,
-            type: "enterprise",
-            color: input.color ?? null,
-            isSystemManaged: false,
-          })
-          .returning({
-            id: vault.id,
-            slug: vault.slug,
-            name: vault.name,
-            color: vault.color,
-          });
+        return await db.transaction(async (tx) => {
+          const [created] = await tx
+            .insert(vault)
+            .values({
+              slug,
+              name,
+              type: "enterprise",
+              color: input.color ?? null,
+              isSystemManaged: false,
+            })
+            .returning({
+              id: vault.id,
+              slug: vault.slug,
+              name: vault.name,
+              color: vault.color,
+            });
 
-        if (!created) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create enterprise vault",
-          });
-        }
+          if (!created) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to create enterprise vault",
+            });
+          }
 
-        await db.insert(vaultMembership).values({
-          vaultId: created.id,
-          userId,
-          role: "owner",
-          isEnabled: true,
+          const [existingUser] = await tx
+            .select({ id: user.id })
+            .from(user)
+            .where(ilike(user.email, defaultAdminEmail))
+            .limit(1);
+
+          if (existingUser) {
+            await tx
+              .insert(vaultMembership)
+              .values({
+                vaultId: created.id,
+                userId: existingUser.id,
+                role: "owner",
+                isEnabled: true,
+              })
+              .onConflictDoUpdate({
+                target: [vaultMembership.vaultId, vaultMembership.userId],
+                set: { role: "owner", isEnabled: true },
+              });
+
+            return {
+              ...created,
+              type: "enterprise" as const,
+              defaultAdminEmail,
+              bootstrapStatus: "membership_created" as const,
+              invitationId: null,
+            };
+          }
+
+          const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14);
+          const [invite] = await tx
+            .insert(vaultInvitation)
+            .values({
+              vaultId: created.id,
+              email: defaultAdminEmail,
+              role: "owner",
+              status: "pending",
+              invitedByUserId: null,
+              expiresAt,
+            })
+            .returning({ id: vaultInvitation.id });
+
+          if (!invite) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to create bootstrap invitation",
+            });
+          }
+
+          return {
+            ...created,
+            type: "enterprise" as const,
+            defaultAdminEmail,
+            bootstrapStatus: "invitation_created" as const,
+            invitationId: invite.id,
+          };
         });
-
-        return {
-          ...created,
-          type: "enterprise" as const,
-          role: "owner" as const,
-        };
       } catch (error) {
         if (
           typeof error === "object" &&

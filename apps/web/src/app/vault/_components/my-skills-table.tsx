@@ -45,13 +45,13 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <input
             type="text"
-            placeholder="Search visible skills..."
+            placeholder="Search skills..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             name="skills-search"
             autoComplete="off"
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            aria-label="Search visible skills"
+            aria-label="Search skills"
           />
         </div>
       </div>
@@ -72,44 +72,60 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
 
         {!isLoading &&
           !isError &&
-          skills.map((skill, index) => (
-            <Link
-              key={skill.id}
-              href={buildSkillHref(skill.id)}
-              className="flex gap-6 items-center border-b border-border px-6 py-2 transition-colors hover:bg-secondary/50 group"
-            >
-              <span className="text-sm text-neutral-300 tabular-nums">{index + 1}</span>
+          skills.map((skill, index) => {
+            const isDisabled = !skill.vault.isEnabled;
 
-              <div className="min-w-0 w-full flex flex-wrap items-baseline gap-x-2">
-                <span className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-                  {skill.name}
-                </span>
-                <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
-                  {skill.description}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                  {skill.vault.color ? (
-                    <span
-                      className="inline-block size-2 border border-border/70"
-                      style={{ backgroundColor: skill.vault.color }}
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-mono">
-                    /{skill.vault.slug}
-                  </Badge>
-                </span>
-                <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-                  {vaultTypeLabel(skill.vault.type)}
-                </Badge>
-                {skill.vault.isReadOnly ? (
+            return (
+              <Link
+                key={skill.id}
+                href={buildSkillHref(skill.id)}
+                className="flex gap-6 items-center border-b border-border px-6 py-2 transition-colors hover:bg-secondary/50 group"
+              >
+                <span className="text-sm text-neutral-300 tabular-nums">{index + 1}</span>
+
+                <div className="min-w-0 w-full flex flex-wrap items-baseline gap-x-2">
+                  <span
+                    className={cn(
+                      "text-sm font-semibold transition-colors",
+                      isDisabled
+                        ? "text-muted-foreground"
+                        : "text-foreground group-hover:text-primary",
+                    )}
+                  >
+                    {skill.name}
+                  </span>
+                  <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
+                    {skill.description}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                    {skill.vault.color ? (
+                      <span
+                        className="inline-block size-2 border border-border/70"
+                        style={{ backgroundColor: skill.vault.color }}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-mono">
+                      {skill.vault.name}
+                    </Badge>
+                  </span>
                   <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-                    Read only
+                    {vaultTypeLabel(skill.vault.type)}
                   </Badge>
-                ) : null}
-              </div>
-            </Link>
-          ))}
+                  {skill.vault.isReadOnly ? (
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
+                      Read only
+                    </Badge>
+                  ) : null}
+                  {isDisabled ? (
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
+                      Disabled
+                    </Badge>
+                  ) : null}
+                </div>
+              </Link>
+            );
+          })}
 
         {!isLoading && !isError && skills.length === 0 && (
           <div className="border-t border-border px-6 md:px-8 py-16 text-center">

@@ -3,6 +3,7 @@ import { cloneCommand } from "./commands/clone";
 import { configCommand } from "./commands/config";
 import { createCommand } from "./commands/create";
 import { deleteCommand } from "./commands/delete";
+import { disableCommand } from "./commands/disable";
 import { getCommand } from "./commands/get";
 import { getUnmanagedSkillsCommand } from "./commands/get-unmanaged-skills";
 import { referencesCommand } from "./commands/references";
@@ -48,6 +49,7 @@ function printUsage() {
   );
   ui.log.info("  better-skills config");
   ui.log.info("  better-skills create --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]");
+  ui.log.info("  better-skills disable <vault-slug|vault-id>");
   ui.log.info(
     "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
   );
@@ -117,6 +119,9 @@ async function run(args: string[]) {
       return;
     case "create":
       await createCommand();
+      return;
+    case "disable":
+      await disableCommand();
       return;
     case "update":
       await updateCommand();

@@ -40,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,11 +69,6 @@ interface FlatItem {
   action: () => void;
   shortcut?: React.ReactNode;
   sectionLabel?: string;
-}
-
-function vaultTypeLabel(type: "personal" | "enterprise" | "system_default") {
-  if (type === "system_default") return "default";
-  return type;
 }
 
 // ─── Mode badge ──────────────────────────────────────────────────────────────
@@ -155,6 +149,9 @@ function PaletteRow({
   onHover: () => void;
   innerRef: (el: HTMLButtonElement | null) => void;
 }) {
+  const enterpriseColor =
+    item.vault?.type === "enterprise" ? (item.vault.color?.trim() ?? "var(--primary)") : null;
+
   return (
     <button
       ref={innerRef}
@@ -167,29 +164,16 @@ function PaletteRow({
       )}
     >
       <span className="flex-shrink-0 text-neutral-300">{item.icon}</span>
-      <span className="flex-1 min-w-0 truncate">{item.label}</span>
-      {item.vault ? (
-        <span className="hidden min-w-0 items-center gap-1 md:inline-flex">
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-mono">
-            {item.vault.color ? (
-              <span
-                className="inline-block size-2 border border-border/70"
-                style={{ backgroundColor: item.vault.color }}
-                aria-hidden="true"
-              />
-            ) : null}
-            <span className="truncate">/{item.vault.slug}</span>
-          </Badge>
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-            {vaultTypeLabel(item.vault.type)}
-          </Badge>
-          {item.vault.isReadOnly ? (
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px] uppercase font-mono">
-              Read only
-            </Badge>
-          ) : null}
-        </span>
-      ) : null}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        {enterpriseColor ? (
+          <span
+            className="inline-block size-2 border border-border/70"
+            style={{ backgroundColor: enterpriseColor }}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span className="min-w-0 truncate">{item.label}</span>
+      </span>
       {item.subtitle && (
         <span className="flex-shrink-0 text-[11px] text-muted-foreground truncate max-w-[40%]">
           {item.subtitle}

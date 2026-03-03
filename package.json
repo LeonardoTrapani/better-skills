@@ -32,7 +32,6 @@
     "db:migrate": "turbo -F @better-skills/db db:migrate",
     "check": "oxlint && oxfmt --write",
     "sync-default-skills": "bun --env-file=apps/server/.env run packages/auth/src/sync-default-skills.ts",
-    "migrate-default-skill-references": "bun --env-file=apps/server/.env run packages/auth/src/migrate-default-skill-references.ts --apply",
     "prepare": "husky"
   },
   "dependencies": {

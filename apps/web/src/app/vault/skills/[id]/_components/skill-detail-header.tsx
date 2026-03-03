@@ -12,7 +12,6 @@ export function SkillDetailHeader({
   description,
   isDefaultSkill,
   vaultName,
-  vaultSlug,
   vaultType,
   vaultColor,
   isReadOnly,
@@ -28,7 +27,6 @@ export function SkillDetailHeader({
   description?: string | null;
   isDefaultSkill: boolean;
   vaultName: string;
-  vaultSlug: string;
   vaultType: "personal" | "enterprise" | "system_default";
   vaultColor: string | null;
   isReadOnly: boolean;
@@ -121,7 +119,7 @@ export function SkillDetailHeader({
             </span>
           </div>
 
-          <p className="text-[10px] font-mono text-muted-foreground">/{vaultSlug}</p>
+          <p className="text-[10px] font-mono text-muted-foreground">{vaultName}</p>
         </div>
 
         <div>
@@ -240,7 +238,7 @@ export function SkillDetailHeader({
           {vaultTypeLabel} vault
         </span>
         <span className="text-border">|</span>
-        <span className="truncate">/{vaultSlug}</span>
+        <span className="truncate">{vaultName}</span>
         <span className="text-border">|</span>
         <span>{isReadOnly ? "read only" : "editable"}</span>
         <span className="text-border">|</span>

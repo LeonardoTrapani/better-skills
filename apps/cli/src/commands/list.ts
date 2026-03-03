@@ -36,6 +36,7 @@ export async function listCommand() {
         slug: string;
         type: "personal" | "enterprise" | "system_default";
         isReadOnly: boolean;
+        isEnabled: boolean;
       };
     }> = [];
 
@@ -70,8 +71,9 @@ export async function listCommand() {
 
       console.log(`[${i + 1}] ${item.name}`);
       console.log(`    ${item.description}`);
+      const statusLabel = item.vault.isEnabled ? "" : " [DISABLED]";
       console.log(
-        `    vault: ${item.vault.slug} (${item.vault.type})${item.vault.isReadOnly ? " [read-only]" : ""}`,
+        `    vault: ${item.vault.slug} (${item.vault.type})${item.vault.isReadOnly ? " [read-only]" : ""}${statusLabel}`,
       );
       console.log(`    id: ${item.id} | slug: ${item.slug} | updated: ${updated}`);
       if (i < items.length - 1) console.log();

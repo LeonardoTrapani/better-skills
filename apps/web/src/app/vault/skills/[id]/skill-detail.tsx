@@ -167,7 +167,6 @@ function SkillDetailInner({ id }: { id: string }) {
     description: data.description,
     isDefaultSkill,
     vaultName: data.vault.name,
-    vaultSlug: data.vault.slug,
     vaultType: data.vault.type,
     vaultColor: data.vault.color,
     isReadOnly: data.vault.isReadOnly,

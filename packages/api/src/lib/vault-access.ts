@@ -107,14 +107,17 @@ export async function getUserMemberships(userId: string): Promise<VaultMembershi
 }
 
 /**
- * Fetch only enabled vault memberships — the set of vaults whose skills
- * should appear in list/search/graph queries.
+ * Legacy helper retained for compatibility.
+ *
+ * Despite the name, this now returns all vault IDs the user is a member of.
+ * `isEnabled` is surfaced as status metadata in read outputs instead of
+ * filtering list/search/graph visibility.
  */
 export async function getEnabledVaultIds(userId: string): Promise<string[]> {
   const rows = await db
     .select({ vaultId: vaultMembership.vaultId })
     .from(vaultMembership)
-    .where(and(eq(vaultMembership.userId, userId), eq(vaultMembership.isEnabled, true)));
+    .where(eq(vaultMembership.userId, userId));
 
   return rows.map((r) => r.vaultId);
 }

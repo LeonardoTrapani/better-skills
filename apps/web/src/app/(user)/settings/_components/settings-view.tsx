@@ -6,7 +6,6 @@ import {
   Building2,
   Check,
   Clock3,
-  EyeOff,
   Laptop,
   Loader2,
   Lock,
@@ -163,7 +162,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
         toast.success(input.isEnabled ? "Vault enabled" : "Vault disabled");
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to update vault visibility");
+        toast.error(error.message || "Failed to update vault status");
       },
     }),
   );
@@ -271,6 +270,11 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
       sortedMemberships.filter(
         (membership) => membership.vault.type === "enterprise" && membership.canAdmin,
       ),
+    [sortedMemberships],
+  );
+
+  const hasEnterpriseMembership = useMemo(
+    () => sortedMemberships.some((membership) => membership.vault.type === "enterprise"),
     [sortedMemberships],
   );
 
@@ -412,169 +416,175 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage your account, appearance, and security.
+            Manage vaults, enterprise access, account, appearance, and security.
           </p>
         </header>
 
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {/* ── Account ── */}
-          <Section
-            icon={<User className="size-4 text-muted-foreground" aria-hidden="true" />}
-            title="Account"
-            description="Your signed-in identity. Connected through your authentication provider."
-          >
-            <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                {userImage ? (
-                  <span className="size-11 shrink-0 overflow-hidden rounded-full border border-border/70 bg-muted/40">
-                    <Image
-                      src={userImage}
-                      alt={userName}
-                      width={44}
-                      height={44}
-                      className="size-full object-cover"
-                      unoptimized
-                    />
-                  </span>
-                ) : (
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-sm font-semibold text-muted-foreground select-none">
-                    {userInitial}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{userName}</p>
-                  <p className="break-all text-xs font-mono text-muted-foreground">{userEmail}</p>
+          <div className="order-3">
+            <Section
+              icon={<User className="size-4 text-muted-foreground" aria-hidden="true" />}
+              title="Account"
+              description="Your signed-in identity. Connected through your authentication provider."
+            >
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  {userImage ? (
+                    <span className="size-11 shrink-0 overflow-hidden rounded-full border border-border/70 bg-muted/40">
+                      <Image
+                        src={userImage}
+                        alt={userName}
+                        width={44}
+                        height={44}
+                        className="size-full object-cover"
+                        unoptimized
+                      />
+                    </span>
+                  ) : (
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-sm font-semibold text-muted-foreground select-none">
+                      {userInitial}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{userName}</p>
+                    <p className="break-all text-xs font-mono text-muted-foreground">{userEmail}</p>
+                  </div>
                 </div>
+
+                <div className="border-t border-dashed border-border" />
+
+                <Row>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <LogOut className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-sm text-foreground">Sign out</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-2"
+                    onClick={handleSignOut}
+                    disabled={signOutPending}
+                  >
+                    {signOutPending ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    ) : null}
+                    Sign out
+                  </Button>
+                </Row>
               </div>
-
-              <div className="border-t border-dashed border-border" />
-
-              <Row>
-                <div className="flex items-center gap-3 min-w-0">
-                  <LogOut className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="text-sm text-foreground">Sign out</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-2"
-                  onClick={handleSignOut}
-                  disabled={signOutPending}
-                >
-                  {signOutPending ? (
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                  ) : null}
-                  Sign out
-                </Button>
-              </Row>
-            </div>
-          </Section>
+            </Section>
+          </div>
 
           {/* ── Appearance ── */}
-          <Section
-            icon={<Sun className="size-4 text-muted-foreground" aria-hidden="true" />}
-            title="Appearance"
-            description="Choose how Better Skills looks on this device."
-          >
-            <div className="grid gap-2 sm:grid-cols-3">
-              {THEME_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const isSelected = option.value === selectedTheme;
+          <div className="order-4">
+            <Section
+              icon={<Sun className="size-4 text-muted-foreground" aria-hidden="true" />}
+              title="Appearance"
+              description="Choose how Better Skills looks on this device."
+            >
+              <div className="grid gap-2 sm:grid-cols-3">
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const isSelected = option.value === selectedTheme;
 
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setTheme(option.value)}
-                    className={`group flex items-center gap-3 border px-4 py-3 text-left transition-colors ${
-                      isSelected
-                        ? "border-primary/40 bg-primary/5"
-                        : "border-border hover:border-primary/30"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex size-8 shrink-0 items-center justify-center transition-colors ${
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setTheme(option.value)}
+                      className={`group flex items-center gap-3 border px-4 py-3 text-left transition-colors ${
                         isSelected
-                          ? "text-primary"
-                          : "text-muted-foreground group-hover:text-foreground"
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border hover:border-primary/30"
                       }`}
                     >
-                      <Icon className="size-4" aria-hidden="true" />
-                    </span>
+                      <span
+                        className={`inline-flex size-8 shrink-0 items-center justify-center transition-colors ${
+                          isSelected
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        }`}
+                      >
+                        <Icon className="size-4" aria-hidden="true" />
+                      </span>
 
-                    <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
-                      {option.label}
-                    </span>
+                      <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                        {option.label}
+                      </span>
 
-                    <span
-                      className={`flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-muted-foreground/25 text-transparent"
-                      }`}
-                    >
-                      <Check className="size-2.5" aria-hidden="true" />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </Section>
+                      <span
+                        className={`flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/25 text-transparent"
+                        }`}
+                      >
+                        <Check className="size-2.5" aria-hidden="true" />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          </div>
 
           {/* ── Security ── */}
-          <Section
-            icon={<ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />}
-            title="Security"
-            description="Protect your account with additional verification."
-          >
-            <div className="space-y-3">
-              <Row>
-                <div className="flex items-center gap-3 min-w-0">
-                  <Lock className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">
-                      Password
-                      <Badge variant="outline" className="ml-2 text-[10px]">
-                        Soon
-                      </Badge>
-                    </p>
+          <div className="order-5">
+            <Section
+              icon={<ShieldCheck className="size-4 text-muted-foreground" aria-hidden="true" />}
+              title="Security"
+              description="Protect your account with additional verification."
+            >
+              <div className="space-y-3">
+                <Row>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Lock className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground">
+                        Password
+                        <Badge variant="outline" className="ml-2 text-[10px]">
+                          Soon
+                        </Badge>
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Button size="sm" variant="outline" disabled>
-                  Change
-                </Button>
-              </Row>
+                  <Button size="sm" variant="outline" disabled>
+                    Change
+                  </Button>
+                </Row>
 
-              <Row>
-                <div className="flex items-center gap-3 min-w-0">
-                  <ShieldCheck
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">
-                      Two-Factor Authentication
-                      <Badge variant="outline" className="ml-2 text-[10px]">
-                        Soon
-                      </Badge>
-                    </p>
+                <Row>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ShieldCheck
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground">
+                        Two-Factor Authentication
+                        <Badge variant="outline" className="ml-2 text-[10px]">
+                          Soon
+                        </Badge>
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Button size="sm" variant="outline" disabled>
-                  Enable
-                </Button>
-              </Row>
-            </div>
-          </Section>
+                  <Button size="sm" variant="outline" disabled>
+                    Enable
+                  </Button>
+                </Row>
+              </div>
+            </Section>
+          </div>
 
           {/* ── Vaults ── */}
-          <Section
-            icon={<Building2 className="size-4 text-muted-foreground" aria-hidden="true" />}
-            title="Vaults"
-            description="Manage visible vaults and pending invitations. Disabled vaults stay in your membership list."
-          >
-            <div className="space-y-4">
+          <div className="order-1">
+            <Section
+              icon={<Building2 className="size-4 text-muted-foreground" aria-hidden="true" />}
+              title="Vaults"
+              description="Manage vault membership status. Disabled vaults stay in search, graph, and sync surfaces."
+            >
               <div className="space-y-3">
                 {membershipsQuery.isLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -613,6 +623,11 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                               Read only
                             </Badge>
                           ) : null}
+                          {!membership.isEnabled ? (
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              Disabled
+                            </Badge>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
@@ -630,12 +645,6 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                             <span className="inline-flex items-center gap-1">
                               <UserCheck className="size-3" aria-hidden="true" />
                               System-managed
-                            </span>
-                          ) : null}
-                          {!membership.isEnabled ? (
-                            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                              <EyeOff className="size-3" aria-hidden="true" />
-                              Hidden from list/search/graph
                             </span>
                           ) : null}
                         </div>
@@ -662,342 +671,368 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                   );
                 })}
               </div>
+            </Section>
+          </div>
 
-              <div className="border-t border-dashed border-border" />
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                  <Clock3 className="size-3.5" aria-hidden="true" />
-                  Pending invitations
-                </div>
-
-                {invitationsQuery.isLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                    Loading invitations...
-                  </div>
-                ) : null}
-
-                {!invitationsQuery.isLoading && pendingInvitations.length === 0 ? (
-                  <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
-                    No pending invitations.
-                  </div>
-                ) : null}
-
-                {pendingInvitations.map((invitation) => {
-                  const busyAccepting =
-                    acceptInvitationMutation.isPending &&
-                    acceptInvitationMutation.variables?.invitationId === invitation.id;
-                  const busyDeclining =
-                    declineInvitationMutation.isPending &&
-                    declineInvitationMutation.variables?.invitationId === invitation.id;
-
-                  return (
-                    <Row key={invitation.id}>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {invitation.vaultName}
-                          </p>
-                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                            {VAULT_TYPE_META[invitation.vaultType].label}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                            {invitation.role}
-                          </Badge>
-                        </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
-                          /{invitation.vaultSlug}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          className="gap-1.5"
-                          disabled={busyAccepting || busyDeclining}
-                          onClick={() => handleInvitationAccept(invitation.id)}
-                        >
-                          {busyAccepting ? (
-                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <Check className="size-3.5" aria-hidden="true" />
-                          )}
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5"
-                          disabled={busyAccepting || busyDeclining}
-                          onClick={() => handleInvitationDecline(invitation.id)}
-                        >
-                          {busyDeclining ? (
-                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <X className="size-3.5" aria-hidden="true" />
-                          )}
-                          Decline
-                        </Button>
-                      </div>
-                    </Row>
-                  );
-                })}
-              </div>
-
-              {manageableEnterpriseMemberships.length > 0 ? (
-                <>
-                  <div className="border-t border-dashed border-border" />
-
+          <div className="order-2">
+            <Section
+              icon={<Users className="size-4 text-muted-foreground" aria-hidden="true" />}
+              title="Enterprise mailbox"
+              description={
+                hasEnterpriseMembership
+                  ? "Manage enterprise members and invitations."
+                  : "Review and respond to pending enterprise invitations."
+              }
+            >
+              <div className="space-y-4">
+                {hasEnterpriseMembership ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
                       <Users className="size-3.5" aria-hidden="true" />
                       Enterprise admin
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {manageableEnterpriseMemberships.map((membership) => {
-                        const isSelected =
-                          membership.vaultId === selectedManagedMembership?.vaultId;
-                        return (
-                          <Button
-                            key={membership.vaultId}
-                            type="button"
-                            size="sm"
-                            variant={isSelected ? "default" : "outline"}
-                            className="h-8 gap-2"
-                            onClick={() => setSelectedManagedVaultId(membership.vaultId)}
-                          >
-                            {membership.vault.color ? (
-                              <span
-                                className="size-2 rounded-full border border-border/60"
-                                style={{ backgroundColor: membership.vault.color }}
-                                aria-hidden="true"
-                              />
-                            ) : null}
-                            {membership.vault.name}
-                          </Button>
-                        );
-                      })}
-                    </div>
+                    {manageableEnterpriseMemberships.length === 0 ? (
+                      <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
+                        You are part of an enterprise vault, but only owners and admins can manage
+                        members.
+                      </div>
+                    ) : null}
 
-                    {selectedManagedMembership ? (
-                      <div className="space-y-3 border border-border px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-foreground">
-                            {selectedManagedMembership.vault.name}
-                          </p>
-                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                            /{selectedManagedMembership.vault.slug}
-                          </Badge>
-                        </div>
-
-                        <div className="grid gap-3 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                          <p className="text-xs text-muted-foreground">
-                            Vault color is used across badges and graph nodes.
-                          </p>
-                          <Input
-                            type="color"
-                            value={vaultColorInput}
-                            onChange={(event) => setVaultColorInput(event.target.value)}
-                            className="h-9 w-full sm:w-20"
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={handleUpdateColor}
-                            disabled={updateVaultColorMutation.isPending}
-                          >
-                            {updateVaultColorMutation.isPending ? (
-                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                            ) : null}
-                            Save color
-                          </Button>
-                        </div>
-
-                        <form
-                          className="grid gap-2 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"
-                          onSubmit={handleInviteSubmit}
-                        >
-                          <Input
-                            type="email"
-                            placeholder="teammate@company.com"
-                            value={inviteEmail}
-                            onChange={(event) => setInviteEmail(event.target.value)}
-                            required
-                          />
-                          <select
-                            value={inviteRole}
-                            onChange={(event) =>
-                              setInviteRole(event.target.value as "admin" | "member")
-                            }
-                            className="h-9 border border-border bg-background px-3 text-sm"
-                          >
-                            <option value="member">Member</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                          <Button
-                            type="submit"
-                            size="sm"
-                            disabled={
-                              inviteMemberMutation.isPending || inviteEmail.trim().length === 0
-                            }
-                          >
-                            {inviteMemberMutation.isPending ? (
-                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                            ) : null}
-                            Invite
-                          </Button>
-                        </form>
-
-                        <div className="space-y-2 border border-border px-3 py-3">
-                          <p className="text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                            Members
-                          </p>
-
-                          {selectedManagedMembersQuery?.isLoading ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                              Loading members...
-                            </div>
-                          ) : null}
-
-                          {!selectedManagedMembersQuery?.isLoading &&
-                          selectedManagedMembers.length === 0 ? (
-                            <div className="text-xs text-muted-foreground">No members found.</div>
-                          ) : null}
-
-                          {selectedManagedMembers.map((member) => {
-                            const roleToggle = member.role === "admin" ? "member" : "admin";
-                            const roleToggleLabel =
-                              member.role === "admin" ? "Set member" : "Set admin";
-
-                            const roleBusy =
-                              updateMemberRoleMutation.isPending &&
-                              updateMemberRoleMutation.variables?.vaultId ===
-                                selectedManagedMembership.vaultId &&
-                              updateMemberRoleMutation.variables?.userId === member.userId;
-
-                            const removeBusy =
-                              removeMemberMutation.isPending &&
-                              removeMemberMutation.variables?.vaultId ===
-                                selectedManagedMembership.vaultId &&
-                              removeMemberMutation.variables?.userId === member.userId;
-
+                    {manageableEnterpriseMemberships.length > 0 ? (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {manageableEnterpriseMemberships.map((membership) => {
+                            const isSelected =
+                              membership.vaultId === selectedManagedMembership?.vaultId;
                             return (
-                              <div
-                                key={member.userId}
-                                className="flex flex-wrap items-center justify-between gap-2 border border-border px-3 py-2"
+                              <Button
+                                key={membership.vaultId}
+                                type="button"
+                                size="sm"
+                                variant={isSelected ? "default" : "outline"}
+                                className="h-8 gap-2"
+                                onClick={() => setSelectedManagedVaultId(membership.vaultId)}
                               >
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm text-foreground">{member.name}</p>
-                                  <p className="truncate text-xs font-mono text-muted-foreground">
-                                    {member.email}
-                                  </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] uppercase font-mono"
-                                  >
-                                    {member.role}
-                                  </Badge>
-
-                                  {member.role !== "owner" ? (
-                                    <>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={roleBusy || removeBusy}
-                                        onClick={() =>
-                                          setPendingRoleChange({
-                                            vaultId: selectedManagedMembership.vaultId,
-                                            userId: member.userId,
-                                            userName: member.name,
-                                            nextRole: roleToggle,
-                                          })
-                                        }
-                                      >
-                                        {roleBusy ? (
-                                          <Loader2
-                                            className="size-3.5 animate-spin"
-                                            aria-hidden="true"
-                                          />
-                                        ) : null}
-                                        {roleToggleLabel}
-                                      </Button>
-
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-destructive"
-                                        disabled={roleBusy || removeBusy}
-                                        onClick={() =>
-                                          setPendingRemoval({
-                                            vaultId: selectedManagedMembership.vaultId,
-                                            userId: member.userId,
-                                            userName: member.name,
-                                          })
-                                        }
-                                      >
-                                        {removeBusy ? (
-                                          <Loader2
-                                            className="size-3.5 animate-spin"
-                                            aria-hidden="true"
-                                          />
-                                        ) : null}
-                                        Remove
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[10px] uppercase font-mono"
-                                    >
-                                      Owner locked
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
+                                {membership.vault.color ? (
+                                  <span
+                                    className="size-2 rounded-full border border-border/60"
+                                    style={{ backgroundColor: membership.vault.color }}
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                {membership.vault.name}
+                              </Button>
                             );
                           })}
                         </div>
-                      </div>
+
+                        {selectedManagedMembership ? (
+                          <div className="space-y-3 border border-border px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground">
+                                {selectedManagedMembership.vault.name}
+                              </p>
+                            </div>
+
+                            <div className="grid gap-3 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                              <p className="text-xs text-muted-foreground">
+                                Vault color is used across badges and graph nodes.
+                              </p>
+                              <Input
+                                type="color"
+                                value={vaultColorInput}
+                                onChange={(event) => setVaultColorInput(event.target.value)}
+                                className="h-9 w-full sm:w-20"
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleUpdateColor}
+                                disabled={updateVaultColorMutation.isPending}
+                              >
+                                {updateVaultColorMutation.isPending ? (
+                                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                                ) : null}
+                                Save color
+                              </Button>
+                            </div>
+
+                            <form
+                              className="grid gap-2 border border-border px-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+                              onSubmit={handleInviteSubmit}
+                            >
+                              <Input
+                                type="email"
+                                placeholder="teammate@company.com"
+                                value={inviteEmail}
+                                onChange={(event) => setInviteEmail(event.target.value)}
+                                required
+                              />
+                              <select
+                                value={inviteRole}
+                                onChange={(event) =>
+                                  setInviteRole(event.target.value as "admin" | "member")
+                                }
+                                className="h-9 border border-border bg-background px-3 text-sm"
+                              >
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                              <Button
+                                type="submit"
+                                size="sm"
+                                disabled={
+                                  inviteMemberMutation.isPending || inviteEmail.trim().length === 0
+                                }
+                              >
+                                {inviteMemberMutation.isPending ? (
+                                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                                ) : null}
+                                Invite
+                              </Button>
+                            </form>
+
+                            <div className="space-y-2 border border-border px-3 py-3">
+                              <p className="text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                                Members
+                              </p>
+
+                              {selectedManagedMembersQuery?.isLoading ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                                  Loading members...
+                                </div>
+                              ) : null}
+
+                              {!selectedManagedMembersQuery?.isLoading &&
+                              selectedManagedMembers.length === 0 ? (
+                                <div className="text-xs text-muted-foreground">
+                                  No members found.
+                                </div>
+                              ) : null}
+
+                              {selectedManagedMembers.map((member) => {
+                                const roleToggle = member.role === "admin" ? "member" : "admin";
+                                const roleToggleLabel =
+                                  member.role === "admin" ? "Set member" : "Set admin";
+
+                                const roleBusy =
+                                  updateMemberRoleMutation.isPending &&
+                                  updateMemberRoleMutation.variables?.vaultId ===
+                                    selectedManagedMembership.vaultId &&
+                                  updateMemberRoleMutation.variables?.userId === member.userId;
+
+                                const removeBusy =
+                                  removeMemberMutation.isPending &&
+                                  removeMemberMutation.variables?.vaultId ===
+                                    selectedManagedMembership.vaultId &&
+                                  removeMemberMutation.variables?.userId === member.userId;
+
+                                return (
+                                  <div
+                                    key={member.userId}
+                                    className="flex flex-wrap items-center justify-between gap-2 border border-border px-3 py-2"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm text-foreground">
+                                        {member.name}
+                                      </p>
+                                      <p className="truncate text-xs font-mono text-muted-foreground">
+                                        {member.email}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] uppercase font-mono"
+                                      >
+                                        {member.role}
+                                      </Badge>
+
+                                      {member.role !== "owner" ? (
+                                        <>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={roleBusy || removeBusy}
+                                            onClick={() =>
+                                              setPendingRoleChange({
+                                                vaultId: selectedManagedMembership.vaultId,
+                                                userId: member.userId,
+                                                userName: member.name,
+                                                nextRole: roleToggle,
+                                              })
+                                            }
+                                          >
+                                            {roleBusy ? (
+                                              <Loader2
+                                                className="size-3.5 animate-spin"
+                                                aria-hidden="true"
+                                              />
+                                            ) : null}
+                                            {roleToggleLabel}
+                                          </Button>
+
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-destructive"
+                                            disabled={roleBusy || removeBusy}
+                                            onClick={() =>
+                                              setPendingRemoval({
+                                                vaultId: selectedManagedMembership.vaultId,
+                                                userId: member.userId,
+                                                userName: member.name,
+                                              })
+                                            }
+                                          >
+                                            {removeBusy ? (
+                                              <Loader2
+                                                className="size-3.5 animate-spin"
+                                                aria-hidden="true"
+                                              />
+                                            ) : null}
+                                            Remove
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] uppercase font-mono"
+                                        >
+                                          Owner locked
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
-                </>
-              ) : null}
-            </div>
-          </Section>
+                ) : null}
+
+                {hasEnterpriseMembership ? (
+                  <div className="border-t border-dashed border-border" />
+                ) : null}
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    Pending invitations
+                  </div>
+
+                  {invitationsQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      Loading invitations...
+                    </div>
+                  ) : null}
+
+                  {!invitationsQuery.isLoading && pendingInvitations.length === 0 ? (
+                    <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
+                      No pending invitations.
+                    </div>
+                  ) : null}
+
+                  {pendingInvitations.map((invitation) => {
+                    const busyAccepting =
+                      acceptInvitationMutation.isPending &&
+                      acceptInvitationMutation.variables?.invitationId === invitation.id;
+                    const busyDeclining =
+                      declineInvitationMutation.isPending &&
+                      declineInvitationMutation.variables?.invitationId === invitation.id;
+
+                    return (
+                      <Row key={invitation.id}>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {invitation.vaultName}
+                            </p>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {VAULT_TYPE_META[invitation.vaultType].label}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {invitation.role}
+                            </Badge>
+                          </div>
+                          <div className="text-[11px] font-mono text-muted-foreground">
+                            /{invitation.vaultSlug}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="gap-1.5"
+                            disabled={busyAccepting || busyDeclining}
+                            onClick={() => handleInvitationAccept(invitation.id)}
+                          >
+                            {busyAccepting ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Check className="size-3.5" aria-hidden="true" />
+                            )}
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            disabled={busyAccepting || busyDeclining}
+                            onClick={() => handleInvitationDecline(invitation.id)}
+                          >
+                            {busyDeclining ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <X className="size-3.5" aria-hidden="true" />
+                            )}
+                            Decline
+                          </Button>
+                        </div>
+                      </Row>
+                    );
+                  })}
+                </div>
+              </div>
+            </Section>
+          </div>
 
           {/* ── Danger Zone ── */}
-          <Section
-            icon={<Trash2 className="size-4 text-destructive/70" aria-hidden="true" />}
-            title="Danger Zone"
-            description="Irreversible actions that affect your entire account."
-            variant="danger"
-          >
-            <Row borderVariant="danger">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Delete account</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Permanently remove your account and all private data. This cannot be undone.
-                </p>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="shrink-0 gap-2"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-                Delete
-              </Button>
-            </Row>
-          </Section>
+          <div className="order-6">
+            <Section
+              icon={<Trash2 className="size-4 text-destructive/70" aria-hidden="true" />}
+              title="Danger Zone"
+              description="Irreversible actions that affect your entire account."
+              variant="danger"
+            >
+              <Row borderVariant="danger">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">Delete account</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Permanently remove your account and all private data. This cannot be undone.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0 gap-2"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  Delete
+                </Button>
+              </Row>
+            </Section>
+          </div>
         </div>
       </div>
 

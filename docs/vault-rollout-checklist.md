@@ -7,7 +7,7 @@ This runbook documents the production rollout sequence for the multi-vault model
 - Move ownership semantics from user-owned skills to vault-owned skills.
 - Keep one canonical shared `system-default` vault for default skills.
 - Ensure all users have memberships and defaults remain read-only where required.
-- Preserve mention/link integrity while removing per-user duplicated defaults.
+- Remove per-user duplicated default skills during the vault migration.
 
 ## Preconditions
 
@@ -23,14 +23,13 @@ Run from repository root:
 ```bash
 bun run db:migrate
 bun run sync-default-skills
-bun run migrate-default-skill-references
 ```
 
 Why this order:
 
 - `db:migrate` creates vault tables/columns and backfills base ownership state.
+- `db:migrate` also removes legacy per-user default-skill rows (`is_default=true` + `owner_user_id is not null`).
 - `sync-default-skills` ensures canonical defaults exist in `system-default`.
-- `migrate-default-skill-references` remaps mention targets and removes obsolete duplicated defaults only after canonical rows exist.
 
 ## Post-Deploy Validation Commands
 
@@ -59,21 +58,21 @@ Expected results:
 
 ## Fallback Plan
 
-If rollout fails before `migrate-default-skill-references`:
+If rollout fails before `sync-default-skills`:
 
 1. stop new deploys
 2. restore DB snapshot
 3. redeploy previous app version
 
-If rollout fails after `migrate-default-skill-references` started:
+If rollout fails after `sync-default-skills` started:
 
-1. treat as data migration incident (do not run ad-hoc deletes)
+1. treat as rollout incident (do not run ad-hoc deletes)
 2. restore DB snapshot and previous app version together
 3. rerun rollout in staging with captured failure inputs
 
 Notes:
 
-- `migrate-default-skill-references` is destructive only with `--apply`; keep dry-run logs for incident analysis.
+- legacy default cleanup now runs inside `db:migrate`; keep DB backup logs for incident analysis.
 - never partially rerun cleanup SQL by hand in production.
 
 ## Operational Notes

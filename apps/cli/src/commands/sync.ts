@@ -91,9 +91,9 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
   const fetchSpinner = ui.spinner();
   fetchSpinner.start("loading skills");
 
-  let visibleSkills: SkillListItem[];
+  let skillsToSync: SkillListItem[];
   try {
-    visibleSkills = await fetchAllSkills();
+    skillsToSync = await fetchAllSkills();
   } catch (error) {
     fetchSpinner.stop(pc.red(`failed to load skills: ${readErrorMessage(error)}`));
     return {
@@ -106,7 +106,7 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  if (visibleSkills.length === 0) {
+  if (skillsToSync.length === 0) {
     fetchSpinner.stop(pc.dim("no skills to sync"));
     return {
       ok: true,
@@ -118,20 +118,20 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     };
   }
 
-  fetchSpinner.stop(pc.green(`syncing ${visibleSkills.length} skill(s)`));
+  fetchSpinner.stop(pc.green(`syncing ${skillsToSync.length} skill(s)`));
 
-  const serverSkillIds = new Set(visibleSkills.map((s) => s.id));
+  const serverSkillIds = new Set(skillsToSync.map((s) => s.id));
   const expectedServerKeys = new Set(
-    visibleSkills.map((skill) => buildVaultScopedInstallKey(skill.vault.slug, skill.slug)),
+    skillsToSync.map((skill) => buildVaultScopedInstallKey(skill.vault.slug, skill.slug)),
   );
 
   let synced = 0;
   let failed = 0;
 
-  for (const [index, item] of visibleSkills.entries()) {
+  for (const [index, item] of skillsToSync.entries()) {
     const installKey = buildVaultScopedInstallKey(item.vault.slug, item.slug);
     const spinner = ui.spinner();
-    spinner.start(`syncing ${item.vault.slug}/${item.slug} (${index + 1}/${visibleSkills.length})`);
+    spinner.start(`syncing ${item.vault.slug}/${item.slug} (${index + 1}/${skillsToSync.length})`);
 
     try {
       const skill = await trpc.skills.getById.query({ id: item.id, linkMentions: false });
@@ -183,12 +183,12 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
     ui.log.info(pc.dim(`removed ${removedStaleSkills} skill(s) no longer on server`));
   }
 
-  ui.log.info(pc.dim(`synced ${synced}/${visibleSkills.length} skill(s)`));
+  ui.log.info(pc.dim(`synced ${synced}/${skillsToSync.length} skill(s)`));
 
   return {
     ok: failed === 0,
     authenticated: true,
-    totalSkills: visibleSkills.length,
+    totalSkills: skillsToSync.length,
     syncedSkills: synced,
     failedSkills: failed,
     removedStaleSkills,

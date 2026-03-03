@@ -7,7 +7,7 @@ This document explains how better-skills stores skills as a multi-vault graph in
 Model skills so they can be:
 
 - Scoped to a vault (personal, enterprise, or system-default)
-- Visible through per-user vault memberships (with per-vault enable/disable)
+- Visible through per-user vault memberships (with per-vault enabled/disabled status)
 - Stored with full `SKILL.md` content and parsed metadata
 - Split into subfiles (`references`, `scripts`, `assets`, etc.)
 - Linked in a many-to-many graph, including resource-level links
@@ -41,13 +41,13 @@ Per-user access and preference state for a vault.
 - `vault_id`: FK to `vault.id`
 - `user_id`: FK to `user.id`
 - `role`: enum `owner | admin | member`
-- `is_enabled`: user preference toggle for read surfaces
+- `is_enabled`: user preference status flag for vault membership
 - timestamps
 
 Rules:
 
 - Unique membership per `(vault_id, user_id)`.
-- Disabled memberships are still memberships; they are hidden from normal list/search/graph reads but remain manageable in settings.
+- Disabled memberships are still memberships; skills remain available in list/search/graph/sync and expose disabled status in read outputs.
 
 ### `vault_invitation`
 
@@ -133,7 +133,7 @@ Read/write/admin permissions are derived from `vault.type` + membership `role`:
 - `personal`: owner writable/admin; non-owner membership is read-only
 - `enterprise`: owner/admin writable; member read-only
 
-`vault_membership.is_enabled` controls visibility in bulk read paths (`list/search/graph`) but does not delete access metadata.
+`vault_membership.is_enabled` is surfaced as status in bulk read outputs (`list/search/graph`) but does not remove access metadata.
 
 ## Semantics: `frontmatter` vs `metadata`
 

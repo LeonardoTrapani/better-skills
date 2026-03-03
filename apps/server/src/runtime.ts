@@ -30,7 +30,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "x-better-skills-admin-token"],
     credentials: true,
   }),
 );
