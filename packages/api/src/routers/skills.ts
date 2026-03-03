@@ -15,6 +15,14 @@ import {
   validateMentionTargets,
 } from "../lib/link-sync";
 import { renderMentions, renderMentionsBatch } from "../lib/render-mentions";
+import {
+  type VaultType,
+  getEnabledVaultIds,
+  getVaultMetadataByIds,
+  assertCanRead,
+  resolvePermissions,
+  VaultAccessError,
+} from "../lib/vault-access";
 
 // -- shared enums --
 
@@ -58,6 +66,17 @@ const resourceInSkillOutput = resourceOutput.extend({
   renderedContent: z.string(),
 });
 
+// -- vault metadata schema (attached to skill outputs) --
+
+const vaultMetaOutput = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  type: z.enum(["personal", "enterprise", "system_default"]),
+  color: z.string().nullable(),
+  isReadOnly: z.boolean(),
+});
+
 // -- skill output --
 
 const skillOutput = z.object({
@@ -74,6 +93,7 @@ const skillOutput = z.object({
   sourceUrl: z.string().nullable(),
   sourceIdentifier: z.string().nullable(),
   resources: z.array(resourceInSkillOutput),
+  vault: vaultMetaOutput,
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -113,6 +133,7 @@ const graphOutput = z.object({
       kind: z.string().nullable(),
       contentSnippet: z.string().nullable(),
       updatedAt: z.string().nullable(),
+      vault: vaultMetaOutput.nullable(),
     }),
   ),
   edges: z.array(
@@ -131,8 +152,15 @@ function buildGraphPayload(
   skills: (typeof skill.$inferSelect)[],
   resources: (typeof skillResource.$inferSelect)[],
   explicitLinks?: (typeof skillLink.$inferSelect)[],
+  vaultMap?: Map<string, { slug: string; name: string; type: VaultType; color: string | null }>,
 ) {
   const nodeIds = new Set([...skills.map((s) => s.id), ...resources.map((r) => r.id)]);
+
+  // build a lookup from skillId → vault metadata for resource nodes
+  const skillVaultLookup = new Map<string, VaultMeta | null>();
+  for (const s of skills) {
+    skillVaultLookup.set(s.id, vaultMap ? buildVaultMeta(s.ownerVaultId, vaultMap) : null);
+  }
 
   const nodes = [
     ...skills.map((s) => ({
@@ -145,6 +173,7 @@ function buildGraphPayload(
       kind: null,
       contentSnippet: s.skillMarkdown ? s.skillMarkdown.slice(0, 200) : null,
       updatedAt: s.updatedAt.toISOString(),
+      vault: vaultMap ? buildVaultMeta(s.ownerVaultId, vaultMap) : null,
     })),
     ...resources.map((r) => ({
       id: r.id,
@@ -156,6 +185,7 @@ function buildGraphPayload(
       kind: r.kind,
       contentSnippet: r.content ? r.content.slice(0, 200) : null,
       updatedAt: r.updatedAt.toISOString(),
+      vault: skillVaultLookup.get(r.skillId) ?? null,
     })),
   ];
 
@@ -178,10 +208,51 @@ function buildGraphPayload(
   return { nodes, edges };
 }
 
+// -- vault metadata helper --
+
+type VaultMeta = {
+  id: string;
+  slug: string;
+  name: string;
+  type: VaultType;
+  color: string | null;
+  isReadOnly: boolean;
+};
+
+/**
+ * Build VaultMeta for a skill row given a pre-fetched vault metadata map.
+ * Personal vault is always writable; system_default is always read-only;
+ * enterprise depends on role (but for list outputs we default to read-only
+ * since we don't have per-row role info — callers can override).
+ */
+function buildVaultMeta(
+  vaultId: string,
+  vaultMap: Map<string, { slug: string; name: string; type: VaultType; color: string | null }>,
+  overrideReadOnly?: boolean,
+): VaultMeta {
+  const v = vaultMap.get(vaultId);
+  if (!v) {
+    return {
+      id: vaultId,
+      slug: "unknown",
+      name: "Unknown",
+      type: "personal",
+      color: null,
+      isReadOnly: false,
+    };
+  }
+  const isReadOnly =
+    overrideReadOnly !== undefined
+      ? overrideReadOnly
+      : v.type === "system_default" || v.type === "enterprise";
+  return { id: vaultId, slug: v.slug, name: v.name, type: v.type, color: v.color, isReadOnly };
+}
+
 /** map a skill row + resources array to the output shape, rendering mentions */
 async function toSkillOutput(
   row: typeof skill.$inferSelect,
   resources: (typeof skillResource.$inferSelect)[],
+  vaultMeta: VaultMeta,
   options?: {
     linkMentions?: boolean;
   },
@@ -215,12 +286,13 @@ async function toSkillOutput(
     sourceUrl: row.sourceUrl,
     sourceIdentifier: row.sourceIdentifier,
     resources: renderedResources,
+    vault: vaultMeta,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
-function toSkillListItem(row: typeof skill.$inferSelect) {
+function toSkillListItem(row: typeof skill.$inferSelect, vaultMeta: VaultMeta) {
   return {
     id: row.id,
     ownerUserId: row.ownerUserId,
@@ -232,6 +304,7 @@ function toSkillListItem(row: typeof skill.$inferSelect) {
     isDefault: row.isDefault,
     sourceUrl: row.sourceUrl,
     sourceIdentifier: row.sourceIdentifier,
+    vault: vaultMeta,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -335,10 +408,12 @@ export const skillsRouter = router({
     .query(async ({ ctx }) => {
       try {
         const userId = ctx.session.user.id;
+        const enabledVaultIds = await getEnabledVaultIds(userId);
+        if (enabledVaultIds.length === 0) return { count: 0 };
         const [result] = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(skill)
-          .where(eq(skill.ownerUserId, userId));
+          .where(inArray(skill.ownerVaultId, enabledVaultIds));
         return { count: result?.count ?? 0 };
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
@@ -360,12 +435,14 @@ export const skillsRouter = router({
     .query(async ({ ctx, input }) => {
       const { query, limit } = input;
       const userId = ctx.session.user.id;
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) return { items: [], total: 0 };
 
       const pattern = `%${query}%`;
       const useFuzzy = query.length >= 3;
 
       const matchCondition = searchCondition(query);
-      const whereClause = and(matchCondition, eq(skill.ownerUserId, userId));
+      const whereClause = and(matchCondition, inArray(skill.ownerVaultId, enabledVaultIds));
 
       // additive score: trigram similarity base + exact substring bonuses.
       // the ILIKE bonuses ensure "docker" in a description outranks "doc" trigram overlaps.
@@ -477,10 +554,13 @@ export const skillsRouter = router({
         parentSkillId: string | null;
       };
 
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) return { items: [] };
+
       const items: MentionItem[] = [];
 
       // --- skill results ---
-      const skillConditions = [eq(skill.ownerUserId, userId)];
+      const skillConditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
       if (query.length > 0) {
         const pattern = `%${query}%`;
         skillConditions.push(or(ilike(skill.name, pattern), ilike(skill.slug, pattern))!);
@@ -508,7 +588,7 @@ export const skillsRouter = router({
       }
 
       // --- resource results ---
-      const resourceConditions = [eq(skill.ownerUserId, userId)];
+      const resourceConditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
       if (query.length > 0) {
         const pattern = `%${query}%`;
         resourceConditions.push(
@@ -553,8 +633,10 @@ export const skillsRouter = router({
     .query(async ({ ctx, input }) => {
       const { cursor, limit, search } = input;
       const userId = ctx.session.user.id;
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) return { items: [], nextCursor: null };
 
-      const conditions = [eq(skill.ownerUserId, userId)];
+      const conditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
 
       if (search) {
         const pattern = `%${search}%`;
@@ -590,8 +672,10 @@ export const skillsRouter = router({
       const hasMore = rows.length > limit;
       const items = hasMore ? rows.slice(0, limit) : rows;
 
+      const vaultMap = await getVaultMetadataByIds(items.map((r) => r.ownerVaultId));
+
       return {
-        items: items.map(toSkillListItem),
+        items: items.map((row) => toSkillListItem(row, buildVaultMeta(row.ownerVaultId, vaultMap))),
         nextCursor: hasMore ? items[items.length - 1]!.id : null,
       };
     }),
@@ -606,8 +690,10 @@ export const skillsRouter = router({
     .query(async ({ ctx, input }) => {
       const { cursor, limit, search } = input;
       const userId = ctx.session.user.id;
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) return { items: [], nextCursor: null };
 
-      const conditions = [eq(skill.ownerUserId, userId)];
+      const conditions = [inArray(skill.ownerVaultId, enabledVaultIds)];
 
       if (search) {
         const pattern = `%${search}%`;
@@ -643,8 +729,10 @@ export const skillsRouter = router({
       const hasMore = rows.length > limit;
       const items = hasMore ? rows.slice(0, limit) : rows;
 
+      const vaultMap = await getVaultMetadataByIds(items.map((r) => r.ownerVaultId));
+
       return {
-        items: items.map(toSkillListItem),
+        items: items.map((row) => toSkillListItem(row, buildVaultMeta(row.ownerVaultId, vaultMap))),
         nextCursor: hasMore ? items[items.length - 1]!.id : null,
       };
     }),
@@ -659,19 +747,30 @@ export const skillsRouter = router({
     .output(skillOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const rows = await db
-        .select()
-        .from(skill)
-        .where(and(eq(skill.id, input.id), eq(skill.ownerUserId, userId)));
+      const rows = await db.select().from(skill).where(eq(skill.id, input.id));
 
       const row = rows[0];
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
 
+      let membership;
+      try {
+        membership = await assertCanRead(userId, row.ownerVaultId);
+      } catch (e) {
+        if (e instanceof VaultAccessError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+        throw e;
+      }
+
+      const vaultMap = await getVaultMetadataByIds([row.ownerVaultId]);
+      const permissions = resolvePermissions(membership.vaultType, membership.role);
+      const vaultMeta = buildVaultMeta(row.ownerVaultId, vaultMap, permissions.isReadOnly);
+
       const resources = await loadSkillResources(row.id);
 
-      return await toSkillOutput(row, resources, { linkMentions: input.linkMentions });
+      return await toSkillOutput(row, resources, vaultMeta, { linkMentions: input.linkMentions });
     }),
 
   getBySlug: protectedProcedure
@@ -684,19 +783,31 @@ export const skillsRouter = router({
     .output(skillOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+
+      // slug is unique per vault — find all matches across enabled vaults
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
       const rows = await db
         .select()
         .from(skill)
-        .where(and(eq(skill.slug, input.slug), eq(skill.ownerUserId, userId)));
+        .where(and(eq(skill.slug, input.slug), inArray(skill.ownerVaultId, enabledVaultIds)));
 
       const row = rows[0];
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
 
+      const membership = await assertCanRead(userId, row.ownerVaultId);
+      const vaultMap = await getVaultMetadataByIds([row.ownerVaultId]);
+      const permissions = resolvePermissions(membership.vaultType, membership.role);
+      const vaultMeta = buildVaultMeta(row.ownerVaultId, vaultMap, permissions.isReadOnly);
+
       const resources = await loadSkillResources(row.id);
 
-      return await toSkillOutput(row, resources, { linkMentions: input.linkMentions });
+      return await toSkillOutput(row, resources, vaultMeta, { linkMentions: input.linkMentions });
     }),
 
   getResourceByPath: protectedProcedure
@@ -709,10 +820,15 @@ export const skillsRouter = router({
     .output(resourceReadOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
       const skillRows = await db
         .select()
         .from(skill)
-        .where(and(eq(skill.slug, input.skillSlug), eq(skill.ownerUserId, userId)));
+        .where(and(eq(skill.slug, input.skillSlug), inArray(skill.ownerVaultId, enabledVaultIds)));
 
       const skillRow = skillRows[0];
       if (!skillRow) {
@@ -744,14 +860,20 @@ export const skillsRouter = router({
     .output(resourceReadOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const skillRows = await db
-        .select()
-        .from(skill)
-        .where(and(eq(skill.id, input.skillId), eq(skill.ownerUserId, userId)));
+      const skillRows = await db.select().from(skill).where(eq(skill.id, input.skillId));
 
       const skillRow = skillRows[0];
       if (!skillRow) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
+      try {
+        await assertCanRead(userId, skillRow.ownerVaultId);
+      } catch (e) {
+        if (e instanceof VaultAccessError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+        throw e;
       }
 
       const resource = await loadSkillResourceByPath(skillRow.id, input.resourcePath);
@@ -879,7 +1001,9 @@ export const skillsRouter = router({
         throw error;
       }
 
-      return await toSkillOutput(created, resources);
+      const vaultMap = await getVaultMetadataByIds([personalVault.id]);
+      const vaultMeta = buildVaultMeta(personalVault.id, vaultMap, false);
+      return await toSkillOutput(created, resources, vaultMeta);
     }),
 
   update: protectedProcedure
@@ -1048,12 +1172,20 @@ export const skillsRouter = router({
         .from(skillResource)
         .where(eq(skillResource.skillId, input.id));
 
-      return await toSkillOutput(updatedSkill, resources);
+      const vaultMap = await getVaultMetadataByIds([existing.ownerVaultId]);
+      const vaultMeta = buildVaultMeta(existing.ownerVaultId, vaultMap, false);
+      return await toSkillOutput(updatedSkill, resources, vaultMeta);
     }),
 
   graph: protectedProcedure.output(graphOutput).query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const skills = await db.select().from(skill).where(eq(skill.ownerUserId, userId));
+    const enabledVaultIds = await getEnabledVaultIds(userId);
+    if (enabledVaultIds.length === 0) return { nodes: [], edges: [] };
+
+    const skills = await db
+      .select()
+      .from(skill)
+      .where(inArray(skill.ownerVaultId, enabledVaultIds));
 
     if (skills.length === 0) return { nodes: [], edges: [] };
 
@@ -1089,15 +1221,19 @@ export const skillsRouter = router({
             )
         : [];
 
-    return buildGraphPayload(skills, resources, links);
+    const vaultMap = await getVaultMetadataByIds(skills.map((s) => s.ownerVaultId));
+    return buildGraphPayload(skills, resources, links, vaultMap);
   }),
 
-  // connected component around a single skill in the caller vault
+  // connected component around a single skill in the caller's enabled vaults
   graphForSkill: protectedProcedure
     .input(z.object({ skillId: z.string().uuid() }))
     .output(graphOutput)
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const enabledVaultIds = await getEnabledVaultIds(userId);
+      if (enabledVaultIds.length === 0) return { nodes: [], edges: [] };
+
       const visitedSkillIds = new Set<string>();
       const queue = [input.skillId];
       const allSkills: (typeof skill.$inferSelect)[] = [];
@@ -1118,7 +1254,7 @@ export const skillsRouter = router({
         const skills = await db
           .select()
           .from(skill)
-          .where(and(inArray(skill.id, batch), eq(skill.ownerUserId, userId)));
+          .where(and(inArray(skill.id, batch), inArray(skill.ownerVaultId, enabledVaultIds)));
 
         const foundIds = skills.map((s) => s.id);
         if (foundIds.length === 0) break;
@@ -1179,7 +1315,8 @@ export const skillsRouter = router({
         }
       }
 
-      return buildGraphPayload(allSkills, allResources, allLinks);
+      const vaultMap = await getVaultMetadataByIds(allSkills.map((s) => s.ownerVaultId));
+      return buildGraphPayload(allSkills, allResources, allLinks, vaultMap);
     }),
 
   references: protectedProcedure
@@ -1202,15 +1339,21 @@ export const skillsRouter = router({
       const userId = ctx.session.user.id;
 
       const [existing] = await db
-        .select({ id: skill.id, ownerUserId: skill.ownerUserId })
+        .select({ id: skill.id, ownerVaultId: skill.ownerVaultId })
         .from(skill)
         .where(eq(skill.id, input.skillId));
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
-      if (existing.ownerUserId !== userId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the skill owner" });
+
+      try {
+        await assertCanRead(userId, existing.ownerVaultId);
+      } catch (e) {
+        if (e instanceof VaultAccessError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+        throw e;
       }
 
       // get this skill's resource IDs to detect resource-level inbound refs

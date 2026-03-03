@@ -6,6 +6,10 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 
 - `ownerUserId` on skill table is now nullable (system-default vault skills have no user owner)
 - output zod schema for skill uses `ownerUserId: z.string().nullable()`
+- all skill read queries filter by `inArray(skill.ownerVaultId, enabledVaultIds)` — never by `ownerUserId`
+- all skill/graph outputs include a `vault` object (id, slug, name, type, color, isReadOnly) for UI/CLI to display vault context
+- single-item fetches (getById/getBySlug) use `assertCanRead` from vault-access for membership check
+- list/search/graph use `getEnabledVaultIds` for bulk filtering (disabled vaults excluded)
 - schema files live in `packages/db/src/schema/`, barrel-exported from `index.ts`
 - tables use uuid PKs with `defaultRandom()` (except auth tables which use text PKs)
 - snake_case in DB, camelCase in JS; timestamps always `created_at` + `updated_at`
@@ -72,3 +76,15 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - permission matrix: system_default always read-only; personal owner full access; enterprise owner/admin write, member read-only
 - created `packages/api/src/lib/vault-access.test.ts` with 16 tests covering the full permission matrix and error class
 - `bun run check-types` and `bun run check` pass
+
+### Task 8: update skill read queries to use enabled vault memberships — DONE
+- replaced all `eq(skill.ownerUserId, userId)` filters with `inArray(skill.ownerVaultId, enabledVaultIds)` using `getEnabledVaultIds(userId)` from vault-access helpers
+- updated procedures: `list`, `listByOwner`, `search`, `searchMentions`, `getById`, `getBySlug`, `getResourceByPath`, `getResourceBySkillIdAndPath`, `graph`, `graphForSkill`, `references`, `countByOwner`
+- added `vaultMetaOutput` zod schema (id, slug, name, type, color, isReadOnly) to all skill outputs: `skillOutput`, `skillListItem`, graph nodes
+- `getById`/`getBySlug`/`getResourceBySkillIdAndPath`/`references` now use `assertCanRead` for vault membership check — returns NOT_FOUND if user has no membership
+- `getBySlug` resolves across all enabled vaults (slug unique per vault, not globally)
+- `buildGraphPayload` now accepts optional `vaultMap` and attaches vault metadata to graph nodes
+- `toSkillOutput` and `toSkillListItem` now require `VaultMeta` parameter
+- for list/graph outputs, `isReadOnly` defaults to true for system_default and enterprise (conservative); for single-item fetches (getById/getBySlug), exact role-based isReadOnly is computed
+- `bun run check-types` and `bun run check` pass
+- vault-access unit tests (16) still pass
