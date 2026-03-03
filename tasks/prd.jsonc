@@ -61,7 +61,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "replace per-user default skill seeding with default-vault sync",

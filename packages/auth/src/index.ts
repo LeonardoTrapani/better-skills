@@ -7,6 +7,7 @@ import { bearer } from "better-auth/plugins/bearer";
 import { deviceAuthorization } from "better-auth/plugins/device-authorization";
 
 import { seedDefaultSkillsForUser } from "./default-skills";
+import { attachUserToSystemDefaultVault, ensurePersonalVault } from "./system-default-vault";
 
 function isLocalHost(host: string): boolean {
   return host === "localhost" || host === "127.0.0.1";
@@ -84,6 +85,24 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (createdUser) => {
+          try {
+            await ensurePersonalVault(createdUser.id, createdUser.name);
+          } catch (error) {
+            console.error(
+              `[vault] failed to create personal vault for user ${createdUser.id}`,
+              error,
+            );
+          }
+
+          try {
+            await attachUserToSystemDefaultVault(createdUser.id);
+          } catch (error) {
+            console.error(
+              `[vault] failed to attach user ${createdUser.id} to system-default vault`,
+              error,
+            );
+          }
+
           try {
             const seeded = await seedDefaultSkillsForUser(createdUser.id);
 

@@ -34,3 +34,14 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - updated schema: `ownerVaultId` is now `.notNull()`, removed partial index WHERE clause
 - fixed type errors in `packages/api/src/routers/skills.ts` (create mutation) and `packages/auth/src/default-skills.ts` (seedDefaultSkillsForUser) — both now look up the user's personal vault before inserting skills
 - `bun run check-types` and `bun run check` pass
+
+### Task 4: bootstrap global system-default vault and memberships — DONE
+- created `packages/auth/src/system-default-vault.ts` with 4 idempotent helpers:
+  - `ensureSystemDefaultVault()` — creates or returns the single system_default vault (slug `system-default`, isSystemManaged=true)
+  - `backfillSystemDefaultVaultMemberships()` — ensures all existing users have member role on the default vault, batched inserts with onConflictDoNothing
+  - `attachUserToSystemDefaultVault(userId)` — attaches a single new user to the default vault
+  - `ensurePersonalVault(userId, userName)` — creates personal vault + owner membership for new users (was missing from signup flow — migration 0007 only handled existing users)
+- updated `packages/auth/src/index.ts` user creation hook: now creates personal vault → attaches to system-default vault → seeds default skills (in order, since seedDefaultSkillsForUser needs the personal vault to exist)
+- updated `packages/auth/src/sync-default-skills.ts` to call `backfillSystemDefaultVaultMemberships()` before syncing default skills — runs on every deploy/build so new users who slipped through also get attached
+- no migration needed: vault creation + membership backfill is runtime-idempotent via the sync entrypoint
+- `bun run check-types` and `bun run check` pass
