@@ -57,3 +57,18 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - deploy/build pipeline unchanged — `sync-default-skills.ts` entrypoint now calls the new `syncDefaultSkillsToDefaultVault`
 - idempotency preserved: version hash check skips unchanged templates, unique (ownerVaultId, slug) prevents duplicates
 - `bun run check-types` and `bun run check` pass
+
+### Task 7: add api vault access control helpers — DONE
+- created `packages/api/src/lib/vault-access.ts` with:
+  - `resolvePermissions(vaultType, role)` — pure function, derives canRead/canWrite/canAdmin/isReadOnly from vault type + membership role
+  - `getUserMemberships(userId)` — fetches all memberships with joined vault metadata
+  - `getEnabledVaultIds(userId)` — returns vault IDs for enabled memberships (for read queries)
+  - `getMembershipForVault(userId, vaultId)` — single vault membership lookup
+  - `authorizeSkillAccess(userId, skillOwnerVaultId)` — high-level auth: resolves membership + permissions in one call
+  - `assertCanRead/assertCanWrite/assertCanAdmin` — throwing wrappers for procedure guards
+  - `getPersonalVaultId(userId)` — resolves personal vault (for create defaulting)
+  - `getVaultMetadataByIds(vaultIds)` — bulk vault metadata lookup for list/graph enrichment
+  - `VaultAccessError` class with code (FORBIDDEN/NOT_FOUND) for callers to map to TRPCError
+- permission matrix: system_default always read-only; personal owner full access; enterprise owner/admin write, member read-only
+- created `packages/api/src/lib/vault-access.test.ts` with 16 tests covering the full permission matrix and error class
+- `bun run check-types` and `bun run check` pass

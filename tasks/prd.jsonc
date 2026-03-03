@@ -108,7 +108,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "update skill read queries to use enabled vault memberships",
