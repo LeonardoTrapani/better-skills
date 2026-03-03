@@ -91,7 +91,7 @@ but delegates into `syncAutoLinksForSources`.
 Before persisting markdown text:
 
 - validate mention token syntax (UUID-only for persisted mentions)
-- validate target existence and same-owner constraints
+- validate target existence and same-vault constraints
 
 Validation runs for:
 
@@ -116,7 +116,7 @@ Then one call:
 For each source:
 
 1. parse mentions from markdown
-2. validate same-owner targets
+2. validate same-vault targets
 3. delete existing auto links for that source where `metadata.origin = "markdown-auto"`
 4. insert new auto links (if mentions exist)
 
@@ -139,7 +139,7 @@ Graph endpoints use `skill_link` rows (plus parent skill->resource edges) to bui
 ```text
 web/cli editor
   -> trpc skills.create|update|duplicate
-    -> validate mention syntax + ownership
+    -> validate mention syntax + vault ownership boundary
     -> persist skill/resource rows
     -> syncAutoLinksForSources(changedSources)
        -> delete old markdown-auto links per source
@@ -156,7 +156,7 @@ web/cli editor
 Current behavior:
 
 - scans template files in `resources/default-skills`
-- upserts default skill/resources for each matched user skill
+- upserts canonical default skill/resources into the shared `system-default` vault
 - resolves `:new:` mentions in top-level `SKILL.md`
 - resolves `:new:` mentions in markdown resources (`.md`, `.mdx`, `.txt`)
 - re-resolves lingering persisted `:new:` mentions before rebuilding links
@@ -188,7 +188,7 @@ What is still duplicated (known tech debt):
 ## Invariants
 
 - Persisted mention targets must be UUIDs.
-- Mention targets must exist and belong to the same owner.
+- Mention targets must exist and belong to the same vault as the source markdown.
 - Auto links are tagged with `metadata.origin = "markdown-auto"`.
 - Auto links are replace-on-write per source; manual links remain.
 - Parsing currently includes fenced code blocks and inline code; only escaped

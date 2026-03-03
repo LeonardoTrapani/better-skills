@@ -210,3 +210,11 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
   - enterprise skill (`/vault/skills/68bb16eb-e9e7-4c1e-9952-b557541016d9`) shows `/cli-verification-vault` and `editable` while role is owner/admin
   - simulated enterprise-member view by temporarily setting enterprise membership role `owner -> member` in DB, reloading skill detail, confirming `read only`, then restoring role back to `owner`
 - verification run: `bun run check-types` passes; `bun run check` reports only pre-existing unrelated web warnings
+
+### Task 21: document vault model rollout and invariants — VERIFIED + MARKED PASS
+- selected this next because it was the only remaining task with `passes: false`; docs-only scope with low risk and high operational value for production rollout safety
+- updated `docs/skills-schema.md` to match current vault-based ownership model: `vault`, `vault_membership`, `vault_invitation`, `owner_vault_id` canonical ownership, system-default read-only semantics, and membership enable/disable behavior
+- updated `docs/mention-link-sync-flow.md` to reflect same-vault mention/link validation (replacing stale same-owner wording) and canonical default-vault sync behavior
+- added rollout runbook `docs/vault-rollout-checklist.md` with explicit migrate+sync+validation command order, fallback plan, and post-deploy SQL checks
+- verification run: `bun run check-types` passes; `bun run check` passes with pre-existing unrelated web oxlint warnings
+- updated `tasks/prd.jsonc` to set task 21 `passes: true`

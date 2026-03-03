@@ -323,7 +323,7 @@
         "Rollout doc includes explicit command sequence for migrate + sync + validation",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
   ],
 }
