@@ -21,6 +21,15 @@ export interface GraphNode extends d3.SimulationNodeDatum {
   kind: string | null;
   contentSnippet: string | null;
   updatedAt: string | null;
+  vault?: {
+    id: string;
+    slug: string;
+    name: string;
+    type: "personal" | "enterprise" | "system_default";
+    color: string | null;
+    isReadOnly: boolean;
+    isEnabled: boolean;
+  } | null;
 }
 
 export interface GraphEdge extends d3.SimulationLinkDatum<GraphNode> {
@@ -49,12 +58,20 @@ interface ForceGraphProps {
   onNodeClick?: OnNodeClick;
 }
 
+function getEdgeSourceId(edge: GraphEdge) {
+  return typeof edge.source === "object" ? (edge.source as GraphNode).id : (edge.source as string);
+}
+
+function getEdgeTargetId(edge: GraphEdge) {
+  return typeof edge.target === "object" ? (edge.target as GraphNode).id : (edge.target as string);
+}
+
 /** Build a map of nodeId → Set of connected nodeIds */
 function buildAdjacency(edges: GraphEdge[]): Map<string, Set<string>> {
   const adj = new Map<string, Set<string>>();
   for (const e of edges) {
-    const sId = typeof e.source === "object" ? (e.source as GraphNode).id : (e.source as string);
-    const tId = typeof e.target === "object" ? (e.target as GraphNode).id : (e.target as string);
+    const sId = getEdgeSourceId(e);
+    const tId = getEdgeTargetId(e);
     if (!adj.has(sId)) adj.set(sId, new Set());
     if (!adj.has(tId)) adj.set(tId, new Set());
     adj.get(sId)!.add(tId);
@@ -62,8 +79,6 @@ function buildAdjacency(edges: GraphEdge[]): Map<string, Set<string>> {
   }
   return adj;
 }
-
-const TRANSITION_MS = 180;
 
 function getResourceNodeColors(isDarkMode: boolean) {
   if (isDarkMode) {
@@ -79,6 +94,35 @@ function getResourceNodeColors(isDarkMode: boolean) {
   };
 }
 
+function getDisabledSkillColor(isDarkMode: boolean) {
+  return isDarkMode ? "oklch(72% 0 0)" : "oklch(55% 0 0)";
+}
+
+function getNodeVaultColor(node: GraphNode, isDarkMode: boolean) {
+  if (node.vault && !node.vault.isEnabled) {
+    return getDisabledSkillColor(isDarkMode);
+  }
+
+  return node.vault?.color?.trim() || null;
+}
+
+function getSkillNodeColor(node: GraphNode, isDarkMode: boolean) {
+  return getNodeVaultColor(node, isDarkMode) ?? "var(--primary)";
+}
+
+function getResourceNodeFillColor({
+  isFocused,
+  isActive,
+  colors,
+}: {
+  isFocused: boolean;
+  isActive: boolean;
+  colors: ReturnType<typeof getResourceNodeColors>;
+}) {
+  if (isFocused || isActive) return colors.activeFill;
+  return colors.defaultFill;
+}
+
 export function ForceGraph({
   data,
   height = 450,
@@ -92,6 +136,10 @@ export function ForceGraph({
   const { resolvedTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
+  const zoomRafRef = useRef<number | null>(null);
+  const isGraphInteractingRef = useRef(false);
+  const tooltipRafRef = useRef<number | null>(null);
+  const pendingTooltipPosRef = useRef({ x: 0, y: 0 });
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -106,6 +154,34 @@ export function ForceGraph({
     return nodeById.get(hoveredNode.parentSkillId)?.label ?? null;
   }, [hoveredNode, nodeById]);
 
+  const resourceCountBySkillId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const edge of data.edges) {
+      if (edge.kind !== "parent") continue;
+      const sourceId = getEdgeSourceId(edge);
+      counts.set(sourceId, (counts.get(sourceId) ?? 0) + 1);
+    }
+    return counts;
+  }, [data.edges]);
+
+  const scheduleTooltipPosUpdate = useCallback((clientX: number, clientY: number) => {
+    pendingTooltipPosRef.current = {
+      x: clientX + 12,
+      y: clientY - 10,
+    };
+
+    if (tooltipRafRef.current !== null) return;
+
+    tooltipRafRef.current = window.requestAnimationFrame(() => {
+      tooltipRafRef.current = null;
+      const next = pendingTooltipPosRef.current;
+      setTooltipPos((prev) => {
+        if (prev.x === next.x && prev.y === next.y) return prev;
+        return next;
+      });
+    });
+  }, []);
+
   const buildGraph = useCallback(
     (container: HTMLDivElement) => {
       if (data.nodes.length === 0) return;
@@ -113,6 +189,10 @@ export function ForceGraph({
       if (simulationRef.current) {
         simulationRef.current.stop();
         simulationRef.current = null;
+      }
+      if (zoomRafRef.current !== null) {
+        window.cancelAnimationFrame(zoomRafRef.current);
+        zoomRafRef.current = null;
       }
       d3.select(container).select("svg").remove();
 
@@ -122,6 +202,7 @@ export function ForceGraph({
       const centerY = height / 2;
       const nodes: GraphNode[] = data.nodes.map((n) => ({ ...n }));
       const edges: GraphEdge[] = data.edges.map((e) => ({ ...e }));
+      const adjacency = buildAdjacency(edges);
 
       const svg = d3
         .select(container)
@@ -168,20 +249,7 @@ export function ForceGraph({
 
       const g = svg.append("g");
 
-      const zoomBehavior = d3
-        .zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.3, 4])
-        .on("zoom", (event) => g.attr("transform", event.transform));
-
-      svg.call(zoomBehavior);
-
-      // keep desktop zoom unchanged; allow mobile-only zoom-out
-      const isMobileViewport = window.innerWidth < 1024;
-      const initialScale = isMobileViewport ? mobileInitialScale : 1.1;
-      const initialTransform = d3.zoomIdentity
-        .translate(centerX * (1 - initialScale), centerY * (1 - initialScale))
-        .scale(initialScale);
-      svg.call(zoomBehavior.transform, initialTransform);
+      const zoomBehavior = d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.3, 3]);
 
       /* ── Edges ── */
       const linkG = g.append("g");
@@ -206,17 +274,23 @@ export function ForceGraph({
       const isFocus = (d: GraphNode) => !!(focusNodeId && d.id === focusNodeId);
       const baseRadius = (d: GraphNode) => (d.type === "skill" ? 8 : 3.5);
       const focusRadius = (d: GraphNode) => (d.type === "skill" ? 9 : 4.5);
+      const getResourceFill = (d: GraphNode, isActive: boolean) =>
+        getResourceNodeFillColor({
+          isFocused: isFocus(d),
+          isActive,
+          colors: resourceNodeColors,
+        });
 
       const circles = node
         .append("circle")
         .attr("r", (d) => (isFocus(d) ? focusRadius(d) : baseRadius(d)))
         .attr("fill", (d) => {
-          if (d.type === "skill") return "var(--primary)";
-          return isFocus(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
+          if (d.type === "skill") return getSkillNodeColor(d, isDarkMode);
+          return getResourceFill(d, false);
         })
         .attr("fill-opacity", (d) => (d.type === "skill" ? 1 : 1))
         .attr("stroke", (d) => {
-          return d.type === "skill" ? "var(--primary)" : "none";
+          return d.type === "skill" ? getSkillNodeColor(d, isDarkMode) : "none";
         })
         .attr("stroke-width", (d) => (d.type === "skill" ? 1.5 : 0))
         .attr("stroke-opacity", (d) => {
@@ -224,89 +298,102 @@ export function ForceGraph({
           return isFocus(d) ? 0.35 : 0.25;
         });
 
-      /* ── Labels for skills ── */
-      node
-        .filter((d) => d.type === "skill")
-        .append("text")
-        .text((d) => d.label)
-        .attr("dx", 12)
-        .attr("dy", 4)
-        .attr("font-size", "11px")
-        .attr("font-family", "var(--font-mono), monospace")
-        .attr("fill", "var(--foreground)")
-        .attr("opacity", 0.6)
-        .attr("pointer-events", "none");
+      const skillNodeCount = nodes.reduce(
+        (count, graphNode) => count + (graphNode.type === "skill" ? 1 : 0),
+        0,
+      );
+      if (skillNodeCount <= 120) {
+        /* ── Labels for skills ── */
+        node
+          .filter((d) => d.type === "skill")
+          .append("text")
+          .text((d) => d.label)
+          .attr("dx", 12)
+          .attr("dy", 4)
+          .attr("font-size", "11px")
+          .attr("font-family", "var(--font-mono), monospace")
+          .attr("fill", "var(--foreground)")
+          .attr("opacity", 0.6)
+          .attr("pointer-events", "none");
+      }
 
       /* ── Hover highlight logic ── */
-      const highlightNode = (hovId: string) => {
-        const adj = buildAdjacency(edges);
-        const connected = adj.get(hovId) ?? new Set<string>();
-        const isActive = (d: GraphNode) => d.id === hovId || connected.has(d.id);
+      const applyHighlight = (hoveredId: string | null) => {
+        const connected = hoveredId ? (adjacency.get(hoveredId) ?? new Set<string>()) : null;
+        const isActive = (d: GraphNode) =>
+          !hoveredId || d.id === hoveredId || (connected !== null && connected.has(d.id));
 
-        // Dim non-connected node groups
-        node
-          .transition()
-          .duration(TRANSITION_MS)
-          .style("opacity", (d) => (isActive(d) ? 1 : 0.12));
+        node.style("opacity", (d) => (isActive(d) ? 1 : 0.12));
 
-        // Connected resources transition to lighter color; skills stay primary always
         circles
-          .transition()
-          .duration(TRANSITION_MS)
           .attr("fill", (d) => {
-            if (d.type === "skill") return "var(--primary)"; // skills always primary
-            if (isFocus(d)) return resourceNodeColors.activeFill;
-            return isActive(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
+            if (d.type === "skill") return getSkillNodeColor(d, isDarkMode);
+            return getResourceFill(d, !!hoveredId && !!isActive(d));
           })
           .attr("r", (d) => (isFocus(d) ? focusRadius(d) : baseRadius(d)));
 
-        // Dim non-connected edges, brighten connected ones
-        link
-          .transition()
-          .duration(TRANSITION_MS)
-          .attr("stroke-opacity", (d) => {
-            const sId =
-              typeof d.source === "object" ? (d.source as GraphNode).id : (d.source as string);
-            const tId =
-              typeof d.target === "object" ? (d.target as GraphNode).id : (d.target as string);
-            const isConnected = sId === hovId || tId === hovId;
-            if (isConnected) return d.kind === "parent" ? 0.4 : 0.7;
-            return 0.04;
-          });
+        link.attr("stroke-opacity", (d) => {
+          if (!hoveredId) return d.kind === "parent" ? 0.12 : 0.3;
+          const sourceId = getEdgeSourceId(d);
+          const targetId = getEdgeTargetId(d);
+          const isConnected = sourceId === hoveredId || targetId === hoveredId;
+          if (isConnected) return d.kind === "parent" ? 0.4 : 0.7;
+          return 0.04;
+        });
+      };
+
+      const highlightNode = (hovId: string) => {
+        applyHighlight(hovId);
       };
 
       const resetHighlight = () => {
-        node.transition().duration(TRANSITION_MS).style("opacity", 1);
-
-        // Reset resource circles to default color and size; skills unchanged
-        circles
-          .transition()
-          .duration(TRANSITION_MS)
-          .attr("fill", (d) => {
-            if (d.type === "skill") return "var(--primary)";
-            return isFocus(d) ? resourceNodeColors.activeFill : resourceNodeColors.defaultFill;
-          })
-          .attr("r", (d) => (isFocus(d) ? focusRadius(d) : baseRadius(d)));
-
-        link
-          .transition()
-          .duration(TRANSITION_MS)
-          .attr("stroke-opacity", (d) => (d.kind === "parent" ? 0.12 : 0.3));
+        applyHighlight(null);
       };
+
+      let pendingZoomTransform: d3.ZoomTransform | null = null;
+      zoomBehavior
+        .on("start", () => {
+          isGraphInteractingRef.current = true;
+          setHoveredNode(null);
+          resetHighlight();
+        })
+        .on("zoom", (event) => {
+          pendingZoomTransform = event.transform;
+          if (zoomRafRef.current !== null) return;
+          zoomRafRef.current = window.requestAnimationFrame(() => {
+            zoomRafRef.current = null;
+            if (!pendingZoomTransform) return;
+            g.attr("transform", pendingZoomTransform.toString());
+          });
+        })
+        .on("end", () => {
+          isGraphInteractingRef.current = false;
+        });
+
+      svg.call(zoomBehavior);
+
+      // keep desktop zoom unchanged; allow mobile-only zoom-out
+      const isMobileViewport = window.innerWidth < 1024;
+      const initialScale = isMobileViewport ? mobileInitialScale : 1.1;
+      const initialTransform = d3.zoomIdentity
+        .translate(centerX * (1 - initialScale), centerY * (1 - initialScale))
+        .scale(initialScale);
+      svg.call(zoomBehavior.transform, initialTransform);
 
       /* ── Hover & click ── */
       node
-        .on("mouseenter", (_event, d) => {
+        .on("mouseenter", (event, d) => {
+          if (isGraphInteractingRef.current) return;
           setHoveredNode(d);
+          scheduleTooltipPosUpdate(event.clientX, event.clientY);
           highlightNode(d.id);
         })
         .on("mousemove", (event) => {
-          setTooltipPos({
-            x: event.clientX + 12,
-            y: event.clientY - 10,
-          });
+          if (isGraphInteractingRef.current) return;
+          scheduleTooltipPosUpdate(event.clientX, event.clientY);
         })
         .on("mouseleave", () => {
+          if (isGraphInteractingRef.current) return;
           setHoveredNode(null);
           resetHighlight();
         })
@@ -324,6 +411,9 @@ export function ForceGraph({
       const drag = d3
         .drag<SVGGElement, GraphNode>()
         .on("start", (event, d) => {
+          isGraphInteractingRef.current = true;
+          setHoveredNode(null);
+          resetHighlight();
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
           d.fy = d.y;
@@ -336,6 +426,7 @@ export function ForceGraph({
           if (!event.active) simulation.alphaTarget(0);
           d.fx = null;
           d.fy = null;
+          isGraphInteractingRef.current = false;
         });
 
       node.call(drag);
@@ -381,11 +472,25 @@ export function ForceGraph({
       mobileInitialScale,
       onNodeClick,
       resourceNodeColors,
+      isDarkMode,
+      scheduleTooltipPosUpdate,
     ],
   );
 
   useEffect(() => {
     setIsMounted(true);
+
+    return () => {
+      isGraphInteractingRef.current = false;
+      if (zoomRafRef.current !== null) {
+        window.cancelAnimationFrame(zoomRafRef.current);
+        zoomRafRef.current = null;
+      }
+      if (tooltipRafRef.current !== null) {
+        window.cancelAnimationFrame(tooltipRafRef.current);
+        tooltipRafRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -409,11 +514,8 @@ export function ForceGraph({
   // Count resources connected to the hovered skill
   const hoveredResourceCount = useMemo(() => {
     if (!hoveredNode || hoveredNode.type !== "skill") return 0;
-    return data.edges.filter((e) => {
-      const sourceId = typeof e.source === "object" ? (e.source as GraphNode).id : e.source;
-      return sourceId === hoveredNode.id && e.kind === "parent";
-    }).length;
-  }, [hoveredNode, data.edges]);
+    return resourceCountBySkillId.get(hoveredNode.id) ?? 0;
+  }, [hoveredNode, resourceCountBySkillId]);
 
   const tooltipLeft = isMounted
     ? Math.max(12, Math.min(tooltipPos.x, window.innerWidth - 352))

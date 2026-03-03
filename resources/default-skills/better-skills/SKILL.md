@@ -3,7 +3,7 @@ name: better-skills
 description: |
   Index and route better-skills vault operations from the CLI.
   Trigger when users ask to manage better-skills or a skill vault
-  (create, edit, delete, remove, search, import, clone, link, sync, backup, onboard).
+  (create, edit, delete, disable, remove, search, import, clone, link, sync, backup, onboard).
   Do not use when asked to use a skill.
 ---
 

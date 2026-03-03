@@ -15,6 +15,11 @@ interface SkillGraphProps {
   variant?: "panel" | "background";
 }
 
+function vaultTypeLabel(type: "personal" | "enterprise" | "system_default") {
+  if (type === "system_default") return "default";
+  return type;
+}
+
 export default function SkillGraph({ height, className, variant = "panel" }: SkillGraphProps) {
   const { data, isLoading, isError } = useQuery(trpc.skills.graph.queryOptions());
   const graphViewportRef = useRef<HTMLDivElement>(null);
@@ -51,6 +56,13 @@ export default function SkillGraph({ height, className, variant = "panel" }: Ski
 
   const forceGraphHeight = height ? graphHeight : 450;
   const graphCenterXBias = variant === "background" ? -0.18 : 0;
+  const vaultsInGraph = Array.from(
+    new Map(
+      (data?.nodes ?? [])
+        .filter((node) => node.type === "skill" && node.vault)
+        .map((node) => [node.vault!.id, node.vault!]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div
@@ -87,6 +99,27 @@ export default function SkillGraph({ height, className, variant = "panel" }: Ski
             centerXBias={graphCenterXBias}
             mobileInitialScale={0.9}
           />
+        )}
+
+        {variant === "panel" && vaultsInGraph.length > 0 && (
+          <div className="pointer-events-none absolute left-2 top-2 hidden max-w-[calc(100%-1rem)] flex-wrap gap-1.5 rounded border border-border bg-background/80 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur-sm lg:flex">
+            {vaultsInGraph.map((vault) => (
+              <span key={vault.id} className="inline-flex items-center gap-1">
+                <span
+                  className="inline-block size-2 border border-border/70"
+                  style={{
+                    backgroundColor: vault.isEnabled
+                      ? (vault.color ?? "var(--primary)")
+                      : "var(--muted-foreground)",
+                  }}
+                  aria-hidden="true"
+                />
+                {vault.name}
+                <span>{vaultTypeLabel(vault.type)}</span>
+                {!vault.isEnabled ? <span>disabled</span> : null}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>

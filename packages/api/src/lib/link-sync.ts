@@ -14,7 +14,7 @@ export interface MentionSyntaxIssue {
 export interface MentionValidationIssue {
   type: "skill" | "resource";
   targetId: string;
-  reason: "target_not_found" | "target_not_owned";
+  reason: "target_not_found" | "target_not_in_vault";
 }
 
 interface MentionValidationOptions {
@@ -26,13 +26,13 @@ export type AutoLinkSourceInput =
   | {
       type: "skill";
       sourceId: string;
-      sourceOwnerUserId: string | null;
+      sourceOwnerVaultId: string;
       markdown: string;
     }
   | {
       type: "resource";
       sourceId: string;
-      sourceOwnerUserId: string | null;
+      sourceOwnerVaultId: string;
       markdown: string;
     };
 
@@ -55,8 +55,8 @@ function formatMentionValidationMessage(issues: MentionValidationIssue[]): strin
   const details = issues
     .map((issue) => {
       const token = `[[${issue.type}:${issue.targetId}]]`;
-      if (issue.reason === "target_not_owned") {
-        return `${token} belongs to another owner`;
+      if (issue.reason === "target_not_in_vault") {
+        return `${token} belongs to another vault`;
       }
       return `${token} not found`;
     })
@@ -74,7 +74,7 @@ export class MentionValidationError extends Error {
 
 async function validateMentionTargetsFromMentions(
   mentions: Mention[],
-  sourceOwner: string | null,
+  sourceVaultId: string,
   options?: MentionValidationOptions,
 ): Promise<void> {
   if (mentions.length === 0) {
@@ -92,25 +92,25 @@ async function validateMentionTargetsFromMentions(
     .filter((mention) => mention.type === "resource" && !allowedResourceIds?.has(mention.targetId))
     .map((mention) => mention.targetId);
 
-  const existingSkills = new Map<string, string | null>();
+  const existingSkills = new Map<string, string>();
   if (skillMentionIds.length > 0) {
     const rows = await db
-      .select({ id: skill.id, ownerUserId: skill.ownerUserId })
+      .select({ id: skill.id, ownerVaultId: skill.ownerVaultId })
       .from(skill)
       .where(inArray(skill.id, skillMentionIds))
       .execute();
 
     for (const row of rows) {
-      existingSkills.set(row.id, row.ownerUserId);
+      existingSkills.set(row.id, row.ownerVaultId);
     }
   }
 
-  const existingResources = new Map<string, string | null>();
+  const existingResources = new Map<string, string>();
   if (resourceMentionIds.length > 0) {
     const rows = await db
       .select({
         id: skillResource.id,
-        ownerUserId: skill.ownerUserId,
+        ownerVaultId: skill.ownerVaultId,
       })
       .from(skillResource)
       .innerJoin(skill, eq(skillResource.skillId, skill.id))
@@ -118,7 +118,7 @@ async function validateMentionTargetsFromMentions(
       .execute();
 
     for (const row of rows) {
-      existingResources.set(row.id, row.ownerUserId);
+      existingResources.set(row.id, row.ownerVaultId);
     }
   }
 
@@ -130,8 +130,8 @@ async function validateMentionTargetsFromMentions(
         continue;
       }
 
-      const targetOwner = existingSkills.get(mention.targetId);
-      if (targetOwner === undefined) {
+      const targetVaultId = existingSkills.get(mention.targetId);
+      if (targetVaultId === undefined) {
         issues.push({
           type: "skill",
           targetId: mention.targetId,
@@ -140,11 +140,11 @@ async function validateMentionTargetsFromMentions(
         continue;
       }
 
-      if (targetOwner !== sourceOwner) {
+      if (targetVaultId !== sourceVaultId) {
         issues.push({
           type: "skill",
           targetId: mention.targetId,
-          reason: "target_not_owned",
+          reason: "target_not_in_vault",
         });
       }
       continue;
@@ -154,8 +154,8 @@ async function validateMentionTargetsFromMentions(
       continue;
     }
 
-    const targetOwner = existingResources.get(mention.targetId);
-    if (targetOwner === undefined) {
+    const targetVaultId = existingResources.get(mention.targetId);
+    if (targetVaultId === undefined) {
       issues.push({
         type: "resource",
         targetId: mention.targetId,
@@ -164,11 +164,11 @@ async function validateMentionTargetsFromMentions(
       continue;
     }
 
-    if (targetOwner !== sourceOwner) {
+    if (targetVaultId !== sourceVaultId) {
       issues.push({
         type: "resource",
         targetId: mention.targetId,
-        reason: "target_not_owned",
+        reason: "target_not_in_vault",
       });
     }
   }
@@ -180,7 +180,7 @@ async function validateMentionTargetsFromMentions(
 
 export async function validateMentionTargets(
   markdown: string,
-  sourceOwner: string | null,
+  sourceVaultId: string,
   options?: MentionValidationOptions,
 ): Promise<void> {
   const invalidTokens = findInvalidMentionTokens(markdown);
@@ -189,11 +189,11 @@ export async function validateMentionTargets(
   }
 
   const mentions = parseMentions(markdown);
-  await validateMentionTargetsFromMentions(mentions, sourceOwner, options);
+  await validateMentionTargetsFromMentions(mentions, sourceVaultId, options);
 }
 
 async function syncAutoLinksForSource(source: AutoLinkSourceInput, userId: string): Promise<void> {
-  await validateMentionTargets(source.markdown, source.sourceOwnerUserId);
+  await validateMentionTargets(source.markdown, source.sourceOwnerVaultId);
   const mentions = parseMentions(source.markdown);
 
   const sourceCondition =
@@ -245,8 +245,8 @@ export async function syncAutoLinksForSources(
  * with the current set of [[...]] mentions found in the markdown.
  * Manual links (without origin: "markdown-auto") are left untouched.
  *
- * Same-owner constraint: all mentions must point to existing targets
- * with the same owner as the source skill. Missing or cross-owner
+ * Same-vault constraint: all mentions must point to existing targets
+ * in the same vault as the source skill. Missing or cross-vault
  * targets raise MentionValidationError.
  *
  * The delete + insert runs sequentially. If the insert fails the
@@ -258,9 +258,9 @@ export async function syncAutoLinks(
   markdown: string,
   userId: string,
 ): Promise<void> {
-  // resolve the source skill's owner
+  // resolve the source skill's vault
   const sourceSkillRows = await db
-    .select({ ownerUserId: skill.ownerUserId })
+    .select({ ownerVaultId: skill.ownerVaultId })
     .from(skill)
     .where(eq(skill.id, sourceSkillId))
     .limit(1)
@@ -275,7 +275,7 @@ export async function syncAutoLinks(
       {
         type: "skill",
         sourceId: sourceSkillId,
-        sourceOwnerUserId: sourceSkill.ownerUserId,
+        sourceOwnerVaultId: sourceSkill.ownerVaultId,
         markdown,
       },
     ],

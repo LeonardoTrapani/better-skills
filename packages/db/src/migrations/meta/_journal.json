@@ -50,6 +50,27 @@
       "when": 1772212946194,
       "tag": "0006_tidy_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772534477488,
+      "tag": "0007_bored_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772534538841,
+      "tag": "0008_clean_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1772535183829,
+      "tag": "0009_eager_tombstone",
+      "breakpoints": true
     }
   ]
 }

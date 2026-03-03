@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+import { vault } from "./vaults";
 
 export const skillResourceKindEnum = pgEnum("skill_resource_kind", [
   "reference",
@@ -25,9 +26,10 @@ export const skill = pgTable(
   "skill",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    ownerUserId: text("owner_user_id")
+    ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "set null" }),
+    ownerVaultId: uuid("owner_vault_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => vault.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     description: text("description").notNull(),
@@ -51,7 +53,8 @@ export const skill = pgTable(
   },
   (table) => [
     index("skill_owner_user_id_idx").on(table.ownerUserId),
-    uniqueIndex("skill_private_owner_slug_idx").on(table.ownerUserId, table.slug),
+    index("skill_owner_vault_id_idx").on(table.ownerVaultId),
+    uniqueIndex("skill_vault_slug_idx").on(table.ownerVaultId, table.slug),
     // pg_trgm GIN indexes for fuzzy search
     index("skill_name_trgm_idx").using("gin", sql`${table.name} gin_trgm_ops`),
     index("skill_description_trgm_idx").using("gin", sql`${table.description} gin_trgm_ops`),
@@ -130,6 +133,10 @@ export const skillRelations = relations(skill, ({ one, many }) => ({
   owner: one(user, {
     fields: [skill.ownerUserId],
     references: [user.id],
+  }),
+  ownerVault: one(vault, {
+    fields: [skill.ownerVaultId],
+    references: [vault.id],
   }),
   resources: many(skillResource),
   outgoingLinks: many(skillLink, {

@@ -6,9 +6,9 @@ import {
   readErrorMessage,
   resolveNewResourceMentions,
 } from "../lib/skill-io";
+import { resolveSkillIdentifier } from "../lib/resolve-skill-identifier";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
-import { UUID_RE } from "../lib/uuid";
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(3);
@@ -42,7 +42,9 @@ export async function updateCommand() {
   const { identifier, from, slug } = parseArgs(process.argv);
 
   if (!identifier || !from) {
-    ui.log.error("usage: better-skills update <slug-or-uuid> --from <dir> [--slug <s>]");
+    ui.log.error(
+      "usage: better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
+    );
     process.exit(1);
   }
 
@@ -59,9 +61,7 @@ export async function updateCommand() {
 
   let targetSkill: Awaited<ReturnType<typeof trpc.skills.getById.query>>;
   try {
-    targetSkill = UUID_RE.test(identifier)
-      ? await trpc.skills.getById.query({ id: identifier, linkMentions: false })
-      : await trpc.skills.getBySlug.query({ slug: identifier, linkMentions: false });
+    targetSkill = await resolveSkillIdentifier(trpc, identifier, { linkMentions: false });
     s.stop(pc.dim(`loaded ${targetSkill.slug}`));
   } catch (error) {
     s.stop(pc.red("load failed"));

@@ -59,6 +59,12 @@ interface FlatItem {
   id: string;
   label: string;
   subtitle: string;
+  vault?: {
+    slug: string;
+    type: "personal" | "enterprise" | "system_default";
+    color: string | null;
+    isReadOnly: boolean;
+  } | null;
   icon: React.ReactNode;
   action: () => void;
   shortcut?: React.ReactNode;
@@ -143,6 +149,9 @@ function PaletteRow({
   onHover: () => void;
   innerRef: (el: HTMLButtonElement | null) => void;
 }) {
+  const enterpriseColor =
+    item.vault?.type === "enterprise" ? (item.vault.color?.trim() ?? "var(--primary)") : null;
+
   return (
     <button
       ref={innerRef}
@@ -155,7 +164,16 @@ function PaletteRow({
       )}
     >
       <span className="flex-shrink-0 text-neutral-300">{item.icon}</span>
-      <span className="flex-1 min-w-0 truncate">{item.label}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        {enterpriseColor ? (
+          <span
+            className="inline-block size-2 border border-border/70"
+            style={{ backgroundColor: enterpriseColor }}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span className="min-w-0 truncate">{item.label}</span>
+      </span>
       {item.subtitle && (
         <span className="flex-shrink-0 text-[11px] text-muted-foreground truncate max-w-[40%]">
           {item.subtitle}
@@ -390,6 +408,7 @@ export function SkillCommandPalette({
             label: skill.name,
             subtitle: skill.description ?? "",
             icon: <BookOpen className="size-4" />,
+            vault: skill.vault,
             action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
           });
         }
@@ -423,6 +442,7 @@ export function SkillCommandPalette({
             label: skill.name,
             subtitle: skill.description ?? "",
             icon: <BookOpen className="size-4" />,
+            vault: skill.vault,
             action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
             sectionLabel: items.length === 0 ? "Your skills" : undefined,
           });
@@ -441,6 +461,7 @@ export function SkillCommandPalette({
           label: skill.label,
           subtitle: skill.subtitle ?? "",
           icon: <BookOpen className="size-4" />,
+          vault: skill.vault,
           action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
           sectionLabel: items.length === 0 ? "Skills" : undefined,
         });
@@ -453,6 +474,7 @@ export function SkillCommandPalette({
           label: res.label,
           subtitle: res.subtitle ?? "",
           icon: <FileText className="size-4" />,
+          vault: res.vault,
           action: () =>
             runAndClose(() => {
               if (!res.parentSkillId) return;

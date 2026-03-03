@@ -3,6 +3,7 @@ import { cloneCommand } from "./commands/clone";
 import { configCommand } from "./commands/config";
 import { createCommand } from "./commands/create";
 import { deleteCommand } from "./commands/delete";
+import { disableCommand } from "./commands/disable";
 import { getCommand } from "./commands/get";
 import { getUnmanagedSkillsCommand } from "./commands/get-unmanaged-skills";
 import { referencesCommand } from "./commands/references";
@@ -41,14 +42,19 @@ function printUsage() {
   ui.log.info("  better-skills backup [--source <dir>] [--out <tmp-dir>] [--agent <agent>]...");
   ui.log.info("  better-skills list [search] [--all] [--limit N]");
   ui.log.info("  better-skills search <query> [--limit N]");
-  ui.log.info("  better-skills get <slug-or-uuid>");
+  ui.log.info("  better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>");
   ui.log.info("  better-skills get-unmanaged-skills");
-  ui.log.info("  better-skills clone <slug-or-uuid> [--to <dir>] [--force]");
+  ui.log.info(
+    "  better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--force]",
+  );
   ui.log.info("  better-skills config");
-  ui.log.info("  better-skills create --from <dir> [--slug <s>]");
-  ui.log.info("  better-skills update <slug-or-uuid> --from <dir> [--slug <s>]");
-  ui.log.info("  better-skills references <slug-or-uuid>");
-  ui.log.info("  better-skills delete <uuid> [--yes]");
+  ui.log.info("  better-skills create --from <dir> [--slug <s>] [--vault <vault-slug|vault-id>]");
+  ui.log.info("  better-skills disable <vault-slug|vault-id>");
+  ui.log.info(
+    "  better-skills update <vault-slug>/<skill-slug>|<slug>|<uuid> --from <dir> [--slug <s>]",
+  );
+  ui.log.info("  better-skills references <vault-slug>/<skill-slug>|<slug>|<uuid>");
+  ui.log.info("  better-skills delete <vault-slug>/<skill-slug>|<slug>|<uuid> [--yes]");
 }
 
 function printVersion() {
@@ -113,6 +119,9 @@ async function run(args: string[]) {
       return;
     case "create":
       await createCommand();
+      return;
+    case "disable":
+      await disableCommand();
       return;
     case "update":
       await updateCommand();

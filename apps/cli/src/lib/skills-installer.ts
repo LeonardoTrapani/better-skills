@@ -18,6 +18,15 @@ type SkillResourceInput = {
   content: string;
 };
 
+type InstallableSkillVault = {
+  id: string;
+  slug: string;
+  name: string;
+  type: "personal" | "enterprise" | "system_default";
+  color: string | null;
+  isReadOnly: boolean;
+};
+
 export type InstallableSkill = {
   id: string;
   slug: string;
@@ -27,6 +36,7 @@ export type InstallableSkill = {
   renderedMarkdown: string;
   frontmatter: Record<string, unknown>;
   resources: SkillResourceInput[];
+  vault: InstallableSkillVault;
   sourceUrl: string | null;
   sourceIdentifier: string | null;
 };
@@ -62,6 +72,7 @@ type InstallLockSkillEntry = {
   source: {
     type: "better-skills-api";
     serverUrl: string;
+    vault: InstallableSkillVault;
     sourceUrl: string | null;
     sourceIdentifier: string | null;
   };
@@ -136,6 +147,7 @@ export async function writeSkillFolder(
           skillId: skill.id,
           slug: skill.slug,
           name: skill.name,
+          vault: skill.vault,
           installedAt: new Date().toISOString(),
         },
         null,
@@ -261,6 +273,7 @@ async function writeInstallLock(
     source: {
       type: "better-skills-api",
       serverUrl: env.SERVER_URL,
+      vault: skill.vault,
       sourceUrl: skill.sourceUrl,
       sourceIdentifier: skill.sourceIdentifier,
     },
@@ -299,8 +312,11 @@ export async function uninstallSkill(skillFolder: string): Promise<void> {
 export async function installSkill(
   skill: InstallableSkill,
   agents: SupportedAgent[],
+  options?: {
+    skillFolder?: string;
+  },
 ): Promise<InstallSkillResult> {
-  const skillFolder = sanitizeName(skill.slug);
+  const skillFolder = sanitizeName(options?.skillFolder ?? skill.slug);
   const canonicalPath = join(BETTER_SKILLS_DIR, skillFolder);
 
   if (!isPathSafe(BETTER_SKILLS_DIR, canonicalPath)) {

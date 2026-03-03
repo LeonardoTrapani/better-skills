@@ -3,10 +3,34 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 // track calls to db operations
 let deleteCalls: { where: string }[] = [];
 let insertCalls: { values: unknown[] }[] = [];
-let skillOwners = new Map<string, string | null>();
-let resourceOwners = new Map<string, string | null>();
+let skillVaults = new Map<string, string>();
+let resourceVaults = new Map<string, string>();
 
 const drizzleNameSym = Symbol.for("drizzle:Name");
+
+function fakeColumn(name: string) {
+  return { config: { name }, name };
+}
+
+function fakeTable(name: string, columns: string[]) {
+  const table: Record<string | symbol, unknown> = { [drizzleNameSym]: name };
+  for (const column of columns) {
+    table[column] = fakeColumn(column);
+  }
+  return table;
+}
+
+mock.module("@better-skills/db/schema/skills", () => ({
+  skill: fakeTable("skill", ["id", "ownerVaultId"]),
+  skillResource: fakeTable("skill_resource", ["id", "skillId"]),
+  skillLink: fakeTable("skill_link", [
+    "sourceSkillId",
+    "sourceResourceId",
+    "targetSkillId",
+    "targetResourceId",
+    "metadata",
+  ]),
+}));
 
 function getTableName(table: unknown): string {
   if (table && typeof table === "object" && drizzleNameSym in table) {
@@ -56,17 +80,17 @@ mock.module("@better-skills/db", () => {
         const tableName = getTableName(table);
         const getRows = () => {
           if (tableName === "skill") {
-            // first call is the source skill lookup (returns ownerUserId)
+            // first call is the source skill lookup (returns ownerVaultId)
             // subsequent calls are target skill lookups
-            return [...skillOwners.entries()].map(([id, ownerUserId]) => ({
+            return [...skillVaults.entries()].map(([id, ownerVaultId]) => ({
               id,
-              ownerUserId,
+              ownerVaultId,
             }));
           }
           if (tableName === "skill_resource") {
-            return [...resourceOwners.entries()].map(([id, ownerUserId]) => ({
+            return [...resourceVaults.entries()].map(([id, ownerVaultId]) => ({
               id,
-              ownerUserId,
+              ownerVaultId,
             }));
           }
           return [];
@@ -78,9 +102,9 @@ mock.module("@better-skills/db", () => {
             where: (_condition?: unknown) =>
               // resource join query — returns resources with parent skill owner
               queryResult(
-                [...resourceOwners.entries()].map(([id, ownerUserId]) => ({
+                [...resourceVaults.entries()].map(([id, ownerVaultId]) => ({
                   id,
-                  ownerUserId,
+                  ownerVaultId,
                 })),
               ),
           }),
@@ -107,18 +131,18 @@ describe("syncAutoLinks", () => {
   const TARGET_SKILL = "b2c3d4e5-f6a7-8901-bcde-f12345678901";
   const TARGET_RESOURCE = "c3d4e5f6-a7b8-9012-cdef-123456789012";
   const USER_ID = "user-123";
-  const OWNER = "owner-1";
+  const VAULT = "vault-1";
 
   beforeEach(() => {
     deleteCalls = [];
     insertCalls = [];
-    // source skill + target skill both owned by OWNER
-    skillOwners = new Map([
-      [SKILL_UUID, OWNER],
-      [TARGET_SKILL, OWNER],
+    // source skill + target skill in the same vault
+    skillVaults = new Map([
+      [SKILL_UUID, VAULT],
+      [TARGET_SKILL, VAULT],
     ]);
-    // target resource owned by OWNER
-    resourceOwners = new Map([[TARGET_RESOURCE, OWNER]]);
+    // target resource in the same vault
+    resourceVaults = new Map([[TARGET_RESOURCE, VAULT]]);
   });
 
   test("deletes existing auto links and inserts new ones", async () => {
@@ -206,10 +230,9 @@ describe("syncAutoLinks", () => {
     }
   });
 
-  test("throws on cross-owner skill mentions", async () => {
+  test("throws on cross-vault skill mentions", async () => {
     const foreignSkill = "f6a7b8c9-d0e1-2345-6789-abcdef012345";
-    // add a skill owned by someone else
-    skillOwners.set(foreignSkill, "other-owner");
+    skillVaults.set(foreignSkill, "default-vault");
 
     const md = `[[skill:${TARGET_SKILL}]] [[skill:${foreignSkill}]]`;
 
@@ -221,15 +244,27 @@ describe("syncAutoLinks", () => {
     expect(insertCalls).toHaveLength(0);
   });
 
-  test("throws on cross-owner resource mentions", async () => {
+  test("throws on cross-vault resource mentions", async () => {
     const foreignResource = "a7b8c9d0-e1f2-3456-789a-bcdef0123456";
-    resourceOwners.set(foreignResource, "other-owner");
+    resourceVaults.set(foreignResource, "default-vault");
 
     const md = `[[resource:${TARGET_RESOURCE}]] [[resource:${foreignResource}]]`;
 
     await expect(syncAutoLinks(SKILL_UUID, md, USER_ID)).rejects.toBeInstanceOf(
       MentionValidationError,
     );
+
+    expect(deleteCalls).toHaveLength(0);
+    expect(insertCalls).toHaveLength(0);
+  });
+
+  test("rejects mention from personal vault source to default vault target", async () => {
+    const defaultVaultSkill = "d7d336f2-13b5-4f2a-9eca-ccf64a6f4e3d";
+    skillVaults.set(defaultVaultSkill, "default-vault");
+
+    await expect(
+      syncAutoLinks(SKILL_UUID, `[[skill:${defaultVaultSkill}]]`, USER_ID),
+    ).rejects.toBeInstanceOf(MentionValidationError);
 
     expect(deleteCalls).toHaveLength(0);
     expect(insertCalls).toHaveLength(0);
@@ -244,7 +279,7 @@ describe("syncAutoLinks", () => {
         {
           type: "resource",
           sourceId: SOURCE_RESOURCE,
-          sourceOwnerUserId: OWNER,
+          sourceOwnerVaultId: VAULT,
           markdown: md,
         },
       ],

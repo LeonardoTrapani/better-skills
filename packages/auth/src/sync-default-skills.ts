@@ -1,11 +1,18 @@
 import { sql } from "@better-skills/db";
 
-import { syncDefaultSkillsForAllUsers } from "./default-skills";
+import { syncDefaultSkillsToDefaultVault } from "./default-skills";
+import { backfillSystemDefaultVaultMemberships } from "./system-default-vault";
 
 async function main(): Promise<void> {
   try {
+    // ensure the system-default vault exists and all users are members
+    const vaultResult = await backfillSystemDefaultVaultMemberships();
+    console.log(
+      `[vault] system-default vault=${vaultResult.vaultId} memberships added=${vaultResult.added}`,
+    );
+
     const startedAt = Date.now();
-    const result = await syncDefaultSkillsForAllUsers();
+    const result = await syncDefaultSkillsToDefaultVault();
     const durationMs = Date.now() - startedAt;
 
     console.log(

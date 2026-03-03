@@ -11,6 +11,10 @@ export function SkillDetailHeader({
   name,
   description,
   isDefaultSkill,
+  vaultName,
+  vaultType,
+  vaultColor,
+  isReadOnly,
   sourceIdentifier,
   sourceUrl,
   updatedAt,
@@ -22,6 +26,10 @@ export function SkillDetailHeader({
   name: string;
   description?: string | null;
   isDefaultSkill: boolean;
+  vaultName: string;
+  vaultType: "personal" | "enterprise" | "system_default";
+  vaultColor: string | null;
+  isReadOnly: boolean;
   sourceIdentifier?: string | null;
   sourceUrl?: string | null;
   updatedAt: string | Date;
@@ -29,6 +37,13 @@ export function SkillDetailHeader({
   compact?: boolean;
   viewingResource?: string | null;
 }) {
+  const vaultTypeLabel =
+    vaultType === "system_default"
+      ? "default"
+      : vaultType === "enterprise"
+        ? "enterprise"
+        : "personal";
+
   const viewingResourceName = viewingResource
     ? (viewingResource.split("/").filter(Boolean).at(-1) ?? viewingResource)
     : null;
@@ -89,7 +104,22 @@ export function SkillDetailHeader({
                 default
               </span>
             )}
+            <span className="inline-flex items-center gap-1 border border-border px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+              {vaultColor ? (
+                <span
+                  className="inline-block size-2 border border-border/70"
+                  style={{ backgroundColor: vaultColor }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              {vaultTypeLabel}
+            </span>
+            <span className="inline-flex items-center border border-border px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+              {isReadOnly ? "read only" : "editable"}
+            </span>
           </div>
+
+          <p className="text-[10px] font-mono text-muted-foreground">{vaultName}</p>
         </div>
 
         <div>
@@ -103,6 +133,13 @@ export function SkillDetailHeader({
                 Resources
               </span>
               <span className="font-mono text-foreground">{resourcesCount}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Eye className="size-3" aria-hidden="true" />
+                Vault
+              </span>
+              <span className="font-mono text-foreground truncate max-w-[140px]">{vaultName}</span>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -190,6 +227,21 @@ export function SkillDetailHeader({
             <span className="text-border">|</span>
           </>
         )}
+        <span className="inline-flex items-center gap-1">
+          {vaultColor ? (
+            <span
+              className="inline-block size-2 border border-border/70"
+              style={{ backgroundColor: vaultColor }}
+              aria-hidden="true"
+            />
+          ) : null}
+          {vaultTypeLabel} vault
+        </span>
+        <span className="text-border">|</span>
+        <span className="truncate">{vaultName}</span>
+        <span className="text-border">|</span>
+        <span>{isReadOnly ? "read only" : "editable"}</span>
+        <span className="text-border">|</span>
         <span>
           {resourcesCount} resource{resourcesCount !== 1 ? "s" : ""}
         </span>

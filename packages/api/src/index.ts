@@ -1,4 +1,4 @@
-export { protectedProcedure, publicProcedure, router, t } from "./trpc";
+export { adminApiProcedure, protectedProcedure, publicProcedure, router, t } from "./trpc";
 
 export { createContext } from "./context";
 export { appRouter } from "./routers/index";

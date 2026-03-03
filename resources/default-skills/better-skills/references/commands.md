@@ -56,8 +56,12 @@ pointing to the given skill. Use before delete to check for broken links.
 
 ```bash
 better-skills config
+better-skills disable <vault-slug|vault-id>
 better-skills sync
 ```
+
+`disable` marks one vault membership as disabled in settings/list output while
+keeping its skills visible in list/search/graph/sync.
 
 ## Non-interactive usage
 

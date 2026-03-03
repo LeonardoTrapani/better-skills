@@ -5,6 +5,7 @@ import { user } from "@better-skills/db/schema/auth";
 
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import { skillsRouter } from "./skills";
+import { vaultsRouter } from "./vaults";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -20,6 +21,7 @@ export const appRouter = router({
     };
   }),
   skills: skillsRouter,
+  vaults: vaultsRouter,
 
   hasActivated: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
