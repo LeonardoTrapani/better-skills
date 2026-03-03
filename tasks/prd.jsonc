@@ -309,7 +309,7 @@
         "Mention validation tests include same-vault success and cross-vault rejection cases",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "document vault model rollout and invariants",

@@ -501,6 +501,20 @@ describe("vaults.listMine", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.isEnabled).toBe(false);
   });
+
+  test("setEnabled persists and listMine reflects new state", async () => {
+    const member = caller("member-1", "member@example.com");
+
+    const disabled = await member.setEnabled({
+      vaultId: ENTERPRISE_VAULT_ID,
+      isEnabled: false,
+    });
+    expect(disabled.isEnabled).toBe(false);
+
+    const mine = await member.listMine();
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.isEnabled).toBe(false);
+  });
 });
 
 describe("vaults enterprise membership flows", () => {
@@ -537,6 +551,39 @@ describe("vaults enterprise membership flows", () => {
         role: "member",
       }),
     ).rejects.toThrow("Owner or admin role required");
+  });
+
+  test("admin can update member role", async () => {
+    const admin = caller("admin-1", "admin@example.com");
+
+    const updated = await admin.members.updateRole({
+      vaultId: ENTERPRISE_VAULT_ID,
+      userId: "member-1",
+      role: "admin",
+    });
+
+    expect(updated.role).toBe("admin");
+
+    const membership = memberships.find(
+      (item) => item.vaultId === ENTERPRISE_VAULT_ID && item.userId === "member-1",
+    );
+    expect(membership?.role).toBe("admin");
+  });
+
+  test("admin can remove enterprise member", async () => {
+    const admin = caller("admin-1", "admin@example.com");
+
+    const removed = await admin.members.remove({
+      vaultId: ENTERPRISE_VAULT_ID,
+      userId: "member-1",
+    });
+
+    expect(removed.success).toBe(true);
+
+    const membership = memberships.find(
+      (item) => item.vaultId === ENTERPRISE_VAULT_ID && item.userId === "member-1",
+    );
+    expect(membership).toBeUndefined();
   });
 
   test("vault color updates are visible through vaults.listMine", async () => {

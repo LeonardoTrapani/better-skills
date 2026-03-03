@@ -120,3 +120,11 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - safety guard: deletion is refused if any markdown blob still references duplicated IDs after remap; supports dry-run by default and `--apply` for writes
 - added root command `bun run migrate-default-skill-references` (runs script with `--apply` and server env file)
 - verification: `bun run db:migrate`, `bun run sync-default-skills`, `bun run migrate-default-skill-references` => `remainingPerUserDefaultSkills=0`, remap stats show non-zero remaps and `mentions.unresolved=0`; `bun run check-types` and `bun run check` pass (`bun run check` still has unrelated oxlint warnings in `apps/web`)
+
+### Task 20: expand automated tests for vault matrix — DONE
+- added vault router tests in `packages/api/src/routers/vaults.test.ts` for `setEnabled` persistence, admin role updates, and admin member removal
+- fixed `packages/api/src/lib/link-sync.test.ts` schema mocking so mention validation tests execute reliably in isolation (includes same-vault success + cross-vault rejection)
+- added CLI-focused unit tests for upcoming multi-vault behavior:
+  - `apps/cli/src/lib/vault-identifiers.test.ts` + helper `vault-identifiers.ts` for `<vault>/<slug>` parsing + deterministic ambiguous-slug messaging
+  - `apps/cli/src/lib/vault-sync.test.ts` + helper `vault-sync.ts` for vault-scoped install keys and stale key pruning
+- verification run: `bun test packages/api/src/lib/link-sync.test.ts`, `bun test packages/api/src/routers/vaults.test.ts`, `bun test apps/cli/src/lib/vault-identifiers.test.ts apps/cli/src/lib/vault-sync.test.ts`, `bun run check-types`, `bun run check` (check reports pre-existing web warnings only)
