@@ -16,6 +16,7 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - relations defined in same file as tables, named relation keys for disambiguation
 - circular imports between schema files are fine (drizzle relations are lazy)
 - auth `userRelations` in `auth.ts` references tables from other schema files
+- enterprise vault management routes use a shared owner/admin guard (`assertCanManageEnterpriseVault`) and normalized email matching for invitations
 
 ---
 
@@ -104,3 +105,10 @@ Started: Tue Mar  3 10:23:37 AM CET 2026
 - implemented `vaults.setEnabled` to toggle membership `isEnabled` for the calling user only and return deterministic `NOT_FOUND` for non-memberships
 - implemented `vaults.invitations.listPending` to power settings inbox by returning pending invites for the signed-in email with joined vault metadata
 - verification: `bun run check-types` passes; `bun run check` passes (repo has unrelated oxlint warnings in web files)
+
+### Task 12: add enterprise vault admin and invitation procedures — DONE
+- added enterprise procedures to `packages/api/src/routers/vaults.ts`: `createEnterprise`, `inviteMember`, `invitations.acceptInvitation`, `invitations.declineInvitation`, `members.list`, `members.updateRole`, `members.remove`, and `updateColor`
+- added owner/admin guard helper for enterprise-only actions and enforced invitation email-match checks on accept/decline
+- invitation lifecycle statuses now transition through pending -> accepted/declined and auto-mark expired when an expired invite is acted on
+- added router tests in `packages/api/src/routers/vaults.test.ts` covering: admin invite + accept flow, non-admin rejection on admin procedures, and color updates reflected in `vaults.listMine`
+- verification: `bun test packages/api/src/routers/vaults.test.ts`, `bun run check-types`, and `bun run check` all pass (`bun run check` still reports pre-existing oxlint warnings in `apps/web`)

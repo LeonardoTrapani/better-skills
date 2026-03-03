@@ -155,7 +155,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "add vault router for membership preferences and listing",
@@ -188,7 +188,7 @@
         "`bun run check-types` passes",
         "Typecheck passes",
       ],
-      "passes": false,
+      "passes": true,
     },
     {
       "title": "add settings vault management ui",
