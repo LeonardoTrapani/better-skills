@@ -4,6 +4,7 @@ import { readErrorMessage } from "../lib/errors";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
 import { UUID_RE } from "../lib/uuid";
+import { formatVaultName } from "../lib/vault-display";
 
 function matchesVaultTarget(
   target: string,
@@ -38,16 +39,16 @@ export async function disableCommand() {
     }
 
     if (!membership.isEnabled) {
-      spinner.stop(pc.dim(`/${membership.vault.slug} is already disabled`));
+      spinner.stop(pc.dim(`${formatVaultName(membership.vault)} is already disabled`));
       return;
     }
 
-    spinner.stop(pc.dim(`disabling /${membership.vault.slug}`));
+    spinner.stop(pc.dim(`disabling ${formatVaultName(membership.vault)}`));
 
     const updateSpinner = ui.spinner();
     updateSpinner.start("updating vault status");
     await trpc.vaults.setEnabled.mutate({ vaultId: membership.vaultId, isEnabled: false });
-    updateSpinner.stop(pc.green(`disabled /${membership.vault.slug}`));
+    updateSpinner.stop(pc.green(`disabled ${formatVaultName(membership.vault)}`));
   } catch (error) {
     spinner.stop(pc.red("disable failed"));
     ui.log.error(readErrorMessage(error));

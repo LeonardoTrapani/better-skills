@@ -3,6 +3,7 @@ import pc from "picocolors";
 import { readErrorMessage } from "../lib/errors";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
+import { formatVaultWithType } from "../lib/vault-display";
 
 const DEFAULT_LIMIT = 5;
 
@@ -50,9 +51,9 @@ export async function searchCommand() {
       console.log(`    ${item.description}`);
       const statusLabel = item.vault.isEnabled ? "" : " [DISABLED]";
       console.log(
-        `    vault: ${item.vault.slug} (${item.vault.type})${item.vault.isReadOnly ? " [read-only]" : ""}${statusLabel}`,
+        `    vault: ${formatVaultWithType(item.vault)}${item.vault.isReadOnly ? " [read-only]" : ""}${statusLabel}`,
       );
-      console.log(`    id: ${item.id} | slug: ${item.slug} | updated: ${updated}`);
+      console.log(`    id: ${item.id} | updated: ${updated}`);
       if (item.snippet) {
         console.log(`    snippet: ${item.snippet}`);
       }

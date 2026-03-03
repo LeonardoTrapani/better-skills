@@ -9,6 +9,7 @@ import {
   uninstallSkill,
   type InstallableSkill,
 } from "../lib/skills-installer";
+import { formatVaultSkillLabel } from "../lib/vault-display";
 import { buildVaultScopedInstallKey, collectStaleVaultScopedKeys } from "../lib/vault-sync";
 import { trpc } from "../lib/trpc";
 import * as ui from "../lib/ui";
@@ -130,17 +131,18 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
 
   for (const [index, item] of skillsToSync.entries()) {
     const installKey = buildVaultScopedInstallKey(item.vault.slug, item.slug);
+    const skillLabel = formatVaultSkillLabel(item.vault, item.name);
     const spinner = ui.spinner();
-    spinner.start(`syncing ${item.vault.slug}/${item.slug} (${index + 1}/${skillsToSync.length})`);
+    spinner.start(`syncing ${skillLabel} (${index + 1}/${skillsToSync.length})`);
 
     try {
       const skill = await trpc.skills.getById.query({ id: item.id, linkMentions: false });
       await installSkill(toInstallableSkill(skill), selectedAgents, { skillFolder: installKey });
       synced += 1;
-      spinner.stop(pc.green(`synced ${item.vault.slug}/${item.slug}`));
+      spinner.stop(pc.green(`synced ${skillLabel}`));
     } catch (error) {
       failed += 1;
-      spinner.stop(pc.red(`failed ${item.vault.slug}/${item.slug}: ${readErrorMessage(error)}`));
+      spinner.stop(pc.red(`failed ${skillLabel}: ${readErrorMessage(error)}`));
     }
   }
 
@@ -169,14 +171,14 @@ export async function syncSkills(selectedAgents: SupportedAgent[]): Promise<Sync
   if (staleEntries.length > 0) {
     for (const [folder, entry] of staleEntries) {
       const spinner = ui.spinner();
-      spinner.start(`removing ${entry.slug}`);
+      spinner.start(`removing ${entry.name}`);
 
       try {
         await uninstallSkill(folder);
         removedStaleSkills += 1;
-        spinner.stop(pc.green(`removed ${entry.slug}`));
+        spinner.stop(pc.green(`removed ${entry.name}`));
       } catch (error) {
-        spinner.stop(pc.red(`failed to remove ${entry.slug}: ${readErrorMessage(error)}`));
+        spinner.stop(pc.red(`failed to remove ${entry.name}: ${readErrorMessage(error)}`));
       }
     }
 

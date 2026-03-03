@@ -645,7 +645,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                           ) : (
                             <Palette className="size-3" aria-hidden="true" />
                           )}
-                          <span>/{membership.vault.slug}</span>
+                          <span>{vaultType.label} vault</span>
                           {membership.vault.isSystemManaged ? (
                             <span className="inline-flex items-center gap-1">
                               <UserCheck className="size-3" aria-hidden="true" />
@@ -727,9 +727,6 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                                 <p className="truncate text-sm font-medium text-foreground">
                                   {selectedManagedMembership.vault.name}
                                 </p>
-                                <span className="truncate text-xs font-mono text-muted-foreground">
-                                  /{selectedManagedMembership.vault.slug}
-                                </span>
                               </div>
 
                               {manageableEnterpriseMemberships.length > 1 ? (
@@ -986,9 +983,6 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                             <Badge variant="outline" className="text-[10px] uppercase font-mono">
                               {invitation.role}
                             </Badge>
-                          </div>
-                          <div className="text-[11px] font-mono text-muted-foreground">
-                            /{invitation.vaultSlug}
                           </div>
                         </div>
 

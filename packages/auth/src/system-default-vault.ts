@@ -119,12 +119,12 @@ export async function attachUserToSystemDefaultVault(userId: string): Promise<vo
  * No-op if the user already has a personal vault.
  */
 export async function ensurePersonalVault(userId: string, userName: string): Promise<string> {
-  const slug = `personal-${userId}`;
+  const slug = "personal";
 
   const [existing] = await db
     .select({ id: vault.id })
     .from(vault)
-    .where(and(eq(vault.slug, slug), eq(vault.type, "personal")));
+    .where(and(eq(vault.ownerUserId, userId), eq(vault.type, "personal")));
 
   if (existing) {
     return existing.id;
@@ -133,6 +133,7 @@ export async function ensurePersonalVault(userId: string, userName: string): Pro
   const [created] = await db
     .insert(vault)
     .values({
+      ownerUserId: userId,
       slug,
       name: `${userName}'s Vault`,
       type: "personal",

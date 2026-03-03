@@ -71,6 +71,13 @@
       "when": 1772535183829,
       "tag": "0009_eager_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772578617066,
+      "tag": "0010_salty_enchantress",
+      "breakpoints": true
     }
   ]
 }

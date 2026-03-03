@@ -366,6 +366,13 @@ export const vaultsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid enterprise vault slug" });
       }
 
+      if (slug === "personal") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: 'Vault slug "personal" is reserved',
+        });
+      }
+
       try {
         return await db.transaction(async (tx) => {
           const [created] = await tx

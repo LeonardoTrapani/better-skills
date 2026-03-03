@@ -19,7 +19,8 @@ Model skills so they can be:
 Logical ownership boundary for skills.
 
 - `id`: UUID PK
-- `slug`: globally unique stable key
+- `owner_user_id`: nullable user owner reference (required for personal vaults)
+- `slug`: human-facing key
 - `name`: display name
 - `type`: enum `personal | enterprise | system_default`
 - `color`: optional display color used by UI/graph
@@ -32,6 +33,9 @@ Rules and semantics:
 - Exactly one shared `system_default` vault is expected in production.
 - Personal vaults are created per user and hold their writable defaults.
 - Enterprise vaults are collaborative and membership-driven.
+- Non-personal slugs are globally unique.
+- Personal vault slug is fixed as `personal` and is unique per owner via `(owner_user_id, slug)`.
+- Slug `personal` is reserved for personal vaults only.
 
 ### `vault_membership`
 

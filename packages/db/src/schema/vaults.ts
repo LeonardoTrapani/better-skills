@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   jsonb,
   pgEnum,
@@ -34,6 +35,7 @@ export const vault = pgTable(
   "vault",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "set null" }),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     type: vaultTypeEnum("type").notNull(),
@@ -50,7 +52,27 @@ export const vault = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [uniqueIndex("vault_slug_idx").on(table.slug), index("vault_type_idx").on(table.type)],
+  (table) => [
+    index("vault_type_idx").on(table.type),
+    uniqueIndex("vault_slug_non_personal_idx")
+      .on(table.slug)
+      .where(sql`${table.type} <> 'personal'`),
+    uniqueIndex("vault_personal_owner_slug_idx")
+      .on(table.ownerUserId, table.slug)
+      .where(sql`${table.type} = 'personal' and ${table.ownerUserId} is not null`),
+    check(
+      "vault_personal_owner_required",
+      sql`${table.type} <> 'personal' or ${table.ownerUserId} is not null`,
+    ),
+    check(
+      "vault_personal_slug_check",
+      sql`${table.type} <> 'personal' or ${table.slug} = 'personal'`,
+    ),
+    check(
+      "vault_non_personal_slug_check",
+      sql`${table.type} = 'personal' or ${table.slug} <> 'personal'`,
+    ),
+  ],
 );
 
 export const vaultMembership = pgTable(
