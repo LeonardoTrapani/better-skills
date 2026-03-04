@@ -61,12 +61,14 @@ function Section({
   title,
   description,
   children,
+  headerRight,
   variant = "default",
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   children: React.ReactNode;
+  headerRight?: React.ReactNode;
   variant?: "default" | "danger";
 }) {
   const borderColor = variant === "danger" ? "border-destructive/30" : "border-border";
@@ -74,13 +76,16 @@ function Section({
   return (
     <div className={`border ${borderColor} bg-background`}>
       <div className={`border-b ${borderColor} px-5 py-5 space-y-2`}>
-        <div className="flex items-center gap-2.5">
-          {icon}
-          <h2
-            className={`text-sm font-semibold uppercase font-mono ${variant === "danger" ? "text-destructive" : "text-foreground"}`}
-          >
-            {title}
-          </h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            {icon}
+            <h2
+              className={`text-sm font-semibold uppercase font-mono ${variant === "danger" ? "text-destructive" : "text-foreground"}`}
+            >
+              {title}
+            </h2>
+          </div>
+          {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
         </div>
         <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
@@ -282,6 +287,12 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
     () => sortedMemberships.some((membership) => membership.vault.type === "enterprise"),
     [sortedMemberships],
   );
+  const hasPendingEnterpriseInvitation = useMemo(
+    () => pendingInvitations.some((invitation) => invitation.vaultType === "enterprise"),
+    [pendingInvitations],
+  );
+
+  const shouldShowVaultsSection = useMemo(() => sortedMemberships.length > 2, [sortedMemberships]);
 
   const managedMembersQueries = useQueries({
     queries: manageableEnterpriseMemberships.map((membership) =>
@@ -427,7 +438,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
 
         <div className="flex flex-col gap-6">
           {/* ── Account ── */}
-          <div className="order-3">
+          <div className="order-1">
             <Section
               icon={<User className="size-4 text-muted-foreground" aria-hidden="true" />}
               title="Account"
@@ -583,106 +594,18 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
             </Section>
           </div>
 
-          {/* ── Vaults ── */}
-          <div className="order-1">
-            <Section
-              icon={<Building2 className="size-4 text-muted-foreground" aria-hidden="true" />}
-              title="Vaults"
-              description="Manage vault membership status. Disabled vaults stay in search, graph, and sync surfaces."
-            >
-              <div className="space-y-3">
-                {membershipsQuery.isLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                    Loading vault memberships...
-                  </div>
-                ) : null}
-
-                {!membershipsQuery.isLoading && visibleSettingsMemberships.length === 0 ? (
-                  <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
-                    No personal or enterprise vault memberships found.
-                  </div>
-                ) : null}
-
-                {visibleSettingsMemberships.map((membership) => {
-                  const vaultType = VAULT_TYPE_META[membership.vault.type];
-                  const busy =
-                    setVaultEnabledMutation.isPending &&
-                    setVaultEnabledMutation.variables?.vaultId === membership.vaultId;
-
-                  return (
-                    <Row key={membership.membershipId}>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {membership.vault.name}
-                          </p>
-                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                            {vaultType.label}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                            {membership.role}
-                          </Badge>
-                          {membership.isReadOnly ? (
-                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                              Read only
-                            </Badge>
-                          ) : null}
-                          {!membership.isEnabled ? (
-                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
-                              Disabled
-                            </Badge>
-                          ) : null}
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-                          {membership.vault.color ? (
-                            <span
-                              className="inline-block size-2.5 border border-border/70"
-                              style={{ backgroundColor: membership.vault.color }}
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Palette className="size-3" aria-hidden="true" />
-                          )}
-                          <span>{vaultType.label} vault</span>
-                          {membership.vault.isSystemManaged ? (
-                            <span className="inline-flex items-center gap-1">
-                              <UserCheck className="size-3" aria-hidden="true" />
-                              System-managed
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <Button
-                        variant={membership.isEnabled ? "outline" : "default"}
-                        size="sm"
-                        className="shrink-0"
-                        disabled={busy}
-                        onClick={() =>
-                          handleVaultEnabled(membership.vaultId, !membership.isEnabled)
-                        }
-                      >
-                        {busy ? (
-                          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                        ) : membership.isEnabled ? (
-                          "Disable"
-                        ) : (
-                          "Enable"
-                        )}
-                      </Button>
-                    </Row>
-                  );
-                })}
-              </div>
-            </Section>
-          </div>
-
           <div className="order-2">
             <Section
               icon={<Users className="size-4 text-muted-foreground" aria-hidden="true" />}
               title="Enterprise mailbox"
+              headerRight={
+                hasPendingEnterpriseInvitation ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block size-2.5 bg-primary animate-pulse shadow-[0_0_10px_hsl(var(--primary)/0.75)]"
+                  />
+                ) : null
+              }
               description={
                 hasEnterpriseMembership
                   ? "Manage enterprise members and invitations."
@@ -1022,6 +945,104 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
               </div>
             </Section>
           </div>
+
+          {/* ── Vaults ── */}
+          {shouldShowVaultsSection ? (
+            <div className="order-3">
+              <Section
+                icon={<Building2 className="size-4 text-muted-foreground" aria-hidden="true" />}
+                title="Vaults"
+                description="Manage vault membership status. Disabled vaults stay in search, graph, and sync surfaces."
+              >
+                <div className="space-y-3">
+                  {membershipsQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      Loading vault memberships...
+                    </div>
+                  ) : null}
+
+                  {!membershipsQuery.isLoading && visibleSettingsMemberships.length === 0 ? (
+                    <div className="border border-dashed border-border px-4 py-4 text-xs text-muted-foreground">
+                      No personal or enterprise vault memberships found.
+                    </div>
+                  ) : null}
+
+                  {visibleSettingsMemberships.map((membership) => {
+                    const vaultType = VAULT_TYPE_META[membership.vault.type];
+                    const busy =
+                      setVaultEnabledMutation.isPending &&
+                      setVaultEnabledMutation.variables?.vaultId === membership.vaultId;
+
+                    return (
+                      <Row key={membership.membershipId}>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {membership.vault.name}
+                            </p>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {vaultType.label}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {membership.role}
+                            </Badge>
+                            {membership.isReadOnly ? (
+                              <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                                Read only
+                              </Badge>
+                            ) : null}
+                            {!membership.isEnabled ? (
+                              <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                                Disabled
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
+                            {membership.vault.color ? (
+                              <span
+                                className="inline-block size-2.5 border border-border/70"
+                                style={{ backgroundColor: membership.vault.color }}
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <Palette className="size-3" aria-hidden="true" />
+                            )}
+                            <span>{vaultType.label} vault</span>
+                            {membership.vault.isSystemManaged ? (
+                              <span className="inline-flex items-center gap-1">
+                                <UserCheck className="size-3" aria-hidden="true" />
+                                System-managed
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <Button
+                          variant={membership.isEnabled ? "outline" : "default"}
+                          size="sm"
+                          className="shrink-0"
+                          disabled={busy}
+                          onClick={() =>
+                            handleVaultEnabled(membership.vaultId, !membership.isEnabled)
+                          }
+                        >
+                          {busy ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                          ) : membership.isEnabled ? (
+                            "Disable"
+                          ) : (
+                            "Enable"
+                          )}
+                        </Button>
+                      </Row>
+                    );
+                  })}
+                </div>
+              </Section>
+            </div>
+          ) : null}
 
           {/* ── Danger Zone ── */}
           <div className="order-6">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Command, LogOut, Moon, Search, Settings, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth/auth-client";
+import { trpc } from "@/lib/api/trpc";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -77,6 +79,7 @@ export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMe
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session, isPending } = authClient.useSession();
+  const invitationsQuery = useQuery(trpc.vaults.invitations.listPending.queryOptions());
 
   useEffect(() => {
     setMounted(true);
@@ -105,6 +108,10 @@ export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMe
   const userName = session.user.name || "Unnamed";
   const userEmail = session.user.email || "";
   const userImage = session.user.image;
+  const pendingInvitations = invitationsQuery.data ?? [];
+  const hasPendingEnterpriseInvitation = pendingInvitations.some(
+    (invitation) => invitation.vaultType === "enterprise",
+  );
 
   return (
     <DropdownMenu>
@@ -179,6 +186,12 @@ export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMe
           <DropdownMenuItem onClick={() => window.location.assign("/settings")}>
             <Settings aria-hidden="true" className="text-muted-foreground" />
             Settings
+            {hasPendingEnterpriseInvitation ? (
+              <span
+                aria-hidden="true"
+                className="ml-auto inline-block size-2.5 bg-primary animate-pulse shadow-[0_0_10px_hsl(var(--primary)/0.75)]"
+              />
+            ) : null}
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
