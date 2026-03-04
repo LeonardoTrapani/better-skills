@@ -1,14 +1,11 @@
 import { db } from "@better-skills/db";
 import * as schema from "@better-skills/db/schema/auth";
-import { vault } from "@better-skills/db/schema/vaults";
 import { env } from "@better-skills/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { deviceAuthorization } from "better-auth/plugins/device-authorization";
-import { and, eq } from "drizzle-orm";
 
-import { syncDefaultSkillsToDefaultVault } from "./default-skills";
 import { attachUserToSystemDefaultVault, ensurePersonalVault } from "./system-default-vault";
 
 function isLocalHost(host: string): boolean {
@@ -50,30 +47,6 @@ function getCrossSubDomainCookieDomain(origin: string): string | null {
 const trustedOrigins = getTrustedOrigins(env.CORS_ORIGIN, env.BETTER_AUTH_URL);
 const crossSubDomainCookieDomain = getCrossSubDomainCookieDomain(env.CORS_ORIGIN);
 
-let defaultSkillSyncPromise: Promise<void> | null = null;
-
-async function ensureDefaultSkillsSeeded(): Promise<void> {
-  if (!defaultSkillSyncPromise) {
-    defaultSkillSyncPromise = (async () => {
-      const result = await syncDefaultSkillsToDefaultVault();
-      if (result.failed > 0) {
-        throw new Error(
-          `default skill sync failed: templates=${result.templates} failed=${result.failed}`,
-        );
-      }
-    })().catch((error) => {
-      defaultSkillSyncPromise = null;
-      throw error;
-    });
-  }
-
-  await defaultSkillSyncPromise;
-}
-
-void ensureDefaultSkillsSeeded().catch((error) => {
-  console.error("[default-skills] bootstrap sync failed", error);
-});
-
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -112,12 +85,6 @@ export const auth = betterAuth({
       create: {
         after: async (createdUser) => {
           try {
-            await ensureDefaultSkillsSeeded();
-          } catch (error) {
-            console.error("[default-skills] failed to seed defaults before user attach", error);
-          }
-
-          try {
             await ensurePersonalVault(createdUser.id, createdUser.name);
           } catch (error) {
             console.error(
@@ -134,13 +101,6 @@ export const auth = betterAuth({
               error,
             );
           }
-        },
-      },
-      delete: {
-        before: async (deletingUser) => {
-          await db
-            .delete(vault)
-            .where(and(eq(vault.ownerUserId, deletingUser.id), eq(vault.type, "personal")));
         },
       },
     },
