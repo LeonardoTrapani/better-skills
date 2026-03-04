@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,12 +19,28 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
 
   const { data, isLoading, isError } = useQuery(
     trpc.skills.listByOwner.queryOptions({
-      limit: 50,
-      search: search.trim() || undefined,
+      limit: 100,
     }),
   );
 
   const skills = data?.items ?? [];
+  const normalizedQuery = search.trim().toLowerCase();
+  const filteredSkills = useMemo(() => {
+    if (!normalizedQuery) return skills;
+    return skills.filter((skill) => {
+      const name = skill.name.toLowerCase();
+      const slug = skill.slug.toLowerCase();
+      const description = (skill.description ?? "").toLowerCase();
+      const enterpriseName =
+        skill.vault.type === "enterprise" ? skill.vault.name.toLowerCase() : "";
+      return (
+        name.includes(normalizedQuery) ||
+        slug.includes(normalizedQuery) ||
+        description.includes(normalizedQuery) ||
+        enterpriseName.includes(normalizedQuery)
+      );
+    });
+  }, [skills, normalizedQuery]);
 
   return (
     <div
@@ -66,7 +82,7 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
 
         {!isLoading &&
           !isError &&
-          skills.map((skill, index) => {
+          filteredSkills.map((skill, index) => {
             const isDisabled =
               "isEnabled" in skill.vault &&
               typeof skill.vault.isEnabled === "boolean" &&
@@ -84,33 +100,39 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
               >
                 <span className="text-sm text-neutral-300 tabular-nums">{index + 1}</span>
 
-                <div className="min-w-0 w-full flex flex-wrap items-baseline gap-x-2">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold transition-colors",
-                      isDisabled
-                        ? "text-muted-foreground"
-                        : "text-foreground group-hover:text-primary",
-                    )}
-                  >
-                    {skill.name}
-                  </span>
-                  {enterpriseColor ? (
+                <div className="min-w-0 w-full flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2">
                     <span
-                      className="inline-block size-2 border border-border/70"
-                      style={{ backgroundColor: enterpriseColor }}
-                      aria-hidden="true"
-                    />
+                      className={cn(
+                        "text-sm font-semibold transition-colors",
+                        isDisabled
+                          ? "text-muted-foreground"
+                          : "text-foreground group-hover:text-primary",
+                      )}
+                    >
+                      {skill.name}
+                    </span>
+                    <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
+                      {skill.description}
+                    </span>
+                  </div>
+
+                  {enterpriseColor ? (
+                    <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-muted-foreground">
+                      <span
+                        className="inline-block size-2 border border-border/70"
+                        style={{ backgroundColor: enterpriseColor }}
+                        aria-hidden="true"
+                      />
+                      <span className="max-w-28 truncate">{skill.vault.name}</span>
+                    </span>
                   ) : null}
-                  <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
-                    {skill.description}
-                  </span>
                 </div>
               </Link>
             );
           })}
 
-        {!isLoading && !isError && skills.length === 0 && (
+        {!isLoading && !isError && filteredSkills.length === 0 && (
           <div className="border-t border-border px-6 md:px-8 py-16 text-center">
             <p className="text-sm text-muted-foreground">
               {search.trim() ? (

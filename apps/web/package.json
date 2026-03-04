@@ -18,6 +18,7 @@
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "^11.7.2",
+    "@uiw/react-color": "^2.9.5",
     "babel-plugin-react-compiler": "^1.0.0",
     "better-auth": "catalog:",
     "class-variance-authority": "^0.7.1",

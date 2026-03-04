@@ -619,6 +619,8 @@ export const skillsRouter = router({
       z.object({
         query: z.string(),
         skillId: z.string().uuid().optional(),
+        /** When provided, restricts search to a specific vault the user belongs to. */
+        vaultId: z.string().uuid().optional(),
         limit: z.number().int().min(1).max(10).default(6),
       }),
     )
@@ -638,7 +640,7 @@ export const skillsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const { query, skillId, limit } = input;
+      const { query, skillId, vaultId, limit } = input;
 
       const halfLimit = Math.max(Math.ceil(limit / 2), 2);
 
@@ -655,6 +657,15 @@ export const skillsRouter = router({
       if (vaultIds.length === 0) return { items: [] };
 
       let readableVaultIds = vaultIds;
+
+      // If a specific vaultId is requested, verify the user is a member and narrow scope
+      if (vaultId) {
+        if (!vaultIds.includes(vaultId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Not a member of this vault" });
+        }
+        readableVaultIds = [vaultId];
+      }
+
       if (skillId) {
         const [editingSkill] = await db
           .select({ ownerVaultId: skill.ownerVaultId })

@@ -21,3 +21,12 @@ This package is the authenticated Next.js web console for browsing and managing 
 - `.agents/skills/next-best-practices/SKILL.md`
 - `.agents/skills/vercel-react-best-practices/SKILL.md`
 - `.agents/skills/vercel-composition-patterns/SKILL.md`
+
+## Components Placement
+
+- Only shadcn components should be placed under `src/components/ui`
+- If a component is used only in a specific page, it should be placed under that page folder
+  - e.g. `src/app/_landing`, there are only landing related components
+  - e.g. `src/app/vault/_components`, there are only vault related components
+- Any shared component should be placed under a already existing or new folder under `src/components/`, but NOT under `/ui/` since that's only for shadcn
+  - e.g. `src/components/skill`, there are skill components shared under different pages

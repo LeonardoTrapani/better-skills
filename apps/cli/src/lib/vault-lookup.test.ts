@@ -12,6 +12,7 @@ function makeMembership(overrides: Partial<VaultMembership> = {}): VaultMembersh
     canWrite: true,
     canAdmin: true,
     isReadOnly: false,
+    membershipCreatedAt: "2024-01-01T00:00:00.000Z",
     vault: {
       id: "123e4567-e89b-42d3-a456-426614174000",
       slug: "acme-vault",

@@ -378,6 +378,7 @@ mock.module("../lib/vault-access", () => ({
 
         return {
           membershipId: membership.id,
+          membershipCreatedAt: membership.createdAt,
           vaultId: joinedVault.id,
           vaultSlug: joinedVault.slug,
           vaultName: joinedVault.name,
@@ -400,6 +401,7 @@ mock.module("../lib/vault-access", () => ({
 
     return {
       membershipId: membership.id,
+      membershipCreatedAt: membership.createdAt,
       vaultId: joinedVault.id,
       vaultSlug: joinedVault.slug,
       vaultName: joinedVault.name,
