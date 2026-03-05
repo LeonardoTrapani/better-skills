@@ -437,6 +437,18 @@ export function SkillCommandPalette({
 
   const vaultDebouncedQuery = useDebouncedValue(search.trim(), 200);
 
+  // ── Global search in command mode ──────────────────────────────────────────
+
+  const globalQuery = useQuery({
+    ...trpc.skills.searchMentions.queryOptions({
+      query: vaultDebouncedQuery,
+      limit: 10,
+    }),
+    placeholderData: keepPreviousData,
+    enabled: open && mode === "command" && vaultDebouncedQuery.length > 0,
+  });
+  const globalItems = globalQuery.data?.items ?? [];
+
   const isPersonalVaultMode = mode === "vault";
   const activeEnterpriseVaultId =
     mode !== "command" && mode !== "vault"
@@ -540,6 +552,45 @@ export function SkillCommandPalette({
             icon: <BookOpen className="size-4" />,
             vault: skill.vault,
             action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
+          });
+        }
+      }
+
+      if (queryLower) {
+        const skills = globalItems.filter((it) => it.type === "skill");
+        const resources = globalItems.filter((it) => it.type === "resource");
+
+        for (const skill of skills) {
+          items.push({
+            kind: "skill",
+            id: skill.id,
+            label: skill.label,
+            subtitle: skill.subtitle ?? "",
+            icon: <BookOpen className="size-4" />,
+            vault: skill.vault,
+            action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
+            sectionLabel: items.length === 0 ? "Skills" : undefined,
+          });
+        }
+
+        for (const res of resources) {
+          items.push({
+            kind: "resource",
+            id: res.id,
+            label: res.label,
+            subtitle: res.subtitle ?? "",
+            icon: <FileText className="size-4" />,
+            vault: res.vault,
+            action: () =>
+              runAndClose(() => {
+                if (!res.parentSkillId) return;
+                const href = buildResourceTabHref(res.parentSkillId, res.label);
+                navigateTo(href);
+              }),
+            sectionLabel:
+              items.length === skills.length && resources.indexOf(res) === 0
+                ? "Resources"
+                : undefined,
           });
         }
       }
@@ -678,6 +729,7 @@ export function SkillCommandPalette({
     commands,
     suggestedSkills,
     enterpriseVaults,
+    globalItems,
     vaultDebouncedQuery,
     vaultItems,
     isPersonalVaultMode,
@@ -703,6 +755,7 @@ export function SkillCommandPalette({
   // ── Loading states ─────────────────────────────────────────────────────────
 
   const isLoading =
+    (mode === "command" && vaultDebouncedQuery.length > 0 && globalQuery.isLoading) ||
     (isPersonalVaultMode && vaultQuery.isLoading) ||
     (activeEnterpriseVaultId !== null && enterpriseQuery.isLoading);
 
@@ -715,7 +768,10 @@ export function SkillCommandPalette({
       vaultDebouncedQuery.length > 0 &&
       !enterpriseQuery.isLoading &&
       flatItems.length === 0) ||
-    (mode === "command" && search.trim().length > 0 && flatItems.length === 0);
+    (mode === "command" &&
+      search.trim().length > 0 &&
+      !globalQuery.isLoading &&
+      flatItems.length === 0);
 
   // ── Keyboard handler ───────────────────────────────────────────────────────
 
@@ -807,7 +863,7 @@ export function SkillCommandPalette({
   // ── Derive placeholder from current mode ───────────────────────────────────
 
   const placeholder = useMemo(() => {
-    if (mode === "command") return "Type a command...";
+    if (mode === "command") return "Search skills, resources, or commands...";
     if (mode === "vault") return "Search skills & resources...";
     const ev = enterpriseVaults.find((v) => v.id === mode);
     return ev ? `Search ${ev.name} skills & resources...` : "Search skills & resources...";

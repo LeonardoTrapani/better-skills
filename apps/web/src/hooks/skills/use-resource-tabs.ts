@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -107,6 +107,7 @@ export function useResourceTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [hasHydratedFromUrl, setHasHydratedFromUrl] = useState(false);
+  const isApplyingUrlStateRef = useRef(false);
 
   const pathSkillId = useMemo(() => getSkillIdFromPathname(pathname), [pathname]);
   const isCurrentSkillPath = pathSkillId === skillId;
@@ -187,6 +188,8 @@ export function useResourceTabs({
       return;
     }
 
+    isApplyingUrlStateRef.current = true;
+
     const referencesParam = searchParams.get("references");
     const activeTabParam = searchParams.get("activeTab");
     const legacyResourcePath = searchParams.get("resource");
@@ -207,11 +210,15 @@ export function useResourceTabs({
     if (isReady) {
       setHasHydratedFromUrl(true);
     }
+
+    queueMicrotask(() => {
+      isApplyingUrlStateRef.current = false;
+    });
   }, [searchParams, resourcesById, resources, skillId, isReady, isCurrentSkillPath]);
 
   /* ── URL sync ── */
   useEffect(() => {
-    if (!isReady || !hasHydratedFromUrl || !isCurrentSkillPath) {
+    if (!isReady || !hasHydratedFromUrl || !isCurrentSkillPath || isApplyingUrlStateRef.current) {
       return;
     }
 
