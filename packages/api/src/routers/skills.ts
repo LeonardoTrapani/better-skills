@@ -81,6 +81,10 @@ const resourceInSkillOutput = resourceOutput.extend({
   renderedContent: z.string(),
 });
 
+type SkillResourceForOutput = Omit<typeof skillResource.$inferSelect, "content"> & {
+  content?: string;
+};
+
 // -- vault metadata schema (attached to skill outputs) --
 
 const vaultMetaOutput = z.object({
@@ -352,25 +356,39 @@ async function getUserVaultScope(userId: string): Promise<{
 /** map a skill row + resources array to the output shape, rendering mentions */
 async function toSkillOutput(
   row: typeof skill.$inferSelect,
-  resources: (typeof skillResource.$inferSelect)[],
+  resources: SkillResourceForOutput[],
   vaultMeta: VaultMeta,
   options?: {
     linkMentions?: boolean;
+    includeResourceContent?: boolean;
   },
 ) {
   const linkMentions = options?.linkMentions ?? false;
-  const renderedEntries = await renderMentionsBatch(
-    [
-      { markdown: row.skillMarkdown, currentSkillId: row.id },
-      ...resources.map((resource) => ({ markdown: resource.content, currentSkillId: row.id })),
-    ],
-    { linkMentions },
-  );
+  const includeResourceContent = options?.includeResourceContent ?? true;
+  const renderInputs = includeResourceContent
+    ? [
+        { markdown: row.skillMarkdown, currentSkillId: row.id },
+        ...resources.map((resource) => ({
+          markdown: resource.content ?? "",
+          currentSkillId: row.id,
+        })),
+      ]
+    : [{ markdown: row.skillMarkdown, currentSkillId: row.id }];
+  const renderedEntries = await renderMentionsBatch(renderInputs, { linkMentions });
 
   const renderedMarkdown = renderedEntries[0] ?? row.skillMarkdown;
   const renderedResources = resources.map((resource, index) => ({
-    ...resource,
-    renderedContent: renderedEntries[index + 1] ?? resource.content,
+    id: resource.id,
+    skillId: resource.skillId,
+    path: resource.path,
+    kind: resource.kind,
+    content: includeResourceContent ? (resource.content ?? "") : "",
+    metadata: resource.metadata,
+    createdAt: resource.createdAt,
+    updatedAt: resource.updatedAt,
+    renderedContent: includeResourceContent
+      ? (renderedEntries[index + 1] ?? resource.content ?? "")
+      : "",
   }));
 
   return {
@@ -413,6 +431,15 @@ function toSkillListItem(row: typeof skill.$inferSelect, vaultMeta: VaultMeta) {
 
 async function loadSkillResources(skillId: string) {
   return await db.select().from(skillResource).where(eq(skillResource.skillId, skillId));
+}
+
+async function loadSkillResourcesMetadata(skillId: string): Promise<SkillResourceForOutput[]> {
+  const { content: _content, ...resourceColumnsWithoutContent } = getTableColumns(skillResource);
+
+  return await db
+    .select(resourceColumnsWithoutContent)
+    .from(skillResource)
+    .where(eq(skillResource.skillId, skillId));
 }
 
 async function loadSkillResourceByPath(skillId: string, resourcePath: string) {
@@ -1080,6 +1107,7 @@ export const skillsRouter = router({
       z.object({
         id: z.string().uuid(),
         linkMentions: z.boolean().optional(),
+        includeResourceContent: z.boolean().optional(),
       }),
     )
     .output(skillOutput)
@@ -1109,9 +1137,15 @@ export const skillsRouter = router({
         isEnabled: membership.isEnabled,
       });
 
-      const resources = await loadSkillResources(row.id);
+      const includeResourceContent = input.includeResourceContent ?? true;
+      const resources = includeResourceContent
+        ? await loadSkillResources(row.id)
+        : await loadSkillResourcesMetadata(row.id);
 
-      return await toSkillOutput(row, resources, vaultMeta, { linkMentions: input.linkMentions });
+      return await toSkillOutput(row, resources, vaultMeta, {
+        linkMentions: input.linkMentions,
+        includeResourceContent,
+      });
     }),
 
   getBySlug: protectedProcedure
@@ -1120,6 +1154,7 @@ export const skillsRouter = router({
         slug: z.string().min(1),
         vaultSlug: z.string().min(1).optional(),
         linkMentions: z.boolean().optional(),
+        includeResourceContent: z.boolean().optional(),
       }),
     )
     .output(skillOutput)
@@ -1181,10 +1216,14 @@ export const skillsRouter = router({
         isEnabled: membership.isEnabled,
       });
 
-      const resources = await loadSkillResources(selectedRow.id);
+      const includeResourceContent = input.includeResourceContent ?? true;
+      const resources = includeResourceContent
+        ? await loadSkillResources(selectedRow.id)
+        : await loadSkillResourcesMetadata(selectedRow.id);
 
       return await toSkillOutput(selectedRow, resources, vaultMeta, {
         linkMentions: input.linkMentions,
+        includeResourceContent,
       });
     }),
 

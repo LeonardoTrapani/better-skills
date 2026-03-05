@@ -556,11 +556,17 @@ const USER_A = "user-aaa-111";
 const USER_B = "user-bbb-222";
 
 function authedCaller(userId: string) {
-  return createCaller({ session: { user: { id: userId } } as never });
+  return createCaller({
+    session: { user: { id: userId } } as never,
+    requestHeaders: new Headers() as never,
+  });
 }
 
 function anonCaller() {
-  return createCaller({ session: null } as never);
+  return createCaller({
+    session: null,
+    requestHeaders: new Headers() as never,
+  } as never);
 }
 
 function seedSkill(overrides: Partial<SkillRow> = {}): SkillRow {
@@ -776,6 +782,24 @@ describe("skills.getById", () => {
 
     expect(flow?.content).toBe(`Read [[resource:${target.id}]]`);
     expect(flow?.renderedContent).toBe("Read `references/guidelines.md`");
+  });
+
+  test("can omit resource content payload", async () => {
+    const s = seedSkill({ ownerUserId: USER_A });
+    const target = seedResource(s.id, { path: "references/guidelines.md" });
+    seedResource(s.id, {
+      path: "references/flow.md",
+      content: `Read [[resource:${target.id}]]`,
+    });
+
+    const result = await authedCaller(USER_A).skills.getById({
+      id: s.id,
+      includeResourceContent: false,
+    });
+    const flow = result.resources.find((resource) => resource.path === "references/flow.md");
+
+    expect(flow?.content).toBe("");
+    expect(flow?.renderedContent).toBe("");
   });
 
   test("returns both originalMarkdown and renderedMarkdown", async () => {

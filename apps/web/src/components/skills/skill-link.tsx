@@ -19,7 +19,7 @@ export function SkillHoverLink({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { data } = useQuery({
-    ...trpc.skills.getById.queryOptions({ id: skillId }),
+    ...trpc.skills.getById.queryOptions({ id: skillId, includeResourceContent: false }),
     enabled: isOpen,
   });
   const href = buildSkillHref(skillId);

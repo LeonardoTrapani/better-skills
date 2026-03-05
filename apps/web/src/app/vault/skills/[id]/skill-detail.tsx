@@ -38,7 +38,7 @@ function SkillDetailInner({ id }: { id: string }) {
   const [mobileSection, setMobileSection] = useState<MobileSection>("content");
 
   const { data, isLoading, isError } = useQuery({
-    ...trpc.skills.getById.queryOptions({ id, linkMentions: true }),
+    ...trpc.skills.getById.queryOptions({ id, linkMentions: true, includeResourceContent: false }),
     staleTime: SKILL_DETAIL_STALE_TIME_MS,
   });
   const graphQuery = useQuery({
