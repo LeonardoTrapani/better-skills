@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import { useDebouncedValue } from "@/hooks/skills/use-skill-search";
 import { buildSkillHref } from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
 import { cn } from "@/lib/utils";
@@ -16,31 +17,17 @@ interface MySkillsTableProps {
 
 export default function MySkillsTable({ height, className }: MySkillsTableProps) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
-  const { data, isLoading, isError } = useQuery(
-    trpc.skills.listByOwner.queryOptions({
+  const { data, isLoading, isError } = useQuery({
+    ...trpc.skills.listByOwner.queryOptions({
       limit: 100,
+      search: debouncedSearch || undefined,
     }),
-  );
+    placeholderData: keepPreviousData,
+  });
 
   const skills = data?.items ?? [];
-  const normalizedQuery = search.trim().toLowerCase();
-  const filteredSkills = useMemo(() => {
-    if (!normalizedQuery) return skills;
-    return skills.filter((skill) => {
-      const name = skill.name.toLowerCase();
-      const slug = skill.slug.toLowerCase();
-      const description = (skill.description ?? "").toLowerCase();
-      const enterpriseName =
-        skill.vault.type === "enterprise" ? skill.vault.name.toLowerCase() : "";
-      return (
-        name.includes(normalizedQuery) ||
-        slug.includes(normalizedQuery) ||
-        description.includes(normalizedQuery) ||
-        enterpriseName.includes(normalizedQuery)
-      );
-    });
-  }, [skills, normalizedQuery]);
 
   return (
     <div
@@ -82,7 +69,7 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
 
         {!isLoading &&
           !isError &&
-          filteredSkills.map((skill, index) => {
+          skills.map((skill, index) => {
             const isDisabled =
               "isEnabled" in skill.vault &&
               typeof skill.vault.isEnabled === "boolean" &&
@@ -132,7 +119,7 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
             );
           })}
 
-        {!isLoading && !isError && filteredSkills.length === 0 && (
+        {!isLoading && !isError && skills.length === 0 && (
           <div className="border-t border-border px-6 md:px-8 py-16 text-center">
             <p className="text-sm text-muted-foreground">
               {search.trim() ? (

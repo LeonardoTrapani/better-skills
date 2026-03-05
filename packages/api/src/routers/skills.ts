@@ -1,9 +1,22 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, getTableColumns, gt, ilike, inArray, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  getTableColumns,
+  gt,
+  ilike,
+  inArray,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@better-skills/db";
 import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
+import { vault } from "@better-skills/db/schema/vaults";
 
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
@@ -802,7 +815,19 @@ export const skillsRouter = router({
 
       if (search) {
         const pattern = `%${search}%`;
-        conditions.push(or(ilike(skill.name, pattern), ilike(skill.slug, pattern))!);
+        conditions.push(
+          or(
+            ilike(skill.name, pattern),
+            ilike(skill.slug, pattern),
+            ilike(skill.description, pattern),
+            exists(
+              db
+                .select({ id: vault.id })
+                .from(vault)
+                .where(and(eq(vault.id, skill.ownerVaultId), ilike(vault.name, pattern))),
+            ),
+          )!,
+        );
       }
 
       if (cursor) {
@@ -866,7 +891,19 @@ export const skillsRouter = router({
 
       if (search) {
         const pattern = `%${search}%`;
-        conditions.push(or(ilike(skill.name, pattern), ilike(skill.slug, pattern))!);
+        conditions.push(
+          or(
+            ilike(skill.name, pattern),
+            ilike(skill.slug, pattern),
+            ilike(skill.description, pattern),
+            exists(
+              db
+                .select({ id: vault.id })
+                .from(vault)
+                .where(and(eq(vault.id, skill.ownerVaultId), ilike(vault.name, pattern))),
+            ),
+          )!,
+        );
       }
 
       if (cursor) {
