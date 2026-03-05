@@ -55,7 +55,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: var(--color-amber-500);
+  --primary: oklch(76.9% 0.188 70.08);
   --primary-foreground: var(--color-amber-950);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -176,7 +176,14 @@
 /* Wrapper removes rounded corners to match Panel design */
 .mdx-editor-wrapper .mdxeditor {
   --baseFont: var(--font-sans);
-  --monoFont: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  --monoFont: var(
+    --font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace
+  );
   border: none;
   border-radius: 0;
   font-family: var(--font-sans);
@@ -488,8 +495,13 @@
 }
 
 /* ---- Dialog overlay ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_dialogOverlay_"] {
-  background: color-mix(in oklab, var(--background) 70%, transparent) !important;
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_dialogOverlay_"] {
+  background: color-mix(
+    in oklab,
+    var(--background) 70%,
+    transparent
+  ) !important;
   backdrop-filter: blur(4px);
 }
 
@@ -501,10 +513,12 @@
 }
 
 /* ---- Dialog close button ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_dialogCloseButton_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_dialogCloseButton_"] {
   color: var(--muted-foreground) !important;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_dialogCloseButton_"]:hover {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_dialogCloseButton_"]:hover {
   color: var(--foreground) !important;
 }
 
@@ -543,21 +557,25 @@
 }
 
 /* Input wrapper (link dialog) */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_linkDialogInputWrapper_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_linkDialogInputWrapper_"] {
   background: var(--background) !important;
   border-color: var(--input) !important;
   border-radius: 6px !important;
 }
 
 /* Form field labels */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_formField_"] label {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_formField_"]
+  label {
   color: var(--muted-foreground) !important;
   font-size: 0.75rem !important;
   font-weight: 500 !important;
 }
 
 /* ---- Primary / secondary buttons ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_primaryButton_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_primaryButton_"] {
   background: var(--primary) !important;
   color: var(--primary-foreground) !important;
   border: none !important;
@@ -568,11 +586,13 @@
   cursor: pointer !important;
   transition: opacity 0.15s;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_primaryButton_"]:hover {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_primaryButton_"]:hover {
   opacity: 0.9;
 }
 
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_secondaryButton_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_secondaryButton_"] {
   background: var(--secondary) !important;
   color: var(--secondary-foreground) !important;
   border: 1px solid var(--border) !important;
@@ -585,7 +605,8 @@
     background-color 0.15s,
     color 0.15s;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_secondaryButton_"]:hover {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_secondaryButton_"]:hover {
   background: var(--accent) !important;
   color: var(--foreground) !important;
 }
@@ -599,26 +620,31 @@
     background-color 0.15s,
     color 0.15s;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_actionButton_"]:hover {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_actionButton_"]:hover {
   background: var(--accent) !important;
   color: var(--foreground) !important;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_primaryActionButton_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_primaryActionButton_"] {
   background: var(--primary) !important;
   color: var(--primary-foreground) !important;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_primaryActionButton_"]:hover {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_primaryActionButton_"]:hover {
   opacity: 0.9;
 }
 
 /* ---- Link preview popover (URL + edit / copy / unlink) ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_linkDialogPopoverContent_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_linkDialogPopoverContent_"] {
   padding: 6px 10px !important;
   gap: 6px !important;
   align-items: center !important;
 }
 
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_linkDialogPreviewAnchor_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_linkDialogPreviewAnchor_"] {
   color: var(--primary) !important;
   font-size: 0.8125rem !important;
   font-family: var(--font-mono, monospace) !important;
@@ -629,7 +655,8 @@
 }
 
 /* ---- Tooltip (e.g. "Copied!") ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_tooltipContent_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_tooltipContent_"] {
   background: var(--foreground) !important;
   color: var(--background) !important;
   border-radius: 6px !important;
@@ -638,7 +665,8 @@
 }
 
 /* ---- Autocomplete dropdown (link URL suggestions) ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_downshiftAutocompleteContainer_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_downshiftAutocompleteContainer_"] {
   background: var(--popover) !important;
   border: 1px solid var(--border) !important;
   border-radius: 0 0 6px 6px !important;
@@ -677,7 +705,9 @@
   width: 22px !important;
   height: 22px !important;
 }
-.mdx-editor-wrapper [class*="_tableEditor_"]:hover [class*="_tableColumnEditorTrigger_"] {
+.mdx-editor-wrapper
+  [class*="_tableEditor_"]:hover
+  [class*="_tableColumnEditorTrigger_"] {
   opacity: 0.5 !important;
 }
 .mdx-editor-wrapper [class*="_tableColumnEditorTrigger_"]:hover {
@@ -687,7 +717,9 @@
 }
 
 /* Column/row editor popover toolbar buttons */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_tableColumnEditorToolbar_"] button {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_tableColumnEditorToolbar_"]
+  button {
   color: var(--muted-foreground) !important;
   border-radius: 4px !important;
   padding: 4px !important;
@@ -703,13 +735,16 @@
 }
 
 /* Alignment toggle group */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_toggleGroupRoot_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_toggleGroupRoot_"] {
   background: var(--secondary) !important;
   border: 1px solid var(--border) !important;
   border-radius: 6px !important;
   overflow: hidden;
 }
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_toggleGroupRoot_"] button {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_toggleGroupRoot_"]
+  button {
   border-radius: 0 !important;
   border: none !important;
 }
@@ -740,7 +775,9 @@
   padding: 3px !important;
 }
 .mdx-editor-wrapper [class*="_tableEditor_"]:hover [class*="_addRowButton_"],
-.mdx-editor-wrapper [class*="_tableEditor_"]:hover [class*="_addColumnButton_"] {
+.mdx-editor-wrapper
+  [class*="_tableEditor_"]:hover
+  [class*="_addColumnButton_"] {
   opacity: 0.4 !important;
 }
 .mdx-editor-wrapper [class*="_addRowButton_"]:hover,
@@ -768,27 +805,36 @@
 }
 .mdx-editor-wrapper [class*="_tableEditor_"] [class*="_iconButton_"]:hover {
   opacity: 1 !important;
-  background: color-mix(in oklab, var(--destructive) 15%, transparent) !important;
+  background: color-mix(
+    in oklab,
+    var(--destructive) 15%,
+    transparent
+  ) !important;
   color: var(--destructive) !important;
 }
 
 /* ---- Property editor (frontmatter etc) ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_propertyPanelTitle_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_propertyPanelTitle_"] {
   color: var(--foreground) !important;
   font-weight: 600 !important;
 }
 
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_propertyEditorTable_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_propertyEditorTable_"] {
   border-color: var(--border) !important;
 }
 
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_propertyEditorTable_"] td {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_propertyEditorTable_"]
+  td {
   border-color: var(--border) !important;
   color: var(--foreground) !important;
 }
 
 /* ---- Buttons footer (e.g. frontmatter actions) ---- */
-:is(.mdx-editor-wrapper, .mdxeditor-popup-container) [class*="_buttonsFooter_"] {
+:is(.mdx-editor-wrapper, .mdxeditor-popup-container)
+  [class*="_buttonsFooter_"] {
   border-top: 1px solid var(--border) !important;
 }
 

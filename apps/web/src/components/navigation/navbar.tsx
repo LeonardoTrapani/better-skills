@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type MouseEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Command, Search, Hexagon, Globe } from "lucide-react";
@@ -26,7 +27,11 @@ const publicNav: NavItem[] = [
     href: "https://github.com/better-skills/better-skills#readme",
     kind: "external",
   },
-  { label: "GitHub", href: "https://github.com/better-skills", kind: "external" },
+  {
+    label: "GitHub",
+    href: "https://github.com/better-skills",
+    kind: "external",
+  },
 ];
 
 const appNav: NavItem[] = [];
@@ -141,6 +146,24 @@ export default function Navbar() {
             href={brandHref}
             className="inline-flex items-center gap-2 text-sm font-medium text-foreground tracking-tight"
           >
+            <span className="inline-flex items-center" aria-hidden="true">
+              <Image
+                src="/brand/logo-light.svg"
+                alt=""
+                width={16}
+                height={16}
+                className="block dark:hidden"
+                priority
+              />
+              <Image
+                src="/brand/logo-dark.svg"
+                alt=""
+                width={18}
+                height={18}
+                className="hidden dark:block"
+                priority
+              />
+            </span>
             <span>BETTER-SKILLS.</span>
           </Link>
 
