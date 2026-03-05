@@ -53,7 +53,7 @@ If nothing is relevant, move on.
 
 ## Step 3: Create the skill folder
 
-Create the folder in cwd (never use a tmp directory):
+Create the folder in cwd:
 
 ```bash
 mkdir -p ./<skill-name>/references
@@ -99,5 +99,15 @@ better-skills create --from "./<skill-name>" [--slug <slug>] [--vault <vault-slu
 better-skills sync
 better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
+
+## Step 8: Clean up local workspace
+
+If the skill folder was created only for this create run, delete it after Step 7 succeeds:
+
+```bash
+rm -rf "./<skill-name>"
+```
+
+Never delete a folder that existed before this workflow or that the user wants to keep.
 
 Tell the user to start a new session so updated skills are reloaded.

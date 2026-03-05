@@ -14,7 +14,7 @@ import { assertValidSkillFolder } from "./validate-skill-folder";
 
 export { readErrorMessage } from "./errors";
 
-const RESOURCE_DIRS: Record<string, "reference" | "script" | "asset"> = {
+const STANDARD_RESOURCE_KINDS: Record<string, "reference" | "script" | "asset"> = {
   references: "reference",
   scripts: "script",
   assets: "asset",
@@ -62,34 +62,39 @@ export function slugify(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function shouldSkipLocalFile(path: string): boolean {
+  if (path === "SKILL.md") return true;
+  return path.split("/").some((segment) => segment.startsWith("."));
+}
+
+function resourceKindForPath(path: string): ResourceInput["kind"] {
+  const root = path.split("/")[0] ?? "";
+  return STANDARD_RESOURCE_KINDS[root] ?? "other";
+}
+
 export async function scanResources(baseDir: string): Promise<ResourceInput[]> {
   const resources: ResourceInput[] = [];
 
-  for (const [dirName, kind] of Object.entries(RESOURCE_DIRS)) {
-    const dirPath = join(baseDir, dirName);
+  const entries = await readdir(baseDir, { recursive: true });
 
-    try {
-      const dirStat = await stat(dirPath);
-      if (!dirStat.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+  for (const entry of entries) {
+    const fullPath = join(baseDir, entry);
+    const fileStat = await stat(fullPath).catch(() => null);
+    if (!fileStat?.isFile()) continue;
 
-    const entries = await readdir(dirPath, { recursive: true });
+    const relativePath = normalizeResourcePath(relative(baseDir, fullPath));
+    if (relativePath.length === 0 || shouldSkipLocalFile(relativePath)) continue;
 
-    for (const entry of entries) {
-      const fullPath = join(dirPath, entry);
-      const fileStat = await stat(fullPath);
-      if (!fileStat.isFile()) continue;
-
-      const content = await readFile(fullPath, "utf8");
-      const relativePath = join(dirName, relative(dirPath, fullPath));
-
-      resources.push({ path: relativePath, kind, content, metadata: {} });
-    }
+    const content = await readFile(fullPath, "utf8");
+    resources.push({
+      path: relativePath,
+      kind: resourceKindForPath(relativePath),
+      content,
+      metadata: {},
+    });
   }
 
-  return resources;
+  return resources.toSorted((a, b) => a.path.localeCompare(b.path));
 }
 
 /**

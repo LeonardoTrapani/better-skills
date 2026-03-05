@@ -417,4 +417,32 @@ describe("rewriteLinksInSkillFolder", () => {
     expect(afterWriteFlow).toContain("[[resource:new:references/guide.md]]");
     expect(afterWriteFlow).toContain("[[resource:new:scripts/setup.ts]]");
   });
+
+  test("rewrites links from non-standard subpaths when full scan is enabled", async () => {
+    const folder = await mkdtemp(join(tmpdir(), "better-skills-rewrite-links-any-subpath-"));
+
+    await mkdir(join(folder, "reference"), { recursive: true });
+    await writeFile(join(folder, "reference", "guide.md"), "# guide\n", "utf8");
+
+    await writeFile(
+      join(folder, "SKILL.md"),
+      [
+        "---",
+        "name: rewrite-any-subpath",
+        "description: rewrite",
+        "---",
+        "",
+        "See [Guide](reference/guide.md)",
+        "And reference/guide.md",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await rewriteLinksInSkillFolder(folder);
+    expect(result.filesChanged).toBe(1);
+    expect(result.replacements).toBe(2);
+
+    const skill = await readFile(join(folder, "SKILL.md"), "utf8");
+    expect(skill).toContain("[[resource:new:reference/guide.md]]");
+  });
 });

@@ -27,14 +27,16 @@ skill-name/
 - `references/` for contextual docs loaded just-in-time.
 - `scripts/` for deterministic helpers. Do not bundle library code here.
 - `assets/` for output templates not intended for context loading.
+- Those folder names are conventions, not strict requirements for imports.
 
 ## Mention linking
 
 See [[resource:new:references/linking.md]] for the full reference on mention
 tokens (draft, persisted, and escaped forms).
 
-Key rule: every file under `references/`, `scripts/`, or `assets/` MUST have a
-matching mention. `better-skills validate` fails when any resource is unlinked.
+Key rule: every resource file under the skill folder (except `SKILL.md`) MUST
+have a matching mention. `better-skills validate` fails when any resource is
+unlinked.
 
 Vault rule: persisted UUID mentions (`\[[skill:<uuid>]]`, `\[[resource:<uuid>]]`)
 must target entities in the same vault as the source skill.
@@ -84,7 +86,8 @@ Skills are for agents, not humans. To keep the context window lean:
 
 1. Trigger description is broad but precise, includes negative triggers.
 2. SKILL.md is a router pointing to specific flow/reference docs.
-3. Every resource file is referenced by a `\[[resource:new:...]]` mention.
+3. Every resource file is referenced by a `\[[resource:new:...]]` mention
+   using the real local relative path.
 4. Command examples use real CLI syntax.
 5. Folder passes `better-skills validate` with zero warnings (warnings are fatal).
 6. No redundant instructions for things the agent already does well.

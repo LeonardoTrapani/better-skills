@@ -60,12 +60,19 @@ Set `$skill_dir` to the resolved path.
 
 ### B. GitHub URL
 
+Handle both repo URLs and subdirectory URLs.
+
+Never clone a `/tree/...` or `/blob/...` URL directly.
+
 ```bash
-git clone --depth 1 <repo-url> ./<repo-name>
+git clone --depth 1 https://github.com/<org>/<repo>.git ./<repo>
 ```
 
-If the URL points to a subdirectory, `$skill_dir` is that subfolder.
-If root contains `SKILL.md`, `$skill_dir` is the repo root.
+Resolve `$skill_dir` from the original URL:
+
+- `.../tree/<ref>/<path>` → `./<repo>/<path>`
+- `.../blob/<ref>/.../SKILL.md` → parent directory of that `SKILL.md`
+- Repo root URL with root `SKILL.md` → `./<repo>`
 
 ### C. Other URL (blog post, docs page, npm package)
 
@@ -85,13 +92,6 @@ Use the fetched content as source material to author SKILL.md and references.
 better-skills rewrite-links "$skill_dir"
 ```
 
-Then manually scan for any remaining bare markdown links (`[text](references/...)`)
-or plain-text paths to local files that the rewriter missed. Convert them to
-`\[[resource:new:<path>]]` mention tokens.
-
-Ensure every file under `references/`, `scripts/`, or `assets/` has at least
-one inbound mention — in SKILL.md or in another resource file.
-
 ## Step 4: Review and propose changes
 
 Read [[resource:new:references/authoring.md]] and compare the imported content
@@ -102,12 +102,20 @@ against the guidelines. Check:
 - Structure: SKILL.md as router, details in references
 - Naming: folder name matches `name` field, lowercase-hyphenated
 
-If improvements are needed, present a summary to the user:
+Default import mode is **minimal and as-is**:
+
+- Apply only changes required for successful create/update
+  (mention conversion, broken local links, invalid frontmatter, etc.).
+- Do not make optional polish edits unless the user explicitly asks for
+  improvements.
+- If some things are expicitly very bad practice, you can propose the change to the user.
+
+If user-requested improvements are needed, present a summary:
 
 - List each proposed change with a short reason
 - Ask for approval before making edits
 
-Apply approved changes. Skip if everything already looks good.
+Apply approved optional changes. Skip if not requested.
 
 ## Step 5: Validate
 
@@ -119,9 +127,15 @@ Validation is strict — any warning is a failure.
 
 If errors:
 
-1. Fix the reported issues (missing mentions, bad frontmatter, etc.)
-2. Run `better-skills rewrite-links "$skill_dir"` again if link issues persist
-3. Re-validate until clean
+1. Fix the reported issues (missing mentions, bad frontmatter, etc.).
+2. If error says missing local resources for `:new:` mentions:
+   - Verify the referenced files exist under `$skill_dir`.
+   - Verify edited paths and validated path point to the same clone/workspace.
+   - Manually locate unresolved internal links/paths anywhere under `$skill_dir`.
+   - Replace each unresolved local link/path with a `\[[resource:new:<path>]]`
+     mention token using the real relative path.
+   - Keep existing folder names unless paths are actually wrong.
+3. Re-validate until clean.
 
 ## Step 6: Add cross-skill links
 
@@ -143,6 +157,14 @@ better-skills sync
 better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
-Clean up the cloned repo folder if it is separate from the skill directory.
+## Step 9: Clean up local import workspace
+
+Delete disposable folders created during import after Step 8 succeeds:
+
+- Cloned repo folder(s)
+- Any extracted or copied staging folder used only for import
+- `$skill_dir` itself if it was created only for this run
+
+Keep local copies only when the user explicitly asks to keep them.
 
 Tell the user to start a new session so updated skills are reloaded.

@@ -19,6 +19,9 @@ The clone writes the folder in update-ready format: `SKILL.md` + `references/`
 - `scripts/` + `assets/`. It prints a link context table (`uuid -> resource path`)
   for existing mentions.
 
+Use a disposable folder name when possible (for example `./.tmp-<skill-slug>-edit`).
+Delete that folder in Step 6 after a successful update.
+
 ## Step 2: Edit local files
 
 Edit `SKILL.md` and resource files as needed.
@@ -64,6 +67,16 @@ better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>
 ```
 
 Tell the user to start a new session so updated skills are reloaded.
+
+## Step 6: Clean up cloned folder
+
+Delete the cloned local folder after Step 5 succeeds:
+
+```bash
+rm -rf "./<folder>"
+```
+
+Only delete the folder if this workflow created it.
 
 ## Behavior
 

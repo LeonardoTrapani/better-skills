@@ -16,7 +16,7 @@ Use when adding a new resource file to a skill folder:
 The path is relative to the skill root. The CLI resolves these to
 UUID-based `\[[resource:<uuid>]]` tokens on create/update.
 
-Every file under `references/`, `scripts/`, or `assets/` MUST have a
+Every resource file under the skill folder (except `SKILL.md`) MUST have a
 matching `\[[resource:new:<path>]]` mention somewhere — in SKILL.md or
 in another resource file. `better-skills validate` fails if any file is
 unlinked.
@@ -95,8 +95,8 @@ inline code, and backslash-escaped examples.
 
 ## Rules
 
-1. Never use bare markdown links (`[text](references/foo.md)`) or
-   plain-text paths (`references/foo.md`) for internal resource
+1. Never use bare markdown links (`[text](path/to/file.md)`) or plain-text
+   local paths (`path/to/file.md`) for internal resource
    references. Every occurrence must be a mention token.
 2. One mention per resource file, minimum. No resource should exist
    without a matching mention.

@@ -5,7 +5,6 @@ import { normalizeResourcePath } from "./new-resource-mentions";
 
 // ---- Configuration ----
 
-const RESOURCE_DIRS = ["references", "scripts", "assets"] as const;
 const REWRITABLE_EXTENSIONS = new Set([".md", ".mdx", ".txt"]);
 
 // ---- Types ----
@@ -45,21 +44,25 @@ function buildFileIndex(paths: ReadonlySet<string>): SkillFileIndex {
   return { allPaths: paths, byBasename };
 }
 
+function shouldSkipDiscoveredPath(path: string): boolean {
+  if (path === "SKILL.md") return true;
+  return path.split("/").some((segment) => segment.startsWith("."));
+}
+
 async function discoverResourceFiles(folder: string): Promise<Set<string>> {
   const paths = new Set<string>();
 
-  for (const dirName of RESOURCE_DIRS) {
-    const root = join(folder, dirName);
-    const rootStat = await stat(root).catch(() => null);
-    if (!rootStat?.isDirectory()) continue;
+  const rootStat = await stat(folder).catch(() => null);
+  if (!rootStat?.isDirectory()) return paths;
 
-    const entries = await readdir(root, { recursive: true });
-    for (const entry of entries) {
-      const full = join(root, entry);
-      const s = await stat(full).catch(() => null);
-      if (!s?.isFile()) continue;
-      paths.add(normalizeResourcePath(relative(folder, full)));
-    }
+  const entries = await readdir(folder, { recursive: true });
+  for (const entry of entries) {
+    const full = join(folder, entry);
+    const entryStat = await stat(full).catch(() => null);
+    if (!entryStat?.isFile()) continue;
+    const normalizedPath = normalizeResourcePath(relative(folder, full));
+    if (normalizedPath.length === 0 || shouldSkipDiscoveredPath(normalizedPath)) continue;
+    paths.add(normalizedPath);
   }
 
   return paths;

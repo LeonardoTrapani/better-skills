@@ -1,11 +1,10 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { extname, join, relative } from "node:path";
+import { extname, join, posix, relative } from "node:path";
 
 import { parseMentions } from "@better-skills/markdown/persisted-mentions";
 
 import { collectNewResourceMentionPaths, normalizeResourcePath } from "./new-resource-mentions";
 
-const RESOURCE_DIRS = ["references", "scripts", "assets"] as const;
 const MENTION_MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".txt"]);
 
 function shouldScanMentionMarkdown(path: string): boolean {
@@ -53,30 +52,43 @@ function hasFrontmatterField(frontmatter: string, field: "name" | "description")
 async function collectLocalResources(folder: string): Promise<Set<string>> {
   const resources = new Set<string>();
 
-  for (const dirName of RESOURCE_DIRS) {
-    const root = join(folder, dirName);
-    const rootStat = await stat(root).catch(() => null);
+  const entries = await readdir(folder, { recursive: true });
 
-    if (!rootStat?.isDirectory()) {
+  for (const entry of entries) {
+    const fullPath = join(folder, entry);
+    const fileStat = await stat(fullPath).catch(() => null);
+
+    if (!fileStat?.isFile()) {
       continue;
     }
 
-    const entries = await readdir(root, { recursive: true });
+    const relativePath = normalizeResourcePath(relative(folder, fullPath));
+    if (relativePath.length === 0 || relativePath === "SKILL.md") continue;
+    if (relativePath.split("/").some((segment) => segment.startsWith("."))) continue;
 
-    for (const entry of entries) {
-      const fullPath = join(root, entry);
-      const fileStat = await stat(fullPath).catch(() => null);
-
-      if (!fileStat?.isFile()) {
-        continue;
-      }
-
-      const relativePath = normalizeResourcePath(relative(folder, fullPath));
-      resources.add(relativePath);
-    }
+    resources.add(relativePath);
   }
 
   return resources;
+}
+
+function normalizeMentionPathForLookup(path: string): string | null {
+  const normalized = normalizeResourcePath(path);
+  if (normalized.length === 0) return null;
+
+  const safePath = posix.normalize(normalized);
+  if (safePath === "." || safePath === "..") return null;
+  if (safePath.startsWith("../") || safePath.startsWith("/")) return null;
+
+  return safePath;
+}
+
+async function localFileExists(folder: string, mentionPath: string): Promise<boolean> {
+  const normalized = normalizeMentionPathForLookup(mentionPath);
+  if (!normalized) return false;
+
+  const s = await stat(join(folder, normalized)).catch(() => null);
+  return !!s?.isFile();
 }
 
 type MentionCounts = {
@@ -184,7 +196,12 @@ export async function validateSkillFolder(folder: string): Promise<SkillFolderVa
   const localResources = await collectLocalResources(folder);
   const mentions = await collectAllResourceMentions(folder, body, localResources);
 
-  const missing = mentions.newPaths.filter((path) => !localResources.has(path));
+  const missing: string[] = [];
+  for (const path of mentions.newPaths) {
+    if (!(await localFileExists(folder, path))) {
+      missing.push(path);
+    }
+  }
   if (missing.length > 0) {
     errors.push("missing local resources for :new: mention tokens:");
     errors.push(...missing.map((path) => `  - ${path}`));

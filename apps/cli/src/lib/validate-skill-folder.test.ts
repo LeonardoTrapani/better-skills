@@ -36,6 +36,51 @@ describe("validateSkillFolder", () => {
     expect(result.mentionCount).toBe(1);
   });
 
+  test("accepts :new: paths that point to any local subpath", async () => {
+    const folder = await createTempSkillFolder("better-skills-validate-any-subpath");
+    await mkdir(join(folder, "reference"), { recursive: true });
+    await writeFile(join(folder, "reference", "guide.md"), "# guide\n", "utf8");
+    await writeFile(
+      join(folder, "SKILL.md"),
+      [
+        "---",
+        "name: test skill",
+        "description: validate",
+        "---",
+        "",
+        "use [[resource:new:reference/guide.md]]",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await validateSkillFolder(folder);
+
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("rejects :new: paths outside the skill folder", async () => {
+    const folder = await createTempSkillFolder("better-skills-validate-path-traversal");
+    await writeFile(
+      join(folder, "SKILL.md"),
+      [
+        "---",
+        "name: test skill",
+        "description: validate",
+        "---",
+        "",
+        "use [[resource:new:../outside.md]]",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await validateSkillFolder(folder);
+
+    expect(result.ok).toBe(false);
+    expect(result.errors[0]).toContain("missing local resources");
+    expect(result.errors[1]).toContain("../outside.md");
+  });
+
   test("fails when required frontmatter fields are missing", async () => {
     const folder = await createTempSkillFolder("better-skills-validate-frontmatter");
     await writeFile(join(folder, "SKILL.md"), "# no frontmatter\n", "utf8");
