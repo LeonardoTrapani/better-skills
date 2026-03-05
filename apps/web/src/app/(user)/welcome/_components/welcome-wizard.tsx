@@ -143,27 +143,80 @@ function StepSync() {
 
 /* ── Step 3: Use with your agent ── */
 
-function StepCreateSkill() {
-  const suggestedPrompt =
-    "Use my installed better-skills vault for this task. First list which skills you will use and why. Then implement: [describe your task here]. While coding, explain which skill influenced each major choice.";
+function PromptBlock({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
-    <div className="space-y-5">
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="group relative w-full border border-primary/40 bg-primary/5 px-5 py-4 text-left transition-all hover:border-primary/70 hover:bg-primary/10"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="flex-1 font-mono text-sm leading-relaxed text-foreground">{prompt}</p>
+        <span className="mt-0.5 shrink-0">
+          {copied ? (
+            <Check className="size-4 text-primary" />
+          ) : (
+            <Copy className="size-4 text-muted-foreground/50 transition-opacity group-hover:text-primary/70" />
+          )}
+        </span>
+      </div>
+      <p className="mt-2 text-[10px] font-mono uppercase tracking-[0.08em] text-primary/60">
+        {copied ? "copied!" : "click to copy"}
+      </p>
+    </button>
+  );
+}
+
+function StepCreateSkill() {
+  const suggestedPrompt = "onboard better-skills using the better-skills skill";
+
+  return (
+    <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Use it with your agent</h2>
+        <h2 className="text-lg font-semibold text-foreground">Use your coding agent</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Your vault is now available to your coding agents. Open your favorite IDE or terminal TUI
-          and start a real task with skill-guided prompts.
+          Open your favorite IDE or terminal and paste this prompt. Your agent will set up
+          better-skills and walk you through everything — no manual reading required.
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+          Paste this prompt
+        </p>
+        <PromptBlock prompt={suggestedPrompt} />
       </div>
 
       <div className="border border-border bg-muted/10 px-4 py-3">
         <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-          Suggested Prompt
+          What your agent will do
         </p>
-        <p className="mt-2 bg-background font-mono text-[11px] leading-relaxed text-foreground">
-          {suggestedPrompt}
-        </p>
+        <ul className="mt-2.5 space-y-2 text-xs text-muted-foreground">
+          <li className="flex items-start gap-2.5">
+            <span className="mt-1.5 inline-block size-1 shrink-0 bg-primary" />
+            Read the better-skills skill from your vault
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="mt-1.5 inline-block size-1 shrink-0 bg-primary" />
+            Discover what skills are available and how to use them
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="mt-1.5 inline-block size-1 shrink-0 bg-primary" />
+            Guide you through your first skill-powered workflow
+          </li>
+        </ul>
       </div>
     </div>
   );
@@ -206,7 +259,7 @@ function Stepper({ current, total }: { current: number; total: number }) {
 
 /* ── Main wizard ── */
 
-const STEP_LABELS = ["Install & Login", "Run Sync", "Use with your agent"];
+const STEP_LABELS = ["Install & Login", "Run Sync", "Use your coding agent"];
 
 export default function WelcomeWizard() {
   const router = useRouter();
