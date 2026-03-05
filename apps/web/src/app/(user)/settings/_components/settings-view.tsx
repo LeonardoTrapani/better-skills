@@ -8,7 +8,6 @@ import {
   Check,
   ChevronRight,
   Clock3,
-  Hexagon,
   Laptop,
   Loader2,
   Lock,
@@ -29,6 +28,7 @@ import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth/auth-client";
 import { trpc } from "@/lib/api/trpc";
+import { VaultColorHex } from "@/components/skills/vault-color-hex";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,6 +127,15 @@ function RolePill({ role }: { role: "owner" | "admin" | "member" }) {
       {role}
     </span>
   );
+}
+
+function getVaultHexColor(vault: {
+  type: "personal" | "enterprise" | "system_default";
+  color: string | null;
+}) {
+  if (vault.type === "personal") return "#eab308";
+  if (vault.type === "enterprise") return vault.color?.trim() ?? "var(--primary)";
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -429,14 +438,10 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                   <div className="divide-y divide-border border border-border">
                     {enterpriseMemberships.map((m) => (
                       <div key={m.vaultId} className="flex items-center gap-3 px-4 py-3.5">
-                        {m.vault.color ? (
-                          <span
-                            className="size-4 shrink-0 border border-black/10"
-                            style={{ backgroundColor: m.vault.color }}
-                          />
-                        ) : (
-                          <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                        )}
+                        <VaultColorHex
+                          color={getVaultHexColor({ type: m.vault.type, color: m.vault.color })}
+                          className="size-4"
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="truncate text-sm font-medium text-foreground">
@@ -488,14 +493,14 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                           key={invitation.id}
                           className="flex items-center gap-3 border border-border px-4 py-3"
                         >
-                          {invitation.vaultColor ? (
-                            <span
-                              className="size-4 shrink-0 border border-black/10"
-                              style={{ backgroundColor: invitation.vaultColor }}
-                            />
-                          ) : (
-                            <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                          )}
+                          <VaultColorHex
+                            color={
+                              invitation.vaultType === "enterprise"
+                                ? invitation.vaultColor
+                                : "#eab308"
+                            }
+                            className="size-4"
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-foreground">
                               {invitation.vaultName}
@@ -581,19 +586,13 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                           key={membership.membershipId}
                           className="flex items-center gap-3 px-4 py-3.5"
                         >
-                          {/* Icon: hexagon for personal, color block for enterprise */}
-                          {isPersonal ? (
-                            <Hexagon className="size-4 shrink-0 text-muted-foreground" />
-                          ) : membership.vault.color ? (
-                            <span
-                              className="size-4 shrink-0 border border-black/10"
-                              style={{
-                                backgroundColor: membership.vault.color,
-                              }}
-                            />
-                          ) : (
-                            <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                          )}
+                          <VaultColorHex
+                            color={getVaultHexColor({
+                              type: membership.vault.type,
+                              color: membership.vault.color,
+                            })}
+                            className="size-4"
+                          />
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { NodePreviewCard } from "@/components/skills/graph/node-preview-card";
@@ -17,11 +17,15 @@ export function SkillHoverLink({
   className?: string;
   children?: ReactNode;
 }) {
-  const { data } = useQuery(trpc.skills.getById.queryOptions({ id: skillId }));
+  const [isOpen, setIsOpen] = useState(false);
+  const { data } = useQuery({
+    ...trpc.skills.getById.queryOptions({ id: skillId, includeResourceContent: false }),
+    enabled: isOpen,
+  });
   const href = buildSkillHref(skillId);
 
   return (
-    <HoverCard>
+    <HoverCard onOpenChange={setIsOpen}>
       <HoverCardTrigger
         href={href}
         className={className ?? "text-primary underline underline-offset-4"}

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sketch, type ColorResult } from "@uiw/react-color";
 import { Check, Pipette } from "lucide-react";
+
+import { VaultColorHex } from "@/components/skills/vault-color-hex";
 import { cn } from "@/lib/utils";
 
 // Curated presets — shown only once in our section (Sketch's own are hidden via CSS)
@@ -42,6 +44,7 @@ export function ColorPicker({
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState(value);
+  const [openStartValue, setOpenStartValue] = useState(value);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -58,7 +61,7 @@ export function ColorPicker({
         triggerRef.current &&
         !triggerRef.current.contains(e.target as Node)
       ) {
-        setOpen(false);
+        closeAndRestore();
       }
     };
     document.addEventListener("mousedown", handler);
@@ -80,6 +83,25 @@ export function ColorPicker({
     if (/^#[0-9a-fA-F]{6}$/.test(normalized)) onChange(normalized);
   };
 
+  const closeAndRestore = () => {
+    onChange(openStartValue);
+    setHexInput(openStartValue);
+    setOpen(false);
+  };
+
+  const closeAndCommit = () => {
+    const normalized = hexInput.startsWith("#") ? hexInput : `#${hexInput}`;
+    if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+      onChange(normalized);
+      onCommit?.(normalized);
+      setOpen(false);
+      return;
+    }
+
+    setHexInput(value);
+    setOpen(false);
+  };
+
   return (
     <div className={cn("relative", className)}>
       {/* Trigger */}
@@ -87,24 +109,38 @@ export function ColorPicker({
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => {
+              if (!o) {
+                setOpenStartValue(value);
+              }
+              return !o;
+            });
+          }}
           className={cn(
-            "group relative size-10 border border-black/10",
-            "transition-opacity hover:opacity-95",
+            "group relative inline-flex size-11 items-center justify-center",
+            "transition-opacity hover:opacity-80",
             className,
           )}
-          style={{ backgroundColor: value }}
           aria-label="Edit brand color"
         >
-          <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
-            <Pipette className="size-3.5 text-white" />
+          <VaultColorHex color={value} className="size-8" />
+          <span className="absolute inset-0 flex items-center justify-center rounded-sm bg-muted-foreground/35 opacity-0 transition-opacity group-hover:opacity-100">
+            <Pipette className="size-3.5 text-neutral-100" />
           </span>
         </button>
       ) : (
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => {
+              if (!o) {
+                setOpenStartValue(value);
+              }
+              return !o;
+            });
+          }}
           className={cn(
             "group flex items-center border border-border bg-background text-sm",
             compact ? "h-10 gap-2 px-2.5" : "h-10 gap-2.5 px-3",
@@ -139,7 +175,10 @@ export function ColorPicker({
             so we don't double-render. Target the swatch row via the
             internal class name that @uiw/react-color-sketch renders.
           */}
-          <div className="p-3 [&_.w-color-swatch]:!hidden" style={{ width: 240 }}>
+          <div
+            className="p-3 [&_.w-color-swatch]:!hidden [&_.w-color-hue]:!w-full [&_.w-color-interactive]:!w-full"
+            style={{ width: 240 }}
+          >
             <Sketch
               color={value}
               onChange={handleSketchChange}
@@ -184,7 +223,7 @@ export function ColorPicker({
 
           {/* Hex input + Done */}
           <div className="border-t border-border px-3 pb-3 pt-2.5">
-            <div className="flex items-center gap-2">
+            <div className="space-y-2">
               <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                 Hex
               </span>
@@ -194,23 +233,25 @@ export function ColorPicker({
                 onChange={handleHexInputChange}
                 spellCheck={false}
                 maxLength={7}
-                className="h-7 flex-1 border border-border bg-muted/50 px-2 font-mono text-xs text-foreground outline-none focus:border-primary/40"
+                className="h-8 w-full border border-border bg-muted/50 px-2 font-mono text-xs text-foreground outline-none focus:border-primary/40"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  const normalized = hexInput.startsWith("#") ? hexInput : `#${hexInput}`;
-                  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
-                    onChange(normalized);
-                    onCommit?.(normalized);
-                  }
-                  setOpen(false);
-                }}
-                className="flex h-7 items-center gap-1 border border-border bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-              >
-                <Check className="size-3" />
-                Done
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={closeAndRestore}
+                  className="flex h-8 items-center justify-center border border-border bg-background px-2.5 text-xs font-medium text-foreground hover:bg-muted/40"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAndCommit}
+                  className="flex h-8 items-center justify-center gap-1 border border-border bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                >
+                  <Check className="size-3" />
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>

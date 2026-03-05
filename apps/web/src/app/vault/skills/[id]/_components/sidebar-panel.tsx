@@ -15,6 +15,10 @@ export function SidebarPanel({
   resourcesContent: React.ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState<SidebarTab>("graph");
+  const graphTabId = "sidebar-tab-graph";
+  const resourcesTabId = "sidebar-tab-resources";
+  const graphPanelId = "sidebar-panel-graph";
+  const resourcesPanelId = "sidebar-panel-resources";
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -22,8 +26,11 @@ export function SidebarPanel({
       <div className="flex border-b border-border" role="tablist">
         <button
           type="button"
+          id={graphTabId}
           role="tab"
+          aria-controls={graphPanelId}
           aria-selected={activeTab === "graph"}
+          tabIndex={activeTab === "graph" ? 0 : -1}
           onClick={() => setActiveTab("graph")}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
@@ -37,8 +44,11 @@ export function SidebarPanel({
         </button>
         <button
           type="button"
+          id={resourcesTabId}
           role="tab"
+          aria-controls={resourcesPanelId}
           aria-selected={activeTab === "resources"}
+          tabIndex={activeTab === "resources" ? 0 : -1}
           onClick={() => setActiveTab("resources")}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-[10px] font-mono uppercase tracking-wider transition-colors",
@@ -55,16 +65,18 @@ export function SidebarPanel({
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div
+          id={graphPanelId}
           role="tabpanel"
-          aria-labelledby="sidebar-tab-graph"
+          aria-labelledby={graphTabId}
           hidden={activeTab !== "graph"}
           className={cn("h-full", activeTab === "graph" ? "block" : "hidden")}
         >
           {graphContent}
         </div>
         <div
+          id={resourcesPanelId}
           role="tabpanel"
-          aria-labelledby="sidebar-tab-resources"
+          aria-labelledby={resourcesTabId}
           hidden={activeTab !== "resources"}
           className={cn("h-full overflow-y-auto", activeTab === "resources" ? "block" : "hidden")}
         >

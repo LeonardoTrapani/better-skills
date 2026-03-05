@@ -17,7 +17,6 @@ import {
   Building2,
   CornerDownLeft,
   FileText,
-  Hexagon,
   Loader2,
   LogOut,
   Moon,
@@ -31,9 +30,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/skills/use-skill-search";
 import { authClient } from "@/lib/auth/auth-client";
 import { trpc } from "@/lib/api/trpc";
-import { buildResourceResponsiveHref } from "@/lib/skills/routes";
+import { buildResourceTabHref } from "@/lib/skills/routes";
+import { VaultColorHex } from "@/components/skills/vault-color-hex";
 import { cn } from "@/lib/utils";
-import { useIsDesktopLg } from "@/hooks/use-is-desktop-lg";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +85,13 @@ interface FlatItem {
   sectionLabel?: string;
 }
 
+function getVaultIndicatorColor(vault: FlatItem["vault"]): string | null {
+  if (!vault) return null;
+  if (vault.type === "personal") return "#eab308";
+  if (vault.type === "enterprise") return vault.color?.trim() ?? "var(--primary)";
+  return null;
+}
+
 // ─── Mode badge ──────────────────────────────────────────────────────────────
 
 function ModeBadge({
@@ -100,7 +106,7 @@ function ModeBadge({
   if (mode === "vault") {
     return (
       <span className="inline-flex items-center gap-1 shrink-0 border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground font-mono">
-        <Hexagon className="size-2.5" />
+        <VaultColorHex color="#eab308" className="size-2.5" />
         My vault
       </span>
     );
@@ -114,11 +120,7 @@ function ModeBadge({
 
   return (
     <span className="inline-flex items-center gap-1 shrink-0 border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground font-mono">
-      <span
-        className="inline-block size-2 border border-border/70"
-        style={{ backgroundColor: color }}
-        aria-hidden="true"
-      />
+      <VaultColorHex color={color} className="size-2.5" />
       {ev.name}
     </span>
   );
@@ -191,8 +193,7 @@ function PaletteRow({
   onHover: () => void;
   innerRef: (el: HTMLButtonElement | null) => void;
 }) {
-  const enterpriseColor =
-    item.vault?.type === "enterprise" ? (item.vault.color?.trim() ?? "var(--primary)") : null;
+  const vaultColor = getVaultIndicatorColor(item.vault);
 
   return (
     <button
@@ -207,13 +208,7 @@ function PaletteRow({
     >
       <span className="flex-shrink-0 text-neutral-300">{item.icon}</span>
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
-        {enterpriseColor ? (
-          <span
-            className="inline-block size-2 border border-border/70"
-            style={{ backgroundColor: enterpriseColor }}
-            aria-hidden="true"
-          />
-        ) : null}
+        {vaultColor ? <VaultColorHex color={vaultColor} className="size-2.5" /> : null}
         <span className="min-w-0 truncate">{item.label}</span>
       </span>
       {item.subtitle && (
@@ -250,7 +245,6 @@ export function SkillCommandPalette({
   initialMode?: PaletteMode;
 }) {
   const router = useRouter();
-  const isDesktopLg = useIsDesktopLg();
   const { resolvedTheme, setTheme } = useTheme();
   const [mode, setMode] = useState<PaletteMode>(initialMode ?? "command");
   const [search, setSearch] = useState(initialSearch ?? "");
@@ -456,21 +450,10 @@ export function SkillCommandPalette({
       limit: 10,
     }),
     placeholderData: keepPreviousData,
-    enabled:
-      open && isPersonalVaultMode && vaultDebouncedQuery.length > 0 && personalVault !== null,
+    enabled: open && isPersonalVaultMode && personalVault !== null,
   });
   const vaultItems = (vaultQuery.data?.items ?? []).filter(
     (item) => item.vault?.type === "personal",
-  );
-
-  // Also show top skills when personal vault search is empty
-  const vaultEmptyQuery = useQuery({
-    ...trpc.skills.listByOwner.queryOptions({ limit: 5 }),
-    placeholderData: keepPreviousData,
-    enabled: open && isPersonalVaultMode && vaultDebouncedQuery.length === 0,
-  });
-  const vaultEmptySkills = (vaultEmptyQuery.data?.items ?? []).filter(
-    (item) => item.vault.type === "personal",
   );
 
   // ── Enterprise vault search ────────────────────────────────────────────────
@@ -581,34 +564,26 @@ export function SkillCommandPalette({
     if (isPersonalVaultMode) {
       const items: FlatItem[] = [];
 
-      if (vaultDebouncedQuery.length === 0) {
-        // Show recent/top skills when empty
-        for (const skill of vaultEmptySkills) {
-          items.push({
-            kind: "skill",
-            id: skill.id,
-            label: skill.name,
-            subtitle: skill.description ?? "",
-            icon: <BookOpen className="size-4" />,
-            vault: skill.vault,
-            action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
-            sectionLabel: items.length === 0 ? "Your skills" : undefined,
-          });
-        }
-        return items;
-      }
-
       // Group vault results: skills first, then resources
       const skills = vaultItems.filter((it) => it.type === "skill");
       const resources = vaultItems.filter((it) => it.type === "resource");
 
       for (const skill of skills) {
+        const enterpriseColor =
+          skill.vault?.type === "enterprise"
+            ? (skill.vault.color?.trim() ?? "var(--primary)")
+            : null;
         items.push({
           kind: "skill",
           id: skill.id,
           label: skill.label,
           subtitle: skill.subtitle ?? "",
-          icon: <BookOpen className="size-4" />,
+          icon: (
+            <BookOpen
+              className="size-4"
+              style={enterpriseColor ? { color: enterpriseColor } : undefined}
+            />
+          ),
           vault: skill.vault,
           action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
           sectionLabel: items.length === 0 ? "Skills" : undefined,
@@ -616,18 +591,25 @@ export function SkillCommandPalette({
       }
 
       for (const res of resources) {
+        const enterpriseColor =
+          res.vault?.type === "enterprise" ? (res.vault.color?.trim() ?? "var(--primary)") : null;
         items.push({
           kind: "resource",
           id: res.id,
           label: res.label,
           subtitle: res.subtitle ?? "",
-          icon: <FileText className="size-4" />,
+          icon: (
+            <FileText
+              className="size-4"
+              style={enterpriseColor ? { color: enterpriseColor } : undefined}
+            />
+          ),
           vault: res.vault,
           action: () =>
             runAndClose(() => {
               if (!res.parentSkillId) return;
 
-              const href = buildResourceResponsiveHref(res.parentSkillId, res.label, isDesktopLg);
+              const href = buildResourceTabHref(res.parentSkillId, res.label);
               navigateTo(href);
             }),
           sectionLabel:
@@ -676,7 +658,7 @@ export function SkillCommandPalette({
           action: () =>
             runAndClose(() => {
               if (!res.parentSkillId) return;
-              const href = buildResourceResponsiveHref(res.parentSkillId, res.label, isDesktopLg);
+              const href = buildResourceTabHref(res.parentSkillId, res.label);
               navigateTo(href);
             }),
           sectionLabel:
@@ -698,14 +680,12 @@ export function SkillCommandPalette({
     enterpriseVaults,
     vaultDebouncedQuery,
     vaultItems,
-    vaultEmptySkills,
     isPersonalVaultMode,
     activeEnterpriseVaultId,
     enterpriseItems,
     runAndClose,
     router,
     navigateTo,
-    isDesktopLg,
   ]);
 
   // ── Reset selection when items change ──────────────────────────────────────
@@ -723,7 +703,7 @@ export function SkillCommandPalette({
   // ── Loading states ─────────────────────────────────────────────────────────
 
   const isLoading =
-    (isPersonalVaultMode && vaultDebouncedQuery.length > 0 && vaultQuery.isLoading) ||
+    (isPersonalVaultMode && vaultQuery.isLoading) ||
     (activeEnterpriseVaultId !== null && enterpriseQuery.isLoading);
 
   const showEmpty =
@@ -830,7 +810,7 @@ export function SkillCommandPalette({
     if (mode === "command") return "Type a command...";
     if (mode === "vault") return "Search skills & resources...";
     const ev = enterpriseVaults.find((v) => v.id === mode);
-    return ev ? `Search ${ev.name}...` : "Search skills & resources...";
+    return ev ? `Search ${ev.name} skills & resources...` : "Search skills & resources...";
   }, [mode, enterpriseVaults]);
 
   // ── Render ─────────────────────────────────────────────────────────────────

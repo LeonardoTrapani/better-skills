@@ -232,8 +232,8 @@ export default function EnterpriseSettingsView({ slug }: EnterpriseSettingsViewP
             Settings
           </Link>
 
-          <div className="mt-5 flex items-start gap-4">
-            <div className="mt-1 shrink-0">
+          <div className="mt-5 flex items-center gap-4">
+            <div className="shrink-0">
               <ColorPicker
                 value={colorInput}
                 onChange={setColorInput}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import type { Route } from "next";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -36,6 +37,43 @@ export interface ResourceTab {
 
 export type ContentTab = SkillTab | ResourceTab;
 
+export function computeSyncedSearchParams(options: {
+  currentSearchParams: URLSearchParams;
+  openResourceTabs: ResourceTab[];
+  activeTab: ContentTab;
+}) {
+  const { currentSearchParams, openResourceTabs, activeTab } = options;
+
+  const currentReferencesParam = currentSearchParams.get("references") ?? "";
+  const currentActiveTabParam = currentSearchParams.get("activeTab") ?? "";
+  const currentLegacyResourceParam = currentSearchParams.get("resource");
+
+  const desiredReferencesParam = openResourceTabs.map((tab) => tab.id).join(",");
+  const desiredActiveTabParam = activeTab.kind === "skill" ? "skill" : activeTab.id;
+
+  if (
+    currentReferencesParam === desiredReferencesParam &&
+    (desiredReferencesParam.length === 0 || currentActiveTabParam === desiredActiveTabParam) &&
+    currentLegacyResourceParam === null
+  ) {
+    return null;
+  }
+
+  const params = new URLSearchParams(currentSearchParams.toString());
+
+  if (desiredReferencesParam.length > 0) {
+    params.set("references", desiredReferencesParam);
+    params.set("activeTab", desiredActiveTabParam);
+  } else {
+    params.delete("references");
+    params.delete("activeTab");
+  }
+
+  params.delete("resource");
+
+  return params;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Hook: single resource content fetch                                */
 /* ------------------------------------------------------------------ */
@@ -65,8 +103,13 @@ export function useResourceTabs({
   resources: SkillResourceReference[];
   isReady: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [hasHydratedFromUrl, setHasHydratedFromUrl] = useState(false);
+
+  const pathSkillId = useMemo(() => getSkillIdFromPathname(pathname), [pathname]);
+  const isCurrentSkillPath = pathSkillId === skillId;
 
   /* ── Derive initial state from URL ── */
   const initialReferencesParam = searchParams.get("references");
@@ -140,6 +183,10 @@ export function useResourceTabs({
 
   /* ── URL -> state sync (for cmd+k and browser navigation) ── */
   useEffect(() => {
+    if (!isCurrentSkillPath) {
+      return;
+    }
+
     const referencesParam = searchParams.get("references");
     const activeTabParam = searchParams.get("activeTab");
     const legacyResourcePath = searchParams.get("resource");
@@ -160,50 +207,39 @@ export function useResourceTabs({
     if (isReady) {
       setHasHydratedFromUrl(true);
     }
-  }, [searchParams, resourcesById, resources, skillId, isReady]);
+  }, [searchParams, resourcesById, resources, skillId, isReady, isCurrentSkillPath]);
 
   /* ── URL sync ── */
   useEffect(() => {
-    if (!isReady || !hasHydratedFromUrl) {
+    if (!isReady || !hasHydratedFromUrl || !isCurrentSkillPath) {
       return;
     }
 
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentReferencesParam = currentParams.get("references") ?? "";
-    const currentActiveTabParam = currentParams.get("activeTab") ?? "";
-    const currentLegacyResourceParam = currentParams.get("resource");
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const nextParams = computeSyncedSearchParams({
+      currentSearchParams: currentParams,
+      openResourceTabs,
+      activeTab,
+    });
 
-    const desiredReferencesParam = openResourceTabs.map((tab) => tab.id).join(",");
-    const desiredActiveTabParam = activeTab.kind === "skill" ? "skill" : activeTab.id;
-
-    if (
-      currentReferencesParam === desiredReferencesParam &&
-      (desiredReferencesParam.length === 0 || currentActiveTabParam === desiredActiveTabParam) &&
-      currentLegacyResourceParam === null
-    ) {
+    if (nextParams === null) {
       return;
     }
 
-    const params = new URLSearchParams(currentParams.toString());
+    const newSearch = nextParams.toString();
+    const newUrl = newSearch ? `${pathname}?${newSearch}` : pathname;
 
-    if (desiredReferencesParam.length > 0) {
-      params.set("references", desiredReferencesParam);
-      params.set("activeTab", desiredActiveTabParam);
-    } else {
-      params.delete("references");
-      params.delete("activeTab");
-    }
-
-    // Remove legacy URL shape once state is synced.
-    params.delete("resource");
-
-    const newSearch = params.toString();
-    const newUrl = newSearch
-      ? `${window.location.pathname}?${newSearch}`
-      : window.location.pathname;
-
-    window.history.replaceState(window.history.state, "", newUrl);
-  }, [activeTab, openResourceTabs, isReady, hasHydratedFromUrl]);
+    router.replace(newUrl as Route, { scroll: false });
+  }, [
+    activeTab,
+    openResourceTabs,
+    isReady,
+    hasHydratedFromUrl,
+    pathname,
+    router,
+    searchParams,
+    isCurrentSkillPath,
+  ]);
 
   /* ── Actions ── */
   const openResource = useCallback((resource: SkillResourceReference) => {
@@ -355,4 +391,17 @@ function areTabsEqual(a: ResourceTab[], b: ResourceTab[]) {
   }
 
   return true;
+}
+
+function getSkillIdFromPathname(pathname: string): string | null {
+  const match = pathname.match(/^\/vault\/skills\/([^/?#]+)/);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
 }

@@ -137,6 +137,9 @@ export function ForceGraph({
   const { resolvedTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
+  const applyHighlightRef = useRef<((hoveredId: string | null) => void) | null>(null);
+  const focusNodeIdRef = useRef<string | undefined>(focusNodeId);
+  const hoveredNodeIdRef = useRef<string | null>(null);
   const zoomRafRef = useRef<number | null>(null);
   const isGraphInteractingRef = useRef(false);
   const tooltipRafRef = useRef<number | null>(null);
@@ -272,7 +275,8 @@ export function ForceGraph({
         .style("cursor", "pointer");
 
       /* ── Circles ── */
-      const isFocus = (d: GraphNode) => !!(focusNodeId && d.id === focusNodeId);
+      const isFocus = (d: GraphNode) =>
+        !!(focusNodeIdRef.current && d.id === focusNodeIdRef.current);
       const baseRadius = (d: GraphNode) => (d.type === "skill" ? 8 : 3.5);
       const focusRadius = (d: GraphNode) => (d.type === "skill" ? 9 : 4.5);
       const getResourceFill = (d: GraphNode, isActive: boolean) =>
@@ -343,6 +347,8 @@ export function ForceGraph({
         });
       };
 
+      applyHighlightRef.current = applyHighlight;
+
       const highlightNode = (hovId: string) => {
         applyHighlight(hovId);
       };
@@ -355,6 +361,7 @@ export function ForceGraph({
       zoomBehavior
         .on("start", () => {
           isGraphInteractingRef.current = true;
+          hoveredNodeIdRef.current = null;
           setHoveredNode(null);
           resetHighlight();
         })
@@ -385,6 +392,7 @@ export function ForceGraph({
       node
         .on("mouseenter", (event, d) => {
           if (isGraphInteractingRef.current) return;
+          hoveredNodeIdRef.current = d.id;
           setHoveredNode(d);
           scheduleTooltipPosUpdate(event.clientX, event.clientY);
           highlightNode(d.id);
@@ -395,6 +403,7 @@ export function ForceGraph({
         })
         .on("mouseleave", () => {
           if (isGraphInteractingRef.current) return;
+          hoveredNodeIdRef.current = null;
           setHoveredNode(null);
           resetHighlight();
         })
@@ -463,11 +472,12 @@ export function ForceGraph({
         });
 
       simulationRef.current = simulation;
+
+      applyHighlight(hoveredNodeIdRef.current);
     },
     [
       data,
       height,
-      focusNodeId,
       router,
       centerXBias,
       mobileInitialScale,
@@ -479,10 +489,17 @@ export function ForceGraph({
   );
 
   useEffect(() => {
+    focusNodeIdRef.current = focusNodeId;
+    applyHighlightRef.current?.(hoveredNodeIdRef.current);
+  }, [focusNodeId]);
+
+  useEffect(() => {
     setIsMounted(true);
 
     return () => {
       isGraphInteractingRef.current = false;
+      applyHighlightRef.current = null;
+      hoveredNodeIdRef.current = null;
       if (zoomRafRef.current !== null) {
         window.cancelAnimationFrame(zoomRafRef.current);
         zoomRafRef.current = null;
@@ -505,6 +522,8 @@ export function ForceGraph({
 
     return () => {
       ro.disconnect();
+      applyHighlightRef.current = null;
+      hoveredNodeIdRef.current = null;
       if (simulationRef.current) {
         simulationRef.current.stop();
         simulationRef.current = null;
