@@ -79,7 +79,20 @@ mkdir -p ./<skill-name>/references
 
 Use the fetched content as source material to author SKILL.md and references.
 
-## Step 3: Review and propose changes
+## Step 3: Rewrite links
+
+```bash
+better-skills rewrite-links "$skill_dir"
+```
+
+Then manually scan for any remaining bare markdown links (`[text](references/...)`)
+or plain-text paths to local files that the rewriter missed. Convert them to
+`\[[resource:new:<path>]]` mention tokens.
+
+Ensure every file under `references/`, `scripts/`, or `assets/` has at least
+one inbound mention — in SKILL.md or in another resource file.
+
+## Step 4: Review and propose changes
 
 Read [[resource:new:references/authoring.md]] and compare the imported content
 against the guidelines. Check:
@@ -94,20 +107,7 @@ If improvements are needed, present a summary to the user:
 - List each proposed change with a short reason
 - Ask for approval before making edits
 
-Apply approved changes. Skip if everything looks good.
-
-## Step 4: Rewrite links
-
-```bash
-better-skills rewrite-links "$skill_dir"
-```
-
-Then manually scan for any remaining bare markdown links (`[text](references/...)`)
-or plain-text paths to local files that the rewriter missed. Convert them to
-`\[[resource:new:<path>]]` mention tokens.
-
-Ensure every file under `references/`, `scripts/`, or `assets/` has at least
-one inbound mention — in SKILL.md or in another resource file.
+Apply approved changes. Skip if everything already looks good.
 
 ## Step 5: Validate
 
