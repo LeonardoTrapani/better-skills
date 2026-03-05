@@ -165,6 +165,15 @@ export function useResourceTabs({
     setHasHydratedFromUrl(false);
   }, [skillId]);
 
+  useEffect(() => {
+    if (isCurrentSkillPath) {
+      return;
+    }
+
+    setOpenResourceTabs((prev) => (prev.length === 0 ? prev : []));
+    setActiveTabId((prev) => (prev === skillId ? prev : skillId));
+  }, [isCurrentSkillPath, skillId]);
+
   /* ── Derived values ── */
   const tabs: ContentTab[] = useMemo(
     () => [skillTab, ...openResourceTabs],

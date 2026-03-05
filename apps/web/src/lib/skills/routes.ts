@@ -11,7 +11,15 @@ export function buildSkillHref(skillId: string) {
 
 export function buildSharedSkillHref(shareId: string) {
   const encodedShareId = encodeURIComponent(shareId);
+
   return `/share/${encodedShareId}` as Route;
+}
+
+export function buildSharedSkillViewHref(shareId: string, skillId: string) {
+  const baseHref = buildSharedSkillHref(shareId);
+  const query = new URLSearchParams({ skill: skillId });
+
+  return `${baseHref}?${query.toString()}` as Route;
 }
 
 export function buildResourceHref(skillId: string, resourcePath: string) {

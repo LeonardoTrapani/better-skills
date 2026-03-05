@@ -276,6 +276,27 @@ const sharePreviewOutput = z.object({
   }),
 });
 
+const sharedSkillDetailOutput = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  originalMarkdown: z.string(),
+  renderedMarkdown: z.string(),
+  sourceUrl: z.string().nullable(),
+  sourceIdentifier: z.string().nullable(),
+  resources: z.array(
+    z.object({
+      id: z.string().uuid(),
+      path: z.string(),
+      kind: resourceKindEnum,
+      content: z.string(),
+      renderedContent: z.string(),
+      metadata: z.record(z.string(), z.unknown()),
+    }),
+  ),
+});
+
 const sharedSkillPreviewOutput = z.object({
   shareId: z.string().uuid(),
   createdAt: z.date(),
@@ -291,26 +312,8 @@ const sharedSkillPreviewOutput = z.object({
     resources: z.number().int().nonnegative(),
     links: z.number().int().nonnegative(),
   }),
-  rootSkill: z.object({
-    id: z.string().uuid(),
-    slug: z.string(),
-    name: z.string(),
-    description: z.string(),
-    originalMarkdown: z.string(),
-    renderedMarkdown: z.string(),
-    sourceUrl: z.string().nullable(),
-    sourceIdentifier: z.string().nullable(),
-    resources: z.array(
-      z.object({
-        id: z.string().uuid(),
-        path: z.string(),
-        kind: resourceKindEnum,
-        content: z.string(),
-        renderedContent: z.string(),
-        metadata: z.record(z.string(), z.unknown()),
-      }),
-    ),
-  }),
+  rootSkill: sharedSkillDetailOutput,
+  activeSkill: sharedSkillDetailOutput,
 });
 
 const shareInstallPackageOutput = z.object({
@@ -903,6 +906,47 @@ function buildShareSnapshotRenderContext(snapshot: ShareSnapshot) {
     resourceInfoById,
     resourceOwnerSkillIdById,
     totalResources,
+  };
+}
+
+type ShareSnapshotRenderContext = ReturnType<typeof buildShareSnapshotRenderContext>;
+
+function toSharedSkillDetailOutput(
+  snapshotSkill: ShareSnapshot["skills"][number],
+  context: ShareSnapshotRenderContext,
+) {
+  const { skillNameById, resourceInfoById, resourceOwnerSkillIdById } = context;
+
+  return {
+    id: snapshotSkill.id,
+    slug: snapshotSkill.slug,
+    name: snapshotSkill.name,
+    description: snapshotSkill.description,
+    originalMarkdown: snapshotSkill.skillMarkdown,
+    renderedMarkdown: renderSnapshotMarkdown(snapshotSkill.skillMarkdown, {
+      skillNameById,
+      resourceInfoById,
+      currentSkillId: snapshotSkill.id,
+    }),
+    sourceUrl: snapshotSkill.sourceUrl,
+    sourceIdentifier: snapshotSkill.sourceIdentifier,
+    resources: snapshotSkill.resources
+      .slice()
+      .sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id))
+      .map((snapshotResource) => ({
+        id: snapshotResource.id,
+        path: snapshotResource.path,
+        kind: snapshotResource.kind,
+        content: snapshotResource.content,
+        renderedContent: renderSnapshotMarkdown(snapshotResource.content, {
+          skillNameById,
+          resourceInfoById,
+          currentSkillId:
+            resourceOwnerSkillIdById.get(normalizeEntityId(snapshotResource.id)) ??
+            snapshotSkill.id,
+        }),
+        metadata: snapshotResource.metadata,
+      })),
   };
 }
 
@@ -2538,7 +2582,12 @@ export const skillsRouter = router({
     }),
 
   getShareById: publicProcedure
-    .input(z.object({ shareId: z.string().uuid() }))
+    .input(
+      z.object({
+        shareId: z.string().uuid(),
+        skillId: z.string().uuid().optional(),
+      }),
+    )
     .output(sharedSkillPreviewOutput)
     .query(async ({ input }) => {
       const [shareRow] = await db.select().from(skillShare).where(eq(skillShare.id, input.shareId));
@@ -2559,8 +2608,16 @@ export const skillsRouter = router({
         });
       }
 
-      const { skillNameById, resourceInfoById, resourceOwnerSkillIdById, totalResources } =
-        buildShareSnapshotRenderContext(snapshot);
+      const requestedSkillId = input.skillId ? normalizeEntityId(input.skillId) : null;
+      const requestedSkillSnapshot = requestedSkillId
+        ? snapshot.skills.find((skillSnapshot) => {
+            return normalizeEntityId(skillSnapshot.id) === requestedSkillId;
+          })
+        : null;
+
+      const activeSkillSnapshot = requestedSkillSnapshot ?? rootSkillSnapshot;
+
+      const renderContext = buildShareSnapshotRenderContext(snapshot);
 
       const summary = summarizeShareSnapshot(snapshot);
 
@@ -2570,43 +2627,11 @@ export const skillsRouter = router({
         includedSkills: summary.includedSkills,
         stats: {
           skills: summary.stats.skills,
-          resources: totalResources,
+          resources: renderContext.totalResources,
           links: summary.stats.links,
         },
-        rootSkill: {
-          id: rootSkillSnapshot.id,
-          slug: rootSkillSnapshot.slug,
-          name: rootSkillSnapshot.name,
-          description: rootSkillSnapshot.description,
-          originalMarkdown: rootSkillSnapshot.skillMarkdown,
-          renderedMarkdown: renderSnapshotMarkdown(rootSkillSnapshot.skillMarkdown, {
-            skillNameById,
-            resourceInfoById,
-            currentSkillId: rootSkillSnapshot.id,
-          }),
-          sourceUrl: rootSkillSnapshot.sourceUrl,
-          sourceIdentifier: rootSkillSnapshot.sourceIdentifier,
-          resources: rootSkillSnapshot.resources
-            .slice()
-            .sort(
-              (left, right) =>
-                left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
-            )
-            .map((resourceSnapshot) => ({
-              id: resourceSnapshot.id,
-              path: resourceSnapshot.path,
-              kind: resourceSnapshot.kind,
-              content: resourceSnapshot.content,
-              renderedContent: renderSnapshotMarkdown(resourceSnapshot.content, {
-                skillNameById,
-                resourceInfoById,
-                currentSkillId:
-                  resourceOwnerSkillIdById.get(normalizeEntityId(resourceSnapshot.id)) ??
-                  rootSkillSnapshot.id,
-              }),
-              metadata: resourceSnapshot.metadata,
-            })),
-        },
+        rootSkill: toSharedSkillDetailOutput(rootSkillSnapshot, renderContext),
+        activeSkill: toSharedSkillDetailOutput(activeSkillSnapshot, renderContext),
       };
     }),
 

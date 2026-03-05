@@ -21,7 +21,12 @@ import {
   createResourceHrefResolver,
   type SkillResourceReference,
 } from "@/lib/skills/resource-links";
-import { buildLoginHref, dashboardRoute } from "@/lib/skills/routes";
+import {
+  buildLoginHref,
+  buildSharedSkillViewHref,
+  buildSkillHref,
+  dashboardRoute,
+} from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
 import { ContentTabBar } from "@/app/vault/skills/[id]/_components/content-tab-bar";
 import { ResourceTabContent } from "@/app/vault/skills/[id]/_components/resource-tab-content";
@@ -38,6 +43,7 @@ import { useIsDesktopLg } from "@/hooks/use-is-desktop-lg";
 
 const SKILL_DETAIL_STALE_TIME_MS = 60_000;
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
+const UUID_QUERY_PARAM_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type SkillDetailProps = { id: string; shareId?: never } | { id?: never; shareId: string };
 type SkillDetailMode = "vault" | "share";
@@ -64,7 +70,6 @@ type SkillDetailData = {
 
 function SkillDetailInner({ id, shareId }: SkillDetailProps) {
   const mode: SkillDetailMode = shareId ? "share" : "vault";
-  const routeParamId = id ?? shareId ?? EMPTY_UUID;
 
   const isDesktopLg = useIsDesktopLg();
   const router = useRouter();
@@ -73,6 +78,22 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
   const queryClient = useQueryClient();
   const [mobileSection, setMobileSection] = useState<MobileSection>("content");
   const [hasAutoImportStarted, setHasAutoImportStarted] = useState(false);
+
+  const selectedShareSkillId = useMemo(() => {
+    if (mode !== "share") {
+      return undefined;
+    }
+
+    const queryValue = searchParams.get("skill")?.trim();
+    if (!queryValue || !UUID_QUERY_PARAM_RE.test(queryValue)) {
+      return undefined;
+    }
+
+    return queryValue.toLowerCase();
+  }, [mode, searchParams]);
+
+  const routeParamId =
+    id ?? (shareId ? `${shareId}:${selectedShareSkillId ?? "root"}` : undefined) ?? EMPTY_UUID;
 
   const { data: session } = authClient.useSession();
 
@@ -87,7 +108,10 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
   });
 
   const sharedSkillQuery = useQuery({
-    ...trpc.skills.getShareById.queryOptions({ shareId: shareId ?? EMPTY_UUID }),
+    ...trpc.skills.getShareById.queryOptions({
+      shareId: shareId ?? EMPTY_UUID,
+      skillId: selectedShareSkillId,
+    }),
     staleTime: SKILL_DETAIL_STALE_TIME_MS,
     enabled: mode === "share" && Boolean(shareId),
   });
@@ -128,16 +152,18 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
     const data = sharedSkillQuery.data;
     if (!data) return null;
 
+    const activeSkill = data.activeSkill;
+
     return {
-      id: data.rootSkill.id,
-      slug: data.rootSkill.slug,
-      name: data.rootSkill.name,
-      description: data.rootSkill.description,
-      originalMarkdown: data.rootSkill.originalMarkdown,
-      renderedMarkdown: data.rootSkill.renderedMarkdown,
-      sourceIdentifier: data.rootSkill.sourceIdentifier,
-      sourceUrl: data.rootSkill.sourceUrl,
-      resources: data.rootSkill.resources.map((resource) => ({
+      id: activeSkill.id,
+      slug: activeSkill.slug,
+      name: activeSkill.name,
+      description: activeSkill.description,
+      originalMarkdown: activeSkill.originalMarkdown,
+      renderedMarkdown: activeSkill.renderedMarkdown,
+      sourceIdentifier: activeSkill.sourceIdentifier,
+      sourceUrl: activeSkill.sourceUrl,
+      resources: activeSkill.resources.map((resource) => ({
         id: resource.id,
         path: resource.path,
         kind: resource.kind,
@@ -310,10 +336,18 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
 
   const handleGraphNodeClick = useCallback(
     (node: GraphNode): boolean | void => {
-      if (node.type === "skill" && node.id === skillId) {
-        switchTab(skillId);
-        setMobileSection("content");
-        return true;
+      if (node.type === "skill") {
+        if (node.id === skillId) {
+          switchTab(skillId);
+          setMobileSection("content");
+          return true;
+        }
+
+        if (mode === "share" && shareId) {
+          router.push(buildSharedSkillViewHref(shareId, node.id));
+          setMobileSection("content");
+          return true;
+        }
       }
 
       if (node.type === "resource") {
@@ -323,9 +357,26 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
           setMobileSection("content");
           return true;
         }
+
+        if (mode === "share" && shareId && node.parentSkillId) {
+          router.push(buildSharedSkillViewHref(shareId, node.parentSkillId));
+          setMobileSection("content");
+          return true;
+        }
       }
     },
-    [openResource, resources, skillId, switchTab],
+    [mode, openResource, resources, router, shareId, skillId, switchTab],
+  );
+
+  const resolveSkillHref = useCallback(
+    (targetSkillId: string) => {
+      if (mode === "share" && shareId) {
+        return buildSharedSkillViewHref(shareId, targetSkillId);
+      }
+
+      return buildSkillHref(targetSkillId);
+    },
+    [mode, shareId],
   );
 
   const markdownComponents = useMemo(
@@ -335,8 +386,10 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
         skillName: detailData?.name,
         findResourceByHref: createResourceHrefResolver(resources),
         onResourceNavigate: handleOpenResourceTab,
+        resolveSkillHref,
+        useSkillHoverPreview: mode !== "share",
       }),
-    [detailData?.name, handleOpenResourceTab, resources, skillId],
+    [detailData?.name, handleOpenResourceTab, mode, resolveSkillHref, resources, skillId],
   );
 
   const activeSharedResource = useMemo(() => {

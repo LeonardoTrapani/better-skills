@@ -7,14 +7,24 @@ import { ResourceHoverLink } from "@/components/skills/resource-link";
 import { SkillHoverLink } from "@/components/skills/skill-link";
 import { Separator } from "@/components/ui/separator";
 import type { SkillResourceReference } from "@/lib/skills/resource-links";
+import { buildSkillHref } from "@/lib/skills/routes";
 
 export function createMarkdownComponents(options: {
   skillId: string;
   skillName?: string;
   findResourceByHref: (href: string) => SkillResourceReference | null;
   onResourceNavigate?: (resource: SkillResourceReference) => void;
+  resolveSkillHref?: (skillId: string) => string;
+  useSkillHoverPreview?: boolean;
 }) {
-  const { skillId, skillName, findResourceByHref, onResourceNavigate } = options;
+  const {
+    skillId,
+    skillName,
+    findResourceByHref,
+    onResourceNavigate,
+    resolveSkillHref = buildSkillHref,
+    useSkillHoverPreview = true,
+  } = options;
 
   return {
     h1: (props: ComponentPropsWithoutRef<"h1">) => (
@@ -53,6 +63,19 @@ export function createMarkdownComponents(options: {
 
       if (mention?.type === "skill") {
         const targetId = mention.targetId;
+        const skillHref = resolveSkillHref(targetId);
+
+        if (!useSkillHoverPreview) {
+          return (
+            <Link
+              href={skillHref as Route}
+              className="text-primary underline underline-offset-4 break-all"
+            >
+              {children}
+            </Link>
+          );
+        }
+
         return (
           <SkillHoverLink
             skillId={targetId}
