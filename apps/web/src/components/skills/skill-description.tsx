@@ -29,7 +29,7 @@ export function SkillDescription({ description }: { description?: string | null 
       {hasOverflow && (
         <button
           type="button"
-          className="mt-1 text-[11px] text-primary transition-colors duration-150 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="mt-1 text-[11px] text-neutral-300 transition-colors duration-150 hover:text-neutral-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           onClick={() => setExpanded((prev) => !prev)}
           aria-label={expanded ? "Collapse description" : "Expand description"}
         >

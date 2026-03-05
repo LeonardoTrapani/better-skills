@@ -8,6 +8,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@/hooks/skills/use-skill-search";
 import { buildSkillHref } from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
+import { VaultColorHex } from "@/components/skills/vault-color-hex";
 import { cn } from "@/lib/utils";
 
 interface MySkillsTableProps {
@@ -106,11 +107,7 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
 
                   {enterpriseColor ? (
                     <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-muted-foreground">
-                      <span
-                        className="inline-block size-2 border border-border/70"
-                        style={{ backgroundColor: enterpriseColor }}
-                        aria-hidden="true"
-                      />
+                      <VaultColorHex color={enterpriseColor} className="size-2.5" />
                       <span className="max-w-28 truncate">{skill.vault.name}</span>
                     </span>
                   ) : null}

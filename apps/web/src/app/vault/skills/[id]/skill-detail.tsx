@@ -28,21 +28,28 @@ import {
   MobileSectionControl,
   type MobileSection,
 } from "@/app/vault/skills/[id]/_components/mobile-section-control";
-import { MobileResourceList } from "@/app/vault/skills/[id]/_components/mobile-resource-list";
 import { ResourceList } from "@/components/skills/resource-list";
+import { useIsDesktopLg } from "@/hooks/use-is-desktop-lg";
+
+const SKILL_DETAIL_STALE_TIME_MS = 60_000;
 
 function SkillDetailInner({ id }: { id: string }) {
-  const { data, isLoading, isError } = useQuery(
-    trpc.skills.getById.queryOptions({ id, linkMentions: true }),
-  );
-  const graphQuery = useQuery(trpc.skills.graphForSkill.queryOptions({ skillId: id }));
-
+  const isDesktopLg = useIsDesktopLg();
   const [mobileSection, setMobileSection] = useState<MobileSection>("content");
+
+  const { data, isLoading, isError } = useQuery({
+    ...trpc.skills.getById.queryOptions({ id, linkMentions: true }),
+    staleTime: SKILL_DETAIL_STALE_TIME_MS,
+  });
+  const graphQuery = useQuery({
+    ...trpc.skills.graphForSkill.queryOptions({ skillId: id }),
+    staleTime: SKILL_DETAIL_STALE_TIME_MS,
+    enabled: isDesktopLg || mobileSection === "graph",
+  });
 
   const resources = data?.resources ?? [];
   const skillSlug = data?.slug ?? data?.name ?? "skill";
   const skillId = data?.id ?? id;
-  const isDefaultSkill = data?.isDefault ?? false;
 
   const {
     tabs,
@@ -106,6 +113,7 @@ function SkillDetailInner({ id }: { id: string }) {
       if (resource) {
         event.preventDefault();
         openResource(resource);
+        setMobileSection("content");
       }
     },
     [openResource, resources, skillId],
@@ -113,6 +121,12 @@ function SkillDetailInner({ id }: { id: string }) {
 
   const handleGraphNodeClick = useCallback(
     (node: GraphNode): boolean | void => {
+      if (node.type === "skill" && node.id === skillId) {
+        switchTab(skillId);
+        setMobileSection("content");
+        return true;
+      }
+
       if (node.type === "resource") {
         const resource = resources.find((resourceItem) => resourceItem.id === node.id);
         if (resource) {
@@ -122,21 +136,10 @@ function SkillDetailInner({ id }: { id: string }) {
         }
       }
     },
-    [openResource, resources],
+    [openResource, resources, skillId, switchTab],
   );
 
-  const desktopMarkdownComponents = useMemo(
-    () =>
-      createMarkdownComponents({
-        skillId,
-        skillName: data?.name,
-        findResourceByHref: createResourceHrefResolver(resources),
-        onResourceNavigate: handleOpenResourceTab,
-      }),
-    [data?.name, handleOpenResourceTab, resources, skillId],
-  );
-
-  const mobileMarkdownComponents = useMemo(
+  const markdownComponents = useMemo(
     () =>
       createMarkdownComponents({
         skillId,
@@ -165,11 +168,11 @@ function SkillDetailInner({ id }: { id: string }) {
     slug: data.slug,
     name: data.name,
     description: data.description,
-    isDefaultSkill,
     vaultName: data.vault.name,
     vaultType: data.vault.type,
     vaultColor: data.vault.color,
     isReadOnly: data.vault.isReadOnly,
+    isVaultEnabled: data.vault.isEnabled,
     sourceIdentifier: data.sourceIdentifier,
     sourceUrl: data.sourceUrl,
     updatedAt: data.updatedAt,
@@ -181,9 +184,11 @@ function SkillDetailInner({ id }: { id: string }) {
   return (
     <main className="relative min-h-screen bg-background lg:h-[calc(100dvh-52px)] lg:min-h-0 lg:overflow-hidden">
       <div className="relative p-4 pb-6 sm:p-6 lg:hidden">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-3xl space-y-5">
           <SkillDetailHeader
             {...headerProps}
+            compact
+            mobile
             viewingResource={mobileSection === "content" ? viewingResourceLabel : null}
           />
 
@@ -217,7 +222,7 @@ function SkillDetailInner({ id }: { id: string }) {
                   <article className="min-w-0 break-words">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
-                      components={mobileMarkdownComponents}
+                      components={markdownComponents}
                       urlTransform={markdownUrlTransform}
                     >
                       {data.renderedMarkdown || data.originalMarkdown}
@@ -245,10 +250,12 @@ function SkillDetailInner({ id }: { id: string }) {
               hidden={mobileSection !== "resources"}
               className={mobileSection === "resources" ? "block" : "hidden"}
             >
-              <MobileResourceList
+              <ResourceList
                 resources={resources}
-                onSelect={handleOpenResourceTab}
-                framed={false}
+                skillId={skillId}
+                skillName={data.name}
+                emptyMessage="No resources attached."
+                onNavigate={handleResourceListNavigate}
               />
             </div>
 
@@ -336,7 +343,7 @@ function SkillDetailInner({ id }: { id: string }) {
                 <article className="mt-3 min-w-0 break-words">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    components={desktopMarkdownComponents}
+                    components={markdownComponents}
                     urlTransform={markdownUrlTransform}
                   >
                     {data.renderedMarkdown || data.originalMarkdown}
