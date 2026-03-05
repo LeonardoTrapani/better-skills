@@ -205,7 +205,7 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
           queryClient.invalidateQueries({ queryKey: trpc.skills.graph.queryKey() }),
         ]);
 
-        toast.success("shared skill imported");
+        toast.success("shared skill imported. run better-skills sync in your terminal.");
         router.push(dashboardRoute);
       },
       onError: (error) => {
