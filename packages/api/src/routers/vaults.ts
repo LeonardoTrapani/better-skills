@@ -22,6 +22,8 @@ const vaultMembershipOutput = z.object({
   canWrite: z.boolean(),
   canAdmin: z.boolean(),
   isReadOnly: z.boolean(),
+  /** When the user joined (or was added to) this vault. */
+  membershipCreatedAt: z.date(),
   vault: z.object({
     id: z.string().uuid(),
     slug: z.string(),
@@ -133,6 +135,7 @@ export const vaultsRouter = router({
         canWrite: permissions.canWrite,
         canAdmin: permissions.canAdmin,
         isReadOnly: permissions.isReadOnly,
+        membershipCreatedAt: membership.membershipCreatedAt,
         vault: {
           id: membership.vaultId,
           slug: membership.vaultSlug,

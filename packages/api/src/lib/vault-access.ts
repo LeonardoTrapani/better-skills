@@ -18,6 +18,7 @@ export type VaultMembershipRow = {
   isSystemManaged: boolean;
   role: MembershipRole;
   isEnabled: boolean;
+  membershipCreatedAt: Date;
 };
 
 export type VaultPermissions = {
@@ -98,6 +99,7 @@ export async function getUserMemberships(userId: string): Promise<VaultMembershi
       isSystemManaged: vault.isSystemManaged,
       role: vaultMembership.role,
       isEnabled: vaultMembership.isEnabled,
+      membershipCreatedAt: vaultMembership.createdAt,
     })
     .from(vaultMembership)
     .innerJoin(vault, eq(vault.id, vaultMembership.vaultId))
@@ -141,6 +143,7 @@ export async function getMembershipForVault(
       isSystemManaged: vault.isSystemManaged,
       role: vaultMembership.role,
       isEnabled: vaultMembership.isEnabled,
+      membershipCreatedAt: vaultMembership.createdAt,
     })
     .from(vaultMembership)
     .innerJoin(vault, eq(vault.id, vaultMembership.vaultId))

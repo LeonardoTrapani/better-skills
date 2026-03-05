@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import { useDebouncedValue } from "@/hooks/skills/use-skill-search";
 import { buildSkillHref } from "@/lib/skills/routes";
 import { trpc } from "@/lib/api/trpc";
 import { cn } from "@/lib/utils";
@@ -16,13 +17,15 @@ interface MySkillsTableProps {
 
 export default function MySkillsTable({ height, className }: MySkillsTableProps) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
-  const { data, isLoading, isError } = useQuery(
-    trpc.skills.listByOwner.queryOptions({
-      limit: 50,
-      search: search.trim() || undefined,
+  const { data, isLoading, isError } = useQuery({
+    ...trpc.skills.listByOwner.queryOptions({
+      limit: 100,
+      search: debouncedSearch || undefined,
     }),
-  );
+    placeholderData: keepPreviousData,
+  });
 
   const skills = data?.items ?? [];
 
@@ -84,27 +87,33 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
               >
                 <span className="text-sm text-neutral-300 tabular-nums">{index + 1}</span>
 
-                <div className="min-w-0 w-full flex flex-wrap items-baseline gap-x-2">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold transition-colors",
-                      isDisabled
-                        ? "text-muted-foreground"
-                        : "text-foreground group-hover:text-primary",
-                    )}
-                  >
-                    {skill.name}
-                  </span>
-                  {enterpriseColor ? (
+                <div className="min-w-0 w-full flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2">
                     <span
-                      className="inline-block size-2 border border-border/70"
-                      style={{ backgroundColor: enterpriseColor }}
-                      aria-hidden="true"
-                    />
+                      className={cn(
+                        "text-sm font-semibold transition-colors",
+                        isDisabled
+                          ? "text-muted-foreground"
+                          : "text-foreground group-hover:text-primary",
+                      )}
+                    >
+                      {skill.name}
+                    </span>
+                    <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
+                      {skill.description}
+                    </span>
+                  </div>
+
+                  {enterpriseColor ? (
+                    <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-mono text-muted-foreground">
+                      <span
+                        className="inline-block size-2 border border-border/70"
+                        style={{ backgroundColor: enterpriseColor }}
+                        aria-hidden="true"
+                      />
+                      <span className="max-w-28 truncate">{skill.vault.name}</span>
+                    </span>
                   ) : null}
-                  <span className="text-[10px] font-sans text-muted-foreground transition-colors truncate">
-                    {skill.description}
-                  </span>
                 </div>
               </Link>
             );
