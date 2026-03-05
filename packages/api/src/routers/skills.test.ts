@@ -44,9 +44,18 @@ type LinkRow = {
   createdAt: Date;
 };
 
+type ShareRow = {
+  id: string;
+  createdByUserId: string | null;
+  rootSkillId: string;
+  snapshot: Record<string, unknown>;
+  createdAt: Date;
+};
+
 let skills: SkillRow[] = [];
 let resources: ResourceRow[] = [];
 let links: LinkRow[] = [];
+let shares: ShareRow[] = [];
 
 // -- condition evaluation engine --
 
@@ -125,6 +134,8 @@ function getStore(tableName: string): Record<string, unknown>[] {
       return resources;
     case "skill_link":
       return links;
+    case "skill_share":
+      return shares;
     default:
       return [];
   }
@@ -228,6 +239,14 @@ const fakeSkillLink = fakeTable("skill_link", {
   note: "note",
   metadata: "metadata",
   createdByUserId: "created_by_user_id",
+  createdAt: "created_at",
+});
+
+const fakeSkillShare = fakeTable("skill_share", {
+  id: "id",
+  createdByUserId: "created_by_user_id",
+  rootSkillId: "root_skill_id",
+  snapshot: "snapshot",
   createdAt: "created_at",
 });
 
@@ -528,10 +547,12 @@ mock.module("@better-skills/db/schema/skills", () => ({
   skill: fakeSkill,
   skillResource: fakeSkillResource,
   skillLink: fakeSkillLink,
+  skillShare: fakeSkillShare,
   skillResourceKindEnum: {},
   skillRelations: {},
   skillResourceRelations: {},
   skillLinkRelations: {},
+  skillShareRelations: {},
 }));
 
 // mock auth (used by context.ts)
@@ -630,6 +651,7 @@ beforeEach(() => {
   skills.length = 0;
   resources.length = 0;
   links.length = 0;
+  shares.length = 0;
 });
 
 // ============================================================

@@ -9,6 +9,7 @@ import { getCommand } from "./commands/get";
 import { getUnmanagedSkillsCommand } from "./commands/get-unmanaged-skills";
 import { referencesCommand } from "./commands/references";
 import { healthCommand } from "./commands/health";
+import { installShareCommand } from "./commands/install-share";
 import { listCommand } from "./commands/list";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
@@ -44,6 +45,7 @@ function printUsage() {
   ui.log.info("  better-skills rewrite-links <dir> [--dry-run]");
   ui.log.info("  better-skills backup [--source <dir>] [--out <tmp-dir>] [--agent <agent>]...");
   ui.log.info("  better-skills list [search] [--all] [--limit N]");
+  ui.log.info("  better-skills install-share <share-url|share-uuid>");
   ui.log.info("  better-skills search <query> [--limit N]");
   ui.log.info("  better-skills get <vault-slug>/<skill-slug>|<slug>|<uuid>");
   ui.log.info("  better-skills get-unmanaged-skills");
@@ -108,6 +110,9 @@ async function run(args: string[]) {
       return;
     case "list":
       await listCommand();
+      return;
+    case "install-share":
+      await installShareCommand();
       return;
     case "search":
       await searchCommand();

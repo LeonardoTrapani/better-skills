@@ -9,6 +9,11 @@ export function buildSkillHref(skillId: string) {
   return `/vault/skills/${encodedId}` as Route;
 }
 
+export function buildSharedSkillHref(shareId: string) {
+  const encodedShareId = encodeURIComponent(shareId);
+  return `/share/${encodedShareId}` as Route;
+}
+
 export function buildResourceHref(skillId: string, resourcePath: string) {
   return buildResourceTabHref(skillId, resourcePath);
 }

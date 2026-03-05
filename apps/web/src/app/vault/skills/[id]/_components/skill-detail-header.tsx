@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -47,6 +48,7 @@ export function SkillDetailHeader({
   compact = false,
   mobile = false,
   viewingResource,
+  actions,
 }: {
   slug: string;
   name: string;
@@ -63,6 +65,7 @@ export function SkillDetailHeader({
   compact?: boolean;
   mobile?: boolean;
   viewingResource?: string | null;
+  actions?: ReactNode;
 }) {
   const viewingResourceName = viewingResource
     ? (viewingResource.split("/").filter(Boolean).at(-1) ?? viewingResource)
@@ -78,17 +81,21 @@ export function SkillDetailHeader({
     return (
       <header className="space-y-3">
         <div className="space-y-2">
-          <Link href={dashboardRoute} className="inline-flex w-fit">
-            <Button
-              variant="link"
-              size="xs"
-              className="h-6 p-0 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-              aria-label="Back to skills"
-            >
-              <ArrowLeft className="size-3" aria-hidden="true" />
-              Back
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between gap-2">
+            <Link href={dashboardRoute} className="inline-flex w-fit">
+              <Button
+                variant="link"
+                size="xs"
+                className="h-6 p-0 font-mono text-[10px] text-muted-foreground hover:text-foreground"
+                aria-label="Back to skills"
+              >
+                <ArrowLeft className="size-3" aria-hidden="true" />
+                Back
+              </Button>
+            </Link>
+
+            {actions ? <div className="shrink-0">{actions}</div> : null}
+          </div>
 
           <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-muted-foreground font-mono">
             <Link
@@ -246,6 +253,8 @@ export function SkillDetailHeader({
             </>
           )}
         </nav>
+
+        {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
 
       <div className="space-y-2">

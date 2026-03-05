@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -13,7 +12,6 @@ import {
   Search,
   Shield,
   UserMinus,
-  Users,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -177,7 +175,6 @@ export default function EnterpriseSettingsView({ slug }: EnterpriseSettingsViewP
 
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
   const pagedMembers = filteredMembers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const colorChanged = colorInput !== (membership?.vault.color ?? "#6b7280");
   const inviteValidationError = validateInviteEmail(inviteEmail);
 
   // ── Guards ─────────────────────────────────────────────────────────────
