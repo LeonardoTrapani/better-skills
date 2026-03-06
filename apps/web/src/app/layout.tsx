@@ -26,6 +26,19 @@ export const metadata: Metadata = {
   title: "BETTER-SKILLS - The Open Agent Skills Ecosystem",
   description:
     "BETTER-SKILLS lets you build and manage a graph of reusable skills for your AI agents. Connect your CLI and web app to your vault.",
+  openGraph: {
+    title: "BETTER-SKILLS - Your Agent's Second Brain",
+    description:
+      "BETTER-SKILLS lets you build and manage a graph of reusable skills for your AI agents. Connect your CLI and web app to your vault.",
+    type: "website",
+    siteName: "BETTER-SKILLS",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BETTER-SKILLS - Your Agent's Second Brain",
+    description:
+      "BETTER-SKILLS lets you build and manage a graph of reusable skills for your AI agents. Connect your CLI and web app to your vault.",
+  },
 };
 
 export default async function RootLayout({
