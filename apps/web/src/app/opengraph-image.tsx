@@ -210,30 +210,69 @@ export default function OpenGraphImage() {
                   padding: 10,
                 }}
               >
-                <svg width="380" height="180" viewBox="0 0 380 180" fill="none">
-                  <line x1="66" y1="121" x2="144" y2="78" stroke="rgba(148, 163, 184, 0.45)" />
-                  <line x1="144" y1="78" x2="228" y2="98" stroke="rgba(148, 163, 184, 0.35)" />
-                  <line x1="228" y1="98" x2="306" y2="52" stroke="rgba(148, 163, 184, 0.4)" />
-                  <line x1="228" y1="98" x2="306" y2="130" stroke="rgba(148, 163, 184, 0.28)" />
-                  <line x1="144" y1="78" x2="184" y2="40" stroke="rgba(148, 163, 184, 0.32)" />
+                <div
+                  style={{
+                    width: "100%",
+                    height: 180,
+                    position: "relative",
+                    display: "flex",
+                  }}
+                >
+                  <svg
+                    width="380"
+                    height="180"
+                    viewBox="0 0 380 180"
+                    fill="none"
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <line x1="66" y1="121" x2="144" y2="78" stroke="rgba(148, 163, 184, 0.45)" />
+                    <line x1="144" y1="78" x2="228" y2="98" stroke="rgba(148, 163, 184, 0.35)" />
+                    <line x1="228" y1="98" x2="306" y2="52" stroke="rgba(148, 163, 184, 0.4)" />
+                    <line x1="228" y1="98" x2="306" y2="130" stroke="rgba(148, 163, 184, 0.28)" />
+                    <line x1="144" y1="78" x2="184" y2="40" stroke="rgba(148, 163, 184, 0.32)" />
 
-                  <circle cx="66" cy="121" r="12" fill="#6366F1" />
-                  <circle cx="144" cy="78" r="13" fill="#FE9A00" />
-                  <circle cx="228" cy="98" r="11" fill="#6366F1" />
-                  <circle cx="306" cy="52" r="10" fill="#6366F1" />
-                  <circle cx="306" cy="130" r="9" fill="#6366F1" />
-                  <circle cx="184" cy="40" r="7" fill="#A5B4FC" />
+                    <circle cx="66" cy="121" r="12" fill="#6366F1" />
+                    <circle cx="144" cy="78" r="13" fill="#FE9A00" />
+                    <circle cx="228" cy="98" r="11" fill="#6366F1" />
+                    <circle cx="306" cy="52" r="10" fill="#6366F1" />
+                    <circle cx="306" cy="130" r="9" fill="#6366F1" />
+                    <circle cx="184" cy="40" r="7" fill="#A5B4FC" />
+                  </svg>
 
-                  <text x="30" y="150" fill="#CBD5E1" fontSize="14" fontFamily="Inter">
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 30,
+                      top: 136,
+                      color: "#CBD5E1",
+                      fontSize: 14,
+                    }}
+                  >
                     my-vault
-                  </text>
-                  <text x="120" y="58" fill="#F8FAFC" fontSize="14" fontFamily="Inter">
+                  </span>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 120,
+                      top: 42,
+                      color: "#F8FAFC",
+                      fontSize: 14,
+                    }}
+                  >
                     root-skill
-                  </text>
-                  <text x="246" y="90" fill="#CBD5E1" fontSize="13" fontFamily="Inter">
+                  </span>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 246,
+                      top: 74,
+                      color: "#CBD5E1",
+                      fontSize: 13,
+                    }}
+                  >
                     linked
-                  </text>
-                </svg>
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: 10 }}>
