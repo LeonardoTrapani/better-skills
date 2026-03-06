@@ -4,6 +4,7 @@ import type { Route } from "next";
 
 import { getInternalDashboardHref, parseMentionHref } from "@/components/markdown/mention-markdown";
 import { ResourceHoverLink } from "@/components/skills/resource-link";
+import { SharedSkillHoverLink } from "@/components/skills/shared-skill-link";
 import { SkillHoverLink } from "@/components/skills/skill-link";
 import { Separator } from "@/components/ui/separator";
 import type { SkillResourceReference } from "@/lib/skills/resource-links";
@@ -15,6 +16,7 @@ export function createMarkdownComponents(options: {
   findResourceByHref: (href: string) => SkillResourceReference | null;
   onResourceNavigate?: (resource: SkillResourceReference) => void;
   resolveSkillHref?: (skillId: string) => string;
+  shareIdForSkillHover?: string;
   useSkillHoverPreview?: boolean;
 }) {
   const {
@@ -23,6 +25,7 @@ export function createMarkdownComponents(options: {
     findResourceByHref,
     onResourceNavigate,
     resolveSkillHref = buildSkillHref,
+    shareIdForSkillHover,
     useSkillHoverPreview = true,
   } = options;
 
@@ -64,6 +67,19 @@ export function createMarkdownComponents(options: {
       if (mention?.type === "skill") {
         const targetId = mention.targetId;
         const skillHref = resolveSkillHref(targetId);
+
+        if (shareIdForSkillHover) {
+          return (
+            <SharedSkillHoverLink
+              shareId={shareIdForSkillHover}
+              skillId={targetId}
+              href={skillHref}
+              className="text-primary underline underline-offset-4 break-all"
+            >
+              {children}
+            </SharedSkillHoverLink>
+          );
+        }
 
         if (!useSkillHoverPreview) {
           return (

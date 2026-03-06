@@ -387,9 +387,9 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
         findResourceByHref: createResourceHrefResolver(resources),
         onResourceNavigate: handleOpenResourceTab,
         resolveSkillHref,
-        useSkillHoverPreview: mode !== "share",
+        shareIdForSkillHover: mode === "share" ? shareId : undefined,
       }),
-    [detailData?.name, handleOpenResourceTab, mode, resolveSkillHref, resources, skillId],
+    [detailData?.name, handleOpenResourceTab, mode, resolveSkillHref, resources, shareId, skillId],
   );
 
   const activeSharedResource = useMemo(() => {
