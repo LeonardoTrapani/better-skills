@@ -186,14 +186,16 @@ function PaletteRow({
   onSelect,
   onHover,
   innerRef,
+  showVaultIndicator,
 }: {
   item: FlatItem;
   isSelected: boolean;
   onSelect: () => void;
   onHover: () => void;
   innerRef: (el: HTMLButtonElement | null) => void;
+  showVaultIndicator: boolean;
 }) {
-  const vaultColor = getVaultIndicatorColor(item.vault);
+  const vaultColor = showVaultIndicator ? getVaultIndicatorColor(item.vault) : null;
 
   return (
     <button
@@ -286,6 +288,8 @@ export function SkillCommandPalette({
     if (!personal) return null;
     return { id: personal.vaultId, name: personal.vault.name };
   }, [myVaultsQuery.data]);
+
+  const hasAdditionalLinkedVault = enterpriseVaults.length > 0;
 
   // ── Mode cycle order: command → vault → enterprise1 → enterprise2 → … ───────
 
@@ -851,6 +855,7 @@ export function SkillCommandPalette({
           isSelected={i === selectedIndex}
           onSelect={() => item.action()}
           onHover={() => setSelectedIndex(i)}
+          showVaultIndicator={hasAdditionalLinkedVault}
           innerRef={(el) => {
             rowRefs.current[i] = el;
           }}
@@ -858,7 +863,7 @@ export function SkillCommandPalette({
       );
     }
     return elements;
-  }, [flatItems, selectedIndex]);
+  }, [flatItems, selectedIndex, hasAdditionalLinkedVault]);
 
   // ── Derive placeholder from current mode ───────────────────────────────────
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { Copy, Check, ArrowRight, Github } from "lucide-react";
 import { motion } from "motion/react";
@@ -61,11 +62,37 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-5xl md:text-6xl"
+            className="font-semibold leading-[1.08] tracking-tight text-foreground text-5xl md:text-6xl"
           >
             Your Agent&rsquo;s
             <br />
-            <span className="text-primary">Second Brain</span>
+            <span className="text-primary font-mono">
+              <span className="inline-flex items-baseline">
+                <span>Sec</span>
+                <span
+                  aria-hidden="true"
+                  className="relative ml-[0.04em] mr-[0.01em] inline-flex h-[0.62em] w-[0.62em] translate-y-[0.04em]"
+                >
+                  <Image
+                    src="/brand/logo-light.svg"
+                    alt=""
+                    width={96}
+                    height={96}
+                    className="block h-full w-full dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/brand/logo-dark.svg"
+                    alt=""
+                    width={96}
+                    height={96}
+                    className="hidden h-full w-full dark:block"
+                    priority
+                  />
+                </span>
+                <span>nd Brain</span>
+              </span>
+            </span>
           </motion.h1>
 
           <motion.p

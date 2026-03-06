@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { SkillDescription } from "@/components/skills/skill-description";
-import { Button } from "@/components/ui/button";
 import { formatDisplayDate } from "@/lib/format-display-date";
 import { dashboardRoute } from "@/lib/skills/routes";
 import { getEffectiveVaultColor } from "@/lib/skills/vault-colors";
@@ -82,16 +81,13 @@ export function SkillDetailHeader({
       <header className="space-y-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <Link href={dashboardRoute} className="inline-flex w-fit">
-              <Button
-                variant="link"
-                size="xs"
-                className="h-6 p-0 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-                aria-label="Back to skills"
-              >
-                <ArrowLeft className="size-3" aria-hidden="true" />
-                Back
-              </Button>
+            <Link
+              href={dashboardRoute}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Back to skills"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden="true" />
+              Skills
             </Link>
 
             {actions ? <div className="shrink-0">{actions}</div> : null}
