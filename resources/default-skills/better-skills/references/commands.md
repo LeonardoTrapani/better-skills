@@ -36,6 +36,17 @@ better-skills clone <vault-slug>/<skill-slug>|<slug>|<uuid> [--to <dir>] [--forc
 
 - In multi-vault setups, prefer fully qualified `<vault-slug>/<skill-slug>`.
 
+## Sharing
+
+```bash
+better-skills install-share <share-url|share-uuid>
+```
+
+- Installs a shared package directly to local coding agents from a public share link.
+- Accepts either the full `/share/<uuid>` URL or just the share UUID.
+- Uses the same agent selection/setup flow as `better-skills sync`.
+- This is local install only (no vault copy). For a vault copy, use web import.
+
 ## Create and update
 
 ```bash

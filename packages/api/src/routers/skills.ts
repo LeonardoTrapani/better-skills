@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { randomUUID } from "crypto";
 import {
   and,
   desc,
@@ -15,8 +16,18 @@ import {
 import { z } from "zod";
 
 import { db } from "@better-skills/db";
-import { skill, skillLink, skillResource } from "@better-skills/db/schema/skills";
+import {
+  skill,
+  skillLink,
+  skillResource,
+  skillShare,
+  type SkillShareSnapshot as SkillShareSnapshotRecord,
+} from "@better-skills/db/schema/skills";
 import { vault } from "@better-skills/db/schema/vaults";
+import {
+  renderPersistedMentionsWithLinks,
+  type MentionResourceRenderInfo,
+} from "@better-skills/markdown/render-persisted-mentions";
 
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 import {
@@ -26,7 +37,7 @@ import {
   syncAutoLinksForSources,
   validateMentionTargets,
 } from "../lib/link-sync";
-import { parseMentions } from "../lib/mentions";
+import { parseMentions, remapMentionTargetIds } from "../lib/mentions";
 import { renderMentions, renderMentionsBatch } from "../lib/render-mentions";
 import {
   type VaultType,
@@ -207,7 +218,146 @@ const graphOutput = z.object({
   ),
 });
 
+const shareSnapshotResource = z.object({
+  id: z.string().uuid(),
+  path: z.string(),
+  kind: resourceKindEnum,
+  content: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+});
+
+const shareSnapshotSkill = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  skillMarkdown: z.string(),
+  frontmatter: z.record(z.string(), z.unknown()),
+  metadata: z.record(z.string(), z.unknown()),
+  sourceUrl: z.string().nullable(),
+  sourceIdentifier: z.string().nullable(),
+  resources: z.array(shareSnapshotResource),
+});
+
+const shareSnapshotLink = z.object({
+  sourceSkillId: z.string().uuid().nullable(),
+  sourceResourceId: z.string().uuid().nullable(),
+  targetSkillId: z.string().uuid().nullable(),
+  targetResourceId: z.string().uuid().nullable(),
+  kind: z.string(),
+  note: z.string().nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+});
+
+const shareSnapshotSchema = z.object({
+  version: z.literal(1),
+  rootSkillId: z.string().uuid(),
+  skills: z.array(shareSnapshotSkill),
+  links: z.array(shareSnapshotLink),
+});
+
+const createShareOutput = z.object({
+  shareId: z.string().uuid(),
+});
+
+const sharePreviewOutput = z.object({
+  rootSkillId: z.string().uuid(),
+  includedSkills: z.array(
+    z.object({
+      id: z.string().uuid(),
+      slug: z.string(),
+      name: z.string(),
+    }),
+  ),
+  stats: z.object({
+    skills: z.number().int().nonnegative(),
+    resources: z.number().int().nonnegative(),
+    links: z.number().int().nonnegative(),
+  }),
+});
+
+const sharedSkillDetailOutput = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  originalMarkdown: z.string(),
+  renderedMarkdown: z.string(),
+  sourceUrl: z.string().nullable(),
+  sourceIdentifier: z.string().nullable(),
+  resources: z.array(
+    z.object({
+      id: z.string().uuid(),
+      path: z.string(),
+      kind: resourceKindEnum,
+      content: z.string(),
+      renderedContent: z.string(),
+      metadata: z.record(z.string(), z.unknown()),
+    }),
+  ),
+});
+
+const sharedSkillPreviewOutput = z.object({
+  shareId: z.string().uuid(),
+  createdAt: z.date(),
+  includedSkills: z.array(
+    z.object({
+      id: z.string().uuid(),
+      slug: z.string(),
+      name: z.string(),
+    }),
+  ),
+  stats: z.object({
+    skills: z.number().int().nonnegative(),
+    resources: z.number().int().nonnegative(),
+    links: z.number().int().nonnegative(),
+  }),
+  rootSkill: sharedSkillDetailOutput,
+  activeSkill: sharedSkillDetailOutput,
+});
+
+const shareInstallPackageOutput = z.object({
+  shareId: z.string().uuid(),
+  rootSkillId: z.string().uuid(),
+  createdAt: z.date(),
+  includedSkills: z.array(
+    z.object({
+      id: z.string().uuid(),
+      slug: z.string(),
+      name: z.string(),
+    }),
+  ),
+  skills: z.array(
+    z.object({
+      id: z.string().uuid(),
+      slug: z.string(),
+      name: z.string(),
+      description: z.string(),
+      frontmatter: z.record(z.string(), z.unknown()),
+      originalMarkdown: z.string(),
+      renderedMarkdown: z.string(),
+      sourceUrl: z.string().nullable(),
+      sourceIdentifier: z.string().nullable(),
+      resources: z.array(
+        z.object({
+          path: z.string(),
+          kind: resourceKindEnum,
+          renderedContent: z.string(),
+        }),
+      ),
+    }),
+  ),
+});
+
+const importShareOutput = z.object({
+  rootSkillId: z.string().uuid(),
+  importedSkills: z.number().int().nonnegative(),
+  importedResources: z.number().int().nonnegative(),
+  importedLinks: z.number().int().nonnegative(),
+});
+
 type GraphEdge = { id: string; source: string; target: string; kind: string };
+type ShareSnapshot = z.infer<typeof shareSnapshotSchema>;
 
 function buildGraphPayload(
   skills: (typeof skill.$inferSelect)[],
@@ -350,6 +500,453 @@ async function getUserVaultScope(userId: string): Promise<{
   return {
     vaultIds: [...membershipByVaultId.keys()],
     membershipByVaultId,
+  };
+}
+
+function normalizeEntityId(id: string) {
+  return id.toLowerCase();
+}
+
+function resolveLinkEndpointSkillId(
+  linkRow: typeof skillLink.$inferSelect,
+  endpoint: "source" | "target",
+  resourceSkillById: ReadonlyMap<string, string>,
+): string | null {
+  if (endpoint === "source") {
+    if (linkRow.sourceSkillId) return linkRow.sourceSkillId;
+    if (!linkRow.sourceResourceId) return null;
+    return resourceSkillById.get(linkRow.sourceResourceId) ?? null;
+  }
+
+  if (linkRow.targetSkillId) return linkRow.targetSkillId;
+  if (!linkRow.targetResourceId) return null;
+  return resourceSkillById.get(linkRow.targetResourceId) ?? null;
+}
+
+function parseShareSnapshot(snapshot: unknown): ShareSnapshot {
+  const parsedSnapshot = shareSnapshotSchema.safeParse(snapshot);
+  if (!parsedSnapshot.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Invalid shared skill snapshot",
+    });
+  }
+
+  return parsedSnapshot.data;
+}
+
+function buildUniqueImportSlug(originalSlug: string, usedSlugs: Set<string>) {
+  const normalizedBase = originalSlug.trim().toLowerCase() || "shared-skill";
+
+  if (!usedSlugs.has(normalizedBase)) {
+    usedSlugs.add(normalizedBase);
+    return normalizedBase;
+  }
+
+  let index = 1;
+
+  while (true) {
+    const candidate = index === 1 ? `${normalizedBase}-copy` : `${normalizedBase}-copy-${index}`;
+    if (!usedSlugs.has(candidate)) {
+      usedSlugs.add(candidate);
+      return candidate;
+    }
+    index++;
+  }
+}
+
+function renderSnapshotMarkdown(
+  markdown: string,
+  context: {
+    skillNameById: ReadonlyMap<string, string>;
+    resourceInfoById: ReadonlyMap<string, MentionResourceRenderInfo>;
+    currentSkillId?: string;
+  },
+) {
+  return renderPersistedMentionsWithLinks(markdown, context);
+}
+
+async function buildShareSnapshotForSkill(
+  rootSkillId: string,
+  readableVaultIds: string[],
+): Promise<SkillShareSnapshotRecord> {
+  const readableVaultIdSet = new Set(readableVaultIds);
+
+  const [rootSkillRow] = await db.select().from(skill).where(eq(skill.id, rootSkillId));
+  if (!rootSkillRow || !readableVaultIdSet.has(rootSkillRow.ownerVaultId)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+  }
+
+  const depthBySkillId = new Map<string, number>([[rootSkillRow.id, 0]]);
+  const queue = [rootSkillRow.id];
+  const processedSkillIds = new Set<string>();
+
+  const skillsById = new Map<string, typeof skill.$inferSelect>([[rootSkillRow.id, rootSkillRow]]);
+  const resourcesBySkillId = new Map<string, (typeof skillResource.$inferSelect)[]>();
+  const resourcesById = new Map<string, typeof skillResource.$inferSelect>();
+  const resourceSkillById = new Map<string, string>();
+  const linkCandidates = new Map<string, typeof skillLink.$inferSelect>();
+
+  while (queue.length > 0) {
+    const currentSkillId = queue.shift();
+    if (!currentSkillId) break;
+    if (processedSkillIds.has(currentSkillId)) continue;
+
+    processedSkillIds.add(currentSkillId);
+
+    const currentSkill = skillsById.get(currentSkillId);
+    if (!currentSkill) continue;
+    if (!readableVaultIdSet.has(currentSkill.ownerVaultId)) continue;
+
+    const currentDepth = depthBySkillId.get(currentSkill.id) ?? 0;
+
+    let currentResources = resourcesBySkillId.get(currentSkill.id);
+    if (!currentResources) {
+      currentResources = await db
+        .select()
+        .from(skillResource)
+        .where(eq(skillResource.skillId, currentSkill.id));
+
+      resourcesBySkillId.set(currentSkill.id, currentResources);
+      for (const resourceRow of currentResources) {
+        resourcesById.set(resourceRow.id, resourceRow);
+        resourceSkillById.set(resourceRow.id, currentSkill.id);
+      }
+    }
+
+    const sourceResourceIds = currentResources.map((resourceRow) => resourceRow.id);
+    const outgoingLinks = await db
+      .select()
+      .from(skillLink)
+      .where(
+        or(
+          eq(skillLink.sourceSkillId, currentSkill.id),
+          ...(sourceResourceIds.length > 0
+            ? [inArray(skillLink.sourceResourceId, sourceResourceIds)]
+            : []),
+        ),
+      );
+
+    if (outgoingLinks.length === 0) continue;
+
+    const unresolvedTargetResourceIds = [
+      ...new Set(
+        outgoingLinks
+          .map((linkRow) => linkRow.targetResourceId)
+          .filter((targetResourceId): targetResourceId is string => {
+            if (!targetResourceId) return false;
+            return !resourceSkillById.has(targetResourceId);
+          }),
+      ),
+    ];
+
+    if (unresolvedTargetResourceIds.length > 0) {
+      const targetResourceRows = await db
+        .select({
+          id: skillResource.id,
+          skillId: skillResource.skillId,
+          ownerVaultId: skill.ownerVaultId,
+        })
+        .from(skillResource)
+        .innerJoin(skill, eq(skillResource.skillId, skill.id))
+        .where(inArray(skillResource.id, unresolvedTargetResourceIds));
+
+      for (const targetResourceRow of targetResourceRows) {
+        if (!readableVaultIdSet.has(targetResourceRow.ownerVaultId)) continue;
+        resourceSkillById.set(targetResourceRow.id, targetResourceRow.skillId);
+      }
+    }
+
+    const candidateTargetSkillIds = [
+      ...new Set(
+        outgoingLinks
+          .map((linkRow) => resolveLinkEndpointSkillId(linkRow, "target", resourceSkillById))
+          .filter((skillId): skillId is string => Boolean(skillId)),
+      ),
+    ];
+
+    if (candidateTargetSkillIds.length === 0) continue;
+
+    const uncachedTargetSkillIds = candidateTargetSkillIds.filter(
+      (skillId) => !skillsById.has(skillId),
+    );
+    if (uncachedTargetSkillIds.length > 0) {
+      const targetSkillRows = await db
+        .select()
+        .from(skill)
+        .where(inArray(skill.id, uncachedTargetSkillIds));
+
+      for (const targetSkillRow of targetSkillRows) {
+        if (!readableVaultIdSet.has(targetSkillRow.ownerVaultId)) continue;
+        skillsById.set(targetSkillRow.id, targetSkillRow);
+      }
+    }
+
+    const readableTargetSkillIds = new Set(
+      candidateTargetSkillIds.filter((candidateTargetSkillId) => {
+        const candidateSkillRow = skillsById.get(candidateTargetSkillId);
+        return Boolean(candidateSkillRow && readableVaultIdSet.has(candidateSkillRow.ownerVaultId));
+      }),
+    );
+
+    for (const outgoingLink of outgoingLinks) {
+      const targetSkillId = resolveLinkEndpointSkillId(outgoingLink, "target", resourceSkillById);
+      if (!targetSkillId || !readableTargetSkillIds.has(targetSkillId)) continue;
+
+      linkCandidates.set(outgoingLink.id, outgoingLink);
+
+      if (!depthBySkillId.has(targetSkillId)) {
+        depthBySkillId.set(targetSkillId, currentDepth + 1);
+        queue.push(targetSkillId);
+      }
+    }
+  }
+
+  const includedSkillIds = new Set(depthBySkillId.keys());
+
+  for (const includedSkillId of includedSkillIds) {
+    if (resourcesBySkillId.has(includedSkillId)) continue;
+
+    const includedResources = await db
+      .select()
+      .from(skillResource)
+      .where(eq(skillResource.skillId, includedSkillId));
+
+    resourcesBySkillId.set(includedSkillId, includedResources);
+    for (const resourceRow of includedResources) {
+      resourcesById.set(resourceRow.id, resourceRow);
+      resourceSkillById.set(resourceRow.id, includedSkillId);
+    }
+  }
+
+  const includedResourceIds = new Set(resourcesById.keys());
+
+  const includedLinks = [...linkCandidates.values()].filter((linkRow) => {
+    const sourceSkillId = resolveLinkEndpointSkillId(linkRow, "source", resourceSkillById);
+    const targetSkillId = resolveLinkEndpointSkillId(linkRow, "target", resourceSkillById);
+
+    if (!sourceSkillId || !targetSkillId) return false;
+    if (!includedSkillIds.has(sourceSkillId) || !includedSkillIds.has(targetSkillId)) return false;
+    if (linkRow.sourceResourceId && !includedResourceIds.has(linkRow.sourceResourceId))
+      return false;
+    if (linkRow.targetResourceId && !includedResourceIds.has(linkRow.targetResourceId))
+      return false;
+
+    const sourceDepth = depthBySkillId.get(sourceSkillId);
+    const targetDepth = depthBySkillId.get(targetSkillId);
+    if (sourceDepth === undefined || targetDepth === undefined) return false;
+
+    return targetDepth >= sourceDepth;
+  });
+
+  const snapshotSkills = [...includedSkillIds]
+    .map((includedSkillId) => skillsById.get(includedSkillId))
+    .filter((skillRow): skillRow is typeof skill.$inferSelect => Boolean(skillRow))
+    .toSorted((left, right) => {
+      if (left.id === rootSkillId) return -1;
+      if (right.id === rootSkillId) return 1;
+      return left.name.localeCompare(right.name) || left.id.localeCompare(right.id);
+    })
+    .map((skillRow) => ({
+      id: skillRow.id,
+      slug: skillRow.slug,
+      name: skillRow.name,
+      description: skillRow.description,
+      skillMarkdown: skillRow.skillMarkdown,
+      frontmatter: skillRow.frontmatter,
+      metadata: skillRow.metadata,
+      sourceUrl: skillRow.sourceUrl,
+      sourceIdentifier: skillRow.sourceIdentifier,
+      resources: (resourcesBySkillId.get(skillRow.id) ?? [])
+        .toSorted(
+          (left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
+        )
+        .map((resourceRow) => ({
+          id: resourceRow.id,
+          path: resourceRow.path,
+          kind: resourceRow.kind,
+          content: resourceRow.content,
+          metadata: resourceRow.metadata,
+        })),
+    }));
+
+  const snapshotLinks = includedLinks
+    .toSorted((left, right) => {
+      const createdAtDiff = left.createdAt.getTime() - right.createdAt.getTime();
+      if (createdAtDiff !== 0) return createdAtDiff;
+      return left.id.localeCompare(right.id);
+    })
+    .map((linkRow) => ({
+      sourceSkillId: linkRow.sourceSkillId,
+      sourceResourceId: linkRow.sourceResourceId,
+      targetSkillId: linkRow.targetSkillId,
+      targetResourceId: linkRow.targetResourceId,
+      kind: linkRow.kind,
+      note: linkRow.note,
+      metadata: linkRow.metadata,
+    }));
+
+  return {
+    version: 1,
+    rootSkillId,
+    skills: snapshotSkills,
+    links: snapshotLinks,
+  };
+}
+
+function buildGraphPayloadFromShareSnapshot(snapshot: ShareSnapshot) {
+  const nodes: z.infer<typeof graphOutput>["nodes"] = [];
+  const edges: z.infer<typeof graphOutput>["edges"] = [];
+  const nodeIds = new Set<string>();
+
+  for (const snapshotSkill of snapshot.skills) {
+    nodeIds.add(snapshotSkill.id);
+    nodes.push({
+      id: snapshotSkill.id,
+      type: "skill",
+      label: snapshotSkill.name,
+      description: snapshotSkill.description,
+      slug: snapshotSkill.slug,
+      parentSkillId: null,
+      kind: null,
+      contentSnippet: snapshotSkill.skillMarkdown.slice(0, 200),
+      updatedAt: null,
+      vault: null,
+    });
+
+    for (const snapshotResource of snapshotSkill.resources) {
+      nodeIds.add(snapshotResource.id);
+
+      nodes.push({
+        id: snapshotResource.id,
+        type: "resource",
+        label: snapshotResource.path,
+        description: null,
+        slug: null,
+        parentSkillId: snapshotSkill.id,
+        kind: snapshotResource.kind,
+        contentSnippet: snapshotResource.content.slice(0, 200),
+        updatedAt: null,
+        vault: null,
+      });
+
+      edges.push({
+        id: `share-parent-${snapshotResource.id}`,
+        source: snapshotSkill.id,
+        target: snapshotResource.id,
+        kind: "parent",
+      });
+    }
+  }
+
+  for (const [index, snapshotLink] of snapshot.links.entries()) {
+    const sourceId = snapshotLink.sourceSkillId ?? snapshotLink.sourceResourceId;
+    const targetId = snapshotLink.targetSkillId ?? snapshotLink.targetResourceId;
+
+    if (!sourceId || !targetId) {
+      continue;
+    }
+
+    if (!nodeIds.has(sourceId) || !nodeIds.has(targetId)) {
+      continue;
+    }
+
+    edges.push({
+      id: `share-link-${index}-${sourceId}-${targetId}`,
+      source: sourceId,
+      target: targetId,
+      kind: snapshotLink.kind,
+    });
+  }
+
+  return { nodes, edges };
+}
+
+function summarizeShareSnapshot(snapshot: ShareSnapshot) {
+  return {
+    includedSkills: snapshot.skills.map((snapshotSkill) => ({
+      id: snapshotSkill.id,
+      slug: snapshotSkill.slug,
+      name: snapshotSkill.name,
+    })),
+    stats: {
+      skills: snapshot.skills.length,
+      resources: snapshot.skills.reduce((accumulator, snapshotSkill) => {
+        return accumulator + snapshotSkill.resources.length;
+      }, 0),
+      links: snapshot.links.length,
+    },
+  };
+}
+
+function buildShareSnapshotRenderContext(snapshot: ShareSnapshot) {
+  const skillNameById = new Map<string, string>();
+  const resourceInfoById = new Map<string, MentionResourceRenderInfo>();
+  const resourceOwnerSkillIdById = new Map<string, string>();
+  let totalResources = 0;
+
+  for (const skillSnapshot of snapshot.skills) {
+    skillNameById.set(normalizeEntityId(skillSnapshot.id), skillSnapshot.name);
+    totalResources += skillSnapshot.resources.length;
+
+    for (const resourceSnapshot of skillSnapshot.resources) {
+      const normalizedResourceId = normalizeEntityId(resourceSnapshot.id);
+
+      resourceOwnerSkillIdById.set(normalizedResourceId, normalizeEntityId(skillSnapshot.id));
+      resourceInfoById.set(normalizedResourceId, {
+        resourcePath: resourceSnapshot.path,
+        skillName: skillSnapshot.name,
+        skillId: skillSnapshot.id,
+      });
+    }
+  }
+
+  return {
+    skillNameById,
+    resourceInfoById,
+    resourceOwnerSkillIdById,
+    totalResources,
+  };
+}
+
+type ShareSnapshotRenderContext = ReturnType<typeof buildShareSnapshotRenderContext>;
+
+function toSharedSkillDetailOutput(
+  snapshotSkill: ShareSnapshot["skills"][number],
+  context: ShareSnapshotRenderContext,
+) {
+  const { skillNameById, resourceInfoById, resourceOwnerSkillIdById } = context;
+
+  return {
+    id: snapshotSkill.id,
+    slug: snapshotSkill.slug,
+    name: snapshotSkill.name,
+    description: snapshotSkill.description,
+    originalMarkdown: snapshotSkill.skillMarkdown,
+    renderedMarkdown: renderSnapshotMarkdown(snapshotSkill.skillMarkdown, {
+      skillNameById,
+      resourceInfoById,
+      currentSkillId: snapshotSkill.id,
+    }),
+    sourceUrl: snapshotSkill.sourceUrl,
+    sourceIdentifier: snapshotSkill.sourceIdentifier,
+    resources: snapshotSkill.resources
+      .slice()
+      .sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id))
+      .map((snapshotResource) => ({
+        id: snapshotResource.id,
+        path: snapshotResource.path,
+        kind: snapshotResource.kind,
+        content: snapshotResource.content,
+        renderedContent: renderSnapshotMarkdown(snapshotResource.content, {
+          skillNameById,
+          resourceInfoById,
+          currentSkillId:
+            resourceOwnerSkillIdById.get(normalizeEntityId(snapshotResource.id)) ??
+            snapshotSkill.id,
+        }),
+        metadata: snapshotResource.metadata,
+      })),
   };
 }
 
@@ -1120,7 +1717,7 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
       }
 
-      let membership;
+      let membership: Awaited<ReturnType<typeof assertCanRead>>;
       try {
         membership = await assertCanRead(userId, row.ownerVaultId);
       } catch (e) {
@@ -1861,6 +2458,415 @@ export const skillsRouter = router({
 
       const vaultMap = await getVaultMetadataByIds(allSkills.map((s) => s.ownerVaultId));
       return buildGraphPayload(allSkills, allResources, allLinks, vaultMap, membershipByVaultId);
+    }),
+
+  graphForShare: publicProcedure
+    .input(z.object({ shareId: z.string().uuid() }))
+    .output(graphOutput)
+    .query(async ({ input }) => {
+      const [shareRow] = await db.select().from(skillShare).where(eq(skillShare.id, input.shareId));
+
+      if (!shareRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shared skill not found" });
+      }
+
+      const snapshot = parseShareSnapshot(shareRow.snapshot);
+      return buildGraphPayloadFromShareSnapshot(snapshot);
+    }),
+
+  previewShare: protectedProcedure
+    .input(z.object({ skillId: z.string().uuid() }))
+    .output(sharePreviewOutput)
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [existingSkill] = await db
+        .select({ id: skill.id, ownerVaultId: skill.ownerVaultId })
+        .from(skill)
+        .where(eq(skill.id, input.skillId));
+
+      if (!existingSkill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
+      let membership: Awaited<ReturnType<typeof assertCanRead>>;
+      try {
+        membership = await assertCanRead(userId, existingSkill.ownerVaultId);
+      } catch (error) {
+        if (error instanceof VaultAccessError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+
+        throw error;
+      }
+
+      if (
+        membership.vaultType === "enterprise" &&
+        membership.role !== "owner" &&
+        membership.role !== "admin"
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only enterprise admins can share enterprise skills",
+        });
+      }
+
+      const { vaultIds } = await getUserVaultScope(userId);
+      const snapshot = await buildShareSnapshotForSkill(existingSkill.id, vaultIds);
+      const summary = summarizeShareSnapshot(snapshot);
+
+      return {
+        rootSkillId: snapshot.rootSkillId,
+        includedSkills: summary.includedSkills,
+        stats: summary.stats,
+      };
+    }),
+
+  createShare: protectedProcedure
+    .input(z.object({ skillId: z.string().uuid() }))
+    .output(createShareOutput)
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [existingSkill] = await db
+        .select({ id: skill.id, ownerVaultId: skill.ownerVaultId })
+        .from(skill)
+        .where(eq(skill.id, input.skillId));
+
+      if (!existingSkill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+      }
+
+      let membership;
+      try {
+        membership = await assertCanRead(userId, existingSkill.ownerVaultId);
+      } catch (error) {
+        if (error instanceof VaultAccessError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Skill not found" });
+        }
+
+        throw error;
+      }
+
+      if (
+        membership.vaultType === "enterprise" &&
+        membership.role !== "owner" &&
+        membership.role !== "admin"
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only enterprise admins can share enterprise skills",
+        });
+      }
+
+      const { vaultIds } = await getUserVaultScope(userId);
+      const snapshot = await buildShareSnapshotForSkill(existingSkill.id, vaultIds);
+
+      const [createdShare] = await db
+        .insert(skillShare)
+        .values({
+          createdByUserId: userId,
+          rootSkillId: existingSkill.id,
+          snapshot,
+        })
+        .returning({ id: skillShare.id });
+
+      if (!createdShare) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create share link",
+        });
+      }
+
+      return { shareId: createdShare.id };
+    }),
+
+  getShareById: publicProcedure
+    .input(
+      z.object({
+        shareId: z.string().uuid(),
+        skillId: z.string().uuid().optional(),
+      }),
+    )
+    .output(sharedSkillPreviewOutput)
+    .query(async ({ input }) => {
+      const [shareRow] = await db.select().from(skillShare).where(eq(skillShare.id, input.shareId));
+
+      if (!shareRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shared skill not found" });
+      }
+
+      const snapshot = parseShareSnapshot(shareRow.snapshot);
+      const rootSkillSnapshot = snapshot.skills.find((skillSnapshot) => {
+        return normalizeEntityId(skillSnapshot.id) === normalizeEntityId(snapshot.rootSkillId);
+      });
+
+      if (!rootSkillSnapshot) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Shared skill snapshot is missing the root skill",
+        });
+      }
+
+      const requestedSkillId = input.skillId ? normalizeEntityId(input.skillId) : null;
+      const requestedSkillSnapshot = requestedSkillId
+        ? snapshot.skills.find((skillSnapshot) => {
+            return normalizeEntityId(skillSnapshot.id) === requestedSkillId;
+          })
+        : null;
+
+      const activeSkillSnapshot = requestedSkillSnapshot ?? rootSkillSnapshot;
+
+      const renderContext = buildShareSnapshotRenderContext(snapshot);
+
+      const summary = summarizeShareSnapshot(snapshot);
+
+      return {
+        shareId: shareRow.id,
+        createdAt: shareRow.createdAt,
+        includedSkills: summary.includedSkills,
+        stats: {
+          skills: summary.stats.skills,
+          resources: renderContext.totalResources,
+          links: summary.stats.links,
+        },
+        rootSkill: toSharedSkillDetailOutput(rootSkillSnapshot, renderContext),
+        activeSkill: toSharedSkillDetailOutput(activeSkillSnapshot, renderContext),
+      };
+    }),
+
+  getShareInstallPackage: publicProcedure
+    .input(z.object({ shareId: z.string().uuid() }))
+    .output(shareInstallPackageOutput)
+    .query(async ({ input }) => {
+      const [shareRow] = await db.select().from(skillShare).where(eq(skillShare.id, input.shareId));
+
+      if (!shareRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shared skill not found" });
+      }
+
+      const snapshot = parseShareSnapshot(shareRow.snapshot);
+      const summary = summarizeShareSnapshot(snapshot);
+      const { skillNameById, resourceInfoById, resourceOwnerSkillIdById } =
+        buildShareSnapshotRenderContext(snapshot);
+
+      return {
+        shareId: shareRow.id,
+        rootSkillId: snapshot.rootSkillId,
+        createdAt: shareRow.createdAt,
+        includedSkills: summary.includedSkills,
+        skills: snapshot.skills.map((snapshotSkill) => ({
+          id: snapshotSkill.id,
+          slug: snapshotSkill.slug,
+          name: snapshotSkill.name,
+          description: snapshotSkill.description,
+          frontmatter: snapshotSkill.frontmatter,
+          originalMarkdown: snapshotSkill.skillMarkdown,
+          renderedMarkdown: renderSnapshotMarkdown(snapshotSkill.skillMarkdown, {
+            skillNameById,
+            resourceInfoById,
+            currentSkillId: snapshotSkill.id,
+          }),
+          sourceUrl: snapshotSkill.sourceUrl,
+          sourceIdentifier: snapshotSkill.sourceIdentifier,
+          resources: snapshotSkill.resources
+            .slice()
+            .sort(
+              (left, right) =>
+                left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
+            )
+            .map((snapshotResource) => ({
+              path: snapshotResource.path,
+              kind: snapshotResource.kind,
+              renderedContent: renderSnapshotMarkdown(snapshotResource.content, {
+                skillNameById,
+                resourceInfoById,
+                currentSkillId:
+                  resourceOwnerSkillIdById.get(normalizeEntityId(snapshotResource.id)) ??
+                  snapshotSkill.id,
+              }),
+            })),
+        })),
+      };
+    }),
+
+  importShare: protectedProcedure
+    .input(z.object({ shareId: z.string().uuid() }))
+    .output(importShareOutput)
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [shareRow] = await db.select().from(skillShare).where(eq(skillShare.id, input.shareId));
+
+      if (!shareRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shared skill not found" });
+      }
+
+      const snapshot = parseShareSnapshot(shareRow.snapshot);
+
+      let targetVaultId: string;
+      try {
+        targetVaultId = await getPersonalVaultId(userId);
+      } catch (error) {
+        if (error instanceof VaultAccessError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Personal vault not found",
+          });
+        }
+        throw error;
+      }
+
+      try {
+        await assertCanWrite(userId, targetVaultId);
+      } catch (error) {
+        if (error instanceof VaultAccessError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+
+        throw error;
+      }
+
+      const existingSlugsInVault = await db
+        .select({ slug: skill.slug })
+        .from(skill)
+        .where(eq(skill.ownerVaultId, targetVaultId));
+
+      const usedSlugs = new Set(existingSlugsInVault.map((existingSlug) => existingSlug.slug));
+
+      const skillIdMap = new Map<string, string>();
+      const resourceIdMap = new Map<string, string>();
+
+      for (const sharedSkill of snapshot.skills) {
+        skillIdMap.set(normalizeEntityId(sharedSkill.id), randomUUID());
+        for (const sharedResource of sharedSkill.resources) {
+          resourceIdMap.set(normalizeEntityId(sharedResource.id), randomUUID());
+        }
+      }
+
+      const mentionIdMap = new Map<string, string>([
+        ...skillIdMap.entries(),
+        ...resourceIdMap.entries(),
+      ]);
+
+      const importedSkillValues: (typeof skill.$inferInsert)[] = snapshot.skills.map(
+        (sharedSkill) => {
+          const nextSkillId = skillIdMap.get(normalizeEntityId(sharedSkill.id));
+          if (!nextSkillId) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to map imported skill IDs",
+            });
+          }
+
+          return {
+            id: nextSkillId,
+            ownerUserId: userId,
+            ownerVaultId: targetVaultId,
+            slug: buildUniqueImportSlug(sharedSkill.slug, usedSlugs),
+            name: sharedSkill.name,
+            description: sharedSkill.description,
+            skillMarkdown: remapMentionTargetIds(sharedSkill.skillMarkdown, mentionIdMap),
+            frontmatter: sharedSkill.frontmatter,
+            metadata: sharedSkill.metadata,
+            sourceUrl: sharedSkill.sourceUrl,
+            sourceIdentifier: sharedSkill.sourceIdentifier,
+          };
+        },
+      );
+
+      if (importedSkillValues.length > 0) {
+        await db.insert(skill).values(importedSkillValues).execute();
+      }
+
+      const importedResourceValues: (typeof skillResource.$inferInsert)[] = [];
+
+      for (const sharedSkill of snapshot.skills) {
+        const mappedSkillId = skillIdMap.get(normalizeEntityId(sharedSkill.id));
+        if (!mappedSkillId) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to map imported skill IDs",
+          });
+        }
+
+        for (const sharedResource of sharedSkill.resources) {
+          const mappedResourceId = resourceIdMap.get(normalizeEntityId(sharedResource.id));
+          if (!mappedResourceId) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to map imported resource IDs",
+            });
+          }
+
+          importedResourceValues.push({
+            id: mappedResourceId,
+            skillId: mappedSkillId,
+            path: sharedResource.path,
+            kind: sharedResource.kind,
+            content: remapMentionTargetIds(sharedResource.content, mentionIdMap),
+            metadata: sharedResource.metadata,
+          });
+        }
+      }
+
+      if (importedResourceValues.length > 0) {
+        await db.insert(skillResource).values(importedResourceValues).execute();
+      }
+
+      const importedLinkValues: (typeof skillLink.$inferInsert)[] = [];
+
+      for (const sharedLink of snapshot.links) {
+        const mappedSourceSkillId = sharedLink.sourceSkillId
+          ? (skillIdMap.get(normalizeEntityId(sharedLink.sourceSkillId)) ?? null)
+          : null;
+        const mappedSourceResourceId = sharedLink.sourceResourceId
+          ? (resourceIdMap.get(normalizeEntityId(sharedLink.sourceResourceId)) ?? null)
+          : null;
+        const mappedTargetSkillId = sharedLink.targetSkillId
+          ? (skillIdMap.get(normalizeEntityId(sharedLink.targetSkillId)) ?? null)
+          : null;
+        const mappedTargetResourceId = sharedLink.targetResourceId
+          ? (resourceIdMap.get(normalizeEntityId(sharedLink.targetResourceId)) ?? null)
+          : null;
+
+        const sourceCount =
+          Number(Boolean(mappedSourceSkillId)) + Number(Boolean(mappedSourceResourceId));
+        const targetCount =
+          Number(Boolean(mappedTargetSkillId)) + Number(Boolean(mappedTargetResourceId));
+
+        if (sourceCount !== 1 || targetCount !== 1) continue;
+
+        importedLinkValues.push({
+          sourceSkillId: mappedSourceSkillId,
+          sourceResourceId: mappedSourceResourceId,
+          targetSkillId: mappedTargetSkillId,
+          targetResourceId: mappedTargetResourceId,
+          kind: sharedLink.kind,
+          note: sharedLink.note,
+          metadata: sharedLink.metadata,
+          createdByUserId: userId,
+        });
+      }
+
+      if (importedLinkValues.length > 0) {
+        await db.insert(skillLink).values(importedLinkValues).execute();
+      }
+
+      const importedRootSkillId = skillIdMap.get(normalizeEntityId(snapshot.rootSkillId));
+      if (!importedRootSkillId) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to resolve imported root skill",
+        });
+      }
+
+      return {
+        rootSkillId: importedRootSkillId,
+        importedSkills: importedSkillValues.length,
+        importedResources: importedResourceValues.length,
+        importedLinks: importedLinkValues.length,
+      };
     }),
 
   references: protectedProcedure

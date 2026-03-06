@@ -52,7 +52,7 @@ function CommandBlock({ command }: { command: string }) {
       className="group flex w-full items-center gap-3 border border-border bg-muted/20 px-4 py-3 text-left transition-colors hover:bg-muted/40"
     >
       <span className="text-primary/60 select-none">$</span>
-      <code className="flex-1 truncate font-mono text-xs text-foreground">{command}</code>
+      <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">{command}</code>
       {copied ? (
         <Check className="size-3.5 shrink-0 text-primary" />
       ) : (

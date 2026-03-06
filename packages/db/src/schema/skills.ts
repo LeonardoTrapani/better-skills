@@ -22,6 +22,44 @@ export const skillResourceKindEnum = pgEnum("skill_resource_kind", [
   "other",
 ]);
 
+export type SkillShareSnapshotResource = {
+  id: string;
+  path: string;
+  kind: "reference" | "script" | "asset" | "other";
+  content: string;
+  metadata: Record<string, unknown>;
+};
+
+export type SkillShareSnapshotSkill = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  skillMarkdown: string;
+  frontmatter: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  sourceUrl: string | null;
+  sourceIdentifier: string | null;
+  resources: SkillShareSnapshotResource[];
+};
+
+export type SkillShareSnapshotLink = {
+  sourceSkillId: string | null;
+  sourceResourceId: string | null;
+  targetSkillId: string | null;
+  targetResourceId: string | null;
+  kind: string;
+  note: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type SkillShareSnapshot = {
+  version: 1;
+  rootSkillId: string;
+  skills: SkillShareSnapshotSkill[];
+  links: SkillShareSnapshotLink[];
+};
+
 export const skill = pgTable(
   "skill",
   {
@@ -129,6 +167,25 @@ export const skillLink = pgTable(
   ],
 );
 
+export const skillShare = pgTable(
+  "skill_share",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    rootSkillId: uuid("root_skill_id")
+      .notNull()
+      .references(() => skill.id, { onDelete: "cascade" }),
+    snapshot: jsonb("snapshot").$type<SkillShareSnapshot>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("skill_share_created_by_user_id_idx").on(table.createdByUserId),
+    index("skill_share_root_skill_id_idx").on(table.rootSkillId),
+  ],
+);
+
 export const skillRelations = relations(skill, ({ one, many }) => ({
   owner: one(user, {
     fields: [skill.ownerUserId],
@@ -145,6 +202,7 @@ export const skillRelations = relations(skill, ({ one, many }) => ({
   incomingLinks: many(skillLink, {
     relationName: "skill_link_target_skill",
   }),
+  shares: many(skillShare),
 }));
 
 export const skillResourceRelations = relations(skillResource, ({ one, many }) => ({
@@ -184,5 +242,16 @@ export const skillLinkRelations = relations(skillLink, ({ one }) => ({
   createdBy: one(user, {
     fields: [skillLink.createdByUserId],
     references: [user.id],
+  }),
+}));
+
+export const skillShareRelations = relations(skillShare, ({ one }) => ({
+  createdBy: one(user, {
+    fields: [skillShare.createdByUserId],
+    references: [user.id],
+  }),
+  rootSkill: one(skill, {
+    fields: [skillShare.rootSkillId],
+    references: [skill.id],
   }),
 }));
