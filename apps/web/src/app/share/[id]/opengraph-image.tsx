@@ -14,8 +14,8 @@ type ShareOgImageProps = {
   params: Promise<{ id: string }>;
 };
 
-const shellBackground =
-  "radial-gradient(circle at 86% 14%, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0) 42%), radial-gradient(circle at 12% 88%, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0) 38%), linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(148deg, #070b14 0%, #0b1324 52%, #091120 100%)";
+const gridPattern =
+  "linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px)";
 
 function compactText(value: string | null | undefined) {
   return (value ?? "").replace(/\s+/g, " ").trim();
@@ -128,8 +128,9 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
         height: "100%",
         display: "flex",
         position: "relative",
-        backgroundImage: shellBackground,
-        backgroundSize: "100% 100%, 100% 100%, 42px 42px, 42px 42px, 100% 100%",
+        backgroundColor: "#0b1324",
+        backgroundImage: gridPattern,
+        backgroundSize: "42px 42px, 42px 42px",
         color: "#F8FAFC",
         overflow: "hidden",
         fontFamily: "Geist, Inter, ui-sans-serif, system-ui",
@@ -140,8 +141,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
           position: "absolute",
           inset: 0,
           display: "flex",
-          background:
-            "linear-gradient(108deg, rgba(2, 6, 23, 0.58) 0%, rgba(2, 6, 23, 0.16) 55%, rgba(2, 6, 23, 0.62) 100%)",
+          background: "rgba(2, 6, 23, 0.3)",
         }}
       />
 
@@ -352,8 +352,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                 flexDirection: "column",
                 border: "1px solid rgba(148, 163, 184, 0.26)",
                 borderRadius: 20,
-                background:
-                  "linear-gradient(176deg, rgba(8, 13, 25, 0.96) 0%, rgba(2, 6, 23, 0.86) 100%)",
+                background: "rgba(3, 10, 24, 0.9)",
                 padding: 16,
                 gap: 14,
               }}

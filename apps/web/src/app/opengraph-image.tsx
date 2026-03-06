@@ -9,8 +9,8 @@ export const size = {
 };
 export const contentType = "image/png";
 
-const shellBackground =
-  "radial-gradient(circle at 84% 12%, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0) 44%), radial-gradient(circle at 10% 92%, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0) 38%), linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px), linear-gradient(145deg, #070b14 0%, #0b1324 52%, #091120 100%)";
+const gridPattern =
+  "linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px)";
 
 const badgeStyle = {
   display: "flex",
@@ -72,7 +72,7 @@ function GraphPanel() {
         gap: 14,
         border: "1px solid rgba(148, 163, 184, 0.28)",
         borderRadius: 22,
-        background: "linear-gradient(175deg, rgba(8, 13, 25, 0.96) 0%, rgba(2, 6, 23, 0.86) 100%)",
+        background: "rgba(3, 10, 24, 0.9)",
         boxShadow: "0 26px 60px rgba(2, 6, 23, 0.55)",
         padding: 18,
       }}
@@ -192,8 +192,9 @@ export default function OpenGraphImage() {
         height: "100%",
         display: "flex",
         position: "relative",
-        backgroundImage: shellBackground,
-        backgroundSize: "100% 100%, 100% 100%, 40px 40px, 40px 40px, 100% 100%",
+        backgroundColor: "#0b1324",
+        backgroundImage: gridPattern,
+        backgroundSize: "40px 40px, 40px 40px",
         color: "#F8FAFC",
         overflow: "hidden",
         fontFamily: "Geist, Inter, ui-sans-serif, system-ui",
@@ -204,8 +205,7 @@ export default function OpenGraphImage() {
           position: "absolute",
           inset: 0,
           display: "flex",
-          background:
-            "linear-gradient(105deg, rgba(2, 6, 23, 0.54) 0%, rgba(2, 6, 23, 0.12) 56%, rgba(2, 6, 23, 0.58) 100%)",
+          background: "rgba(2, 6, 23, 0.28)",
         }}
       />
 
