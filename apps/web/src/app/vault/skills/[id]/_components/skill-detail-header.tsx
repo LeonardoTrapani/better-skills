@@ -157,7 +157,7 @@ export function SkillDetailHeader({
               </span>
             </div>
 
-            <h3 className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-neutral-300">
+            <h3 className="mb-2.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
               Info
             </h3>
             <div className="space-y-2 text-[11px]">
@@ -270,7 +270,9 @@ export function SkillDetailHeader({
           </span>
         </div>
 
-        <h3 className="font-mono text-[10px] uppercase tracking-wider text-neutral-300">Info</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
+          Info
+        </h3>
 
         <div className="space-y-2 text-[11px]">
           <div className="flex items-center justify-between gap-2">
@@ -309,7 +311,7 @@ export function SkillDetailHeader({
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 text-muted-foreground">
               <span
-                className="inline-block size-1.5 rounded-full bg-muted-foreground/50"
+                className="inline-block size-1.5 rounded-full bg-muted-foreground/60"
                 aria-hidden="true"
               />
               Status

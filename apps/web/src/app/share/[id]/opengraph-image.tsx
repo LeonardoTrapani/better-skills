@@ -1,8 +1,14 @@
+import { readFile } from "node:fs/promises";
+
 import { ImageResponse } from "next/og";
 
 import { BrandMark } from "@/app/_og/brand-mark";
-import { LandingOgFrame, ogColors } from "@/app/_og/landing-frame";
 import { getSharePreview } from "@/lib/share/get-share-preview";
+
+const COLOR_FOREGROUND = "#171717";
+const COLOR_MUTED_FOREGROUND = "#737373";
+const COLOR_PRIMARY = "#FE9A00";
+const COLOR_BORDER = "#E5E7EB";
 
 export const alt = "BETTER-SKILLS shared skill preview";
 export const size = {
@@ -27,344 +33,475 @@ function truncateText(value: string, maxChars: number) {
   return `${value.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
 }
 
-function shortId(value: string) {
-  if (value.length < 16) {
-    return value;
-  }
-
-  return `${value.slice(0, 8)}...${value.slice(-6)}`;
-}
-
-function formatDateLabel(value: string | Date | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
-}
-
-function StatChip({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: 8,
-        border: `1px solid ${ogColors.border}`,
-        background: ogColors.panel,
-        padding: "7px 12px",
+        flexDirection: "column",
+        gap: 10,
+        minWidth: 186,
+        border: `1px solid ${COLOR_BORDER}`,
+        background: "#FFFFFF",
+        padding: "18px 18px 16px",
       }}
     >
       <span
         style={{
-          color: "#8ec5ff",
-          fontSize: 14,
+          color: COLOR_MUTED_FOREGROUND,
+          fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontSize: 12,
           letterSpacing: "0.08em",
-          textTransform: "uppercase",
+          textTransform: "uppercase" as const,
         }}
       >
         {label}
       </span>
-      <span style={{ color: ogColors.textStrong, fontSize: 34, fontWeight: 620 }}>{value}</span>
+      <span
+        style={{
+          color: COLOR_FOREGROUND,
+          fontSize: 46,
+          lineHeight: 1,
+          fontWeight: 500,
+        }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
 
-function PanelLabel({ text }: { text: string }) {
+function RailIntersection({
+  left,
+  top,
+  size = 8,
+  color = "rgba(23, 23, 23, 0.04)",
+}: {
+  left: number;
+  top: number;
+  size?: number;
+  color?: string;
+}) {
   return (
-    <span
+    <div
       style={{
-        color: ogColors.textMuted,
-        fontSize: 15,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
+        position: "absolute",
+        left: left - size / 2,
+        top: top - size / 2,
+        width: size,
+        height: size,
+        background: color,
+      }}
+    />
+  );
+}
+
+function PixelCluster({
+  left,
+  top,
+  columns,
+  rows,
+  cell = 9,
+  gap = 5,
+}: {
+  left: number;
+  top: number;
+  columns: number;
+  rows: number;
+  cell?: number;
+  gap?: number;
+}) {
+  const cells = Array.from({ length: rows * columns }, (_, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const opacity = (row + column) % 3 === 0 ? 0.1 : (row + column) % 2 === 0 ? 0.06 : 0.035;
+
+    return {
+      key: `${row}-${column}`,
+      left: column * (cell + gap),
+      top: row * (cell + gap),
+      opacity,
+    };
+  });
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        position: "absolute",
+        left,
+        top,
+        width: columns * cell + (columns - 1) * gap,
+        height: rows * cell + (rows - 1) * gap,
       }}
     >
-      {text}
-    </span>
+      {cells.map((square) => (
+        <div
+          key={square.key}
+          style={{
+            position: "absolute",
+            left: square.left,
+            top: square.top,
+            width: cell,
+            height: cell,
+            background: `rgba(23, 23, 23, ${square.opacity})`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
 export default async function ShareOpenGraphImage({ params }: ShareOgImageProps) {
   const { id } = await params;
-  const sharePreview = await getSharePreview({ shareId: id });
+  const [sharePreview, geistRegular, geistMonoRegular] = await Promise.all([
+    getSharePreview({ shareId: id }),
+    readFile(new URL("../../_og/fonts/Geist-Regular.ttf", import.meta.url)),
+    readFile(new URL("../../_og/fonts/GeistMono-Regular.ttf", import.meta.url)),
+  ]);
 
   const activeSkill = sharePreview?.activeSkill;
-  const isAvailable = Boolean(sharePreview);
-
-  const skillName = truncateText(compactText(activeSkill?.name) || "shared skill", 26);
-  const headingSize = skillName.length > 20 ? 64 : 74;
+  const skillName = truncateText(compactText(activeSkill?.name) || "Shared Skill", 56);
   const skillDescription = truncateText(
     compactText(activeSkill?.description) ||
       "Open this shared skill to preview the content and import it into your own vault.",
-    158,
+    150,
   );
 
-  const slugLabel = activeSkill?.slug ? truncateText(activeSkill.slug, 30) : "shared-skill";
-  const shareDateLabel = formatDateLabel(sharePreview?.createdAt);
-  const shareIdLabel = shortId(id);
-  const rootSkillName = truncateText(compactText(sharePreview?.rootSkill.name) || skillName, 20);
-  const includedSkills = sharePreview?.includedSkills ?? [];
-  const includedPreview = includedSkills.slice(0, 4);
-  const includedOverflow = Math.max(0, includedSkills.length - includedPreview.length);
-  const stats = sharePreview?.stats ?? { skills: 0, resources: 0, links: 0 };
-  const importCommand = `better-skills sync --share ${shortId(id)}`;
+  const linkedSkillCount = Math.max(0, (sharePreview?.includedSkills.length ?? 1) - 1);
+  const referenceCount = sharePreview?.stats.resources ?? 0;
 
   return new ImageResponse(
-    <LandingOgFrame>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        position: "relative",
+        background: "#FFFFFF",
+        color: COLOR_FOREGROUND,
+        overflow: "hidden",
+        fontFamily: '"Geist Sans", ui-sans-serif, system-ui, sans-serif',
+      }}
+    >
       <div
         style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          backgroundImage:
+            "linear-gradient(to right, rgba(23, 23, 23, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(23, 23, 23, 0.05) 1px, transparent 1px)",
+          backgroundSize: "34px 34px",
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
           width: "100%",
           height: "100%",
-          display: "flex",
-          flexDirection: "column",
+          padding: 28,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+            overflow: "hidden",
+            width: "100%",
+            height: "100%",
+            border: `1px solid ${COLOR_BORDER}`,
+            background: "#FFFFFF",
+            padding: "30px 28px 26px",
+          }}
+        >
           <div
             style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 380,
               display: "flex",
-              alignItems: "center",
-              gap: 9,
-              border: `1px solid ${ogColors.border}`,
-              background: ogColors.panel,
-              padding: "8px 14px",
+              borderLeft: "1px solid rgba(23, 23, 23, 0.04)",
+              background: "transparent",
             }}
           >
-            <span
+            <div
               style={{
-                width: 8,
-                height: 8,
-                display: "flex",
-                background: ogColors.primary,
+                position: "absolute",
+                top: 150,
+                left: 0,
+                right: 0,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.04)",
               }}
             />
-            <span
+            <div
               style={{
-                color: ogColors.text,
-                fontFamily: "ui-monospace",
-                fontSize: 21,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
+                position: "absolute",
+                top: 336,
+                left: 0,
+                right: 0,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.04)",
               }}
-            >
-              Shared skill preview
-            </span>
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: 520,
+                left: 0,
+                right: 0,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.04)",
+              }}
+            />
+
+            <RailIntersection left={58} top={150} />
+            <RailIntersection left={214} top={150} />
+            <RailIntersection left={58} top={336} />
+            <RailIntersection left={214} top={336} />
+            <RailIntersection left={58} top={520} />
+            <RailIntersection left={214} top={520} />
+
+            <div
+              style={{
+                position: "absolute",
+                left: 214 - 10,
+                top: 150 - 10,
+                width: 20,
+                height: 20,
+                background: "rgba(254, 154, 0, 0.55)",
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                left: 38,
+                top: 56,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.35)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 85,
+                top: 94,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.28)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 182,
+                top: 204,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.34)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 206,
+                top: 236,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.25)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 38,
+                top: 458,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.33)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 82,
+                top: 500,
+                width: 10,
+                height: 10,
+                background: "rgba(254, 154, 0, 0.24)",
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                left: 48,
+                top: 64,
+                width: 1,
+                height: 52,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 48,
+                top: 115,
+                width: 36,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 192,
+                top: 212,
+                width: 1,
+                height: 34,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 192,
+                top: 245,
+                width: 26,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 48,
+                top: 468,
+                width: 1,
+                height: 32,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 48,
+                top: 499,
+                width: 36,
+                height: 1,
+                background: "rgba(23, 23, 23, 0.035)",
+              }}
+            />
+
+            <PixelCluster left={72} top={18} columns={7} rows={4} cell={8} gap={5} />
+            <PixelCluster left={252} top={236} columns={5} rows={3} cell={8} gap={5} />
+            <PixelCluster left={122} top={430} columns={6} rows={3} cell={8} gap={5} />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                color: ogColors.textMuted,
-                fontFamily: "ui-monospace",
-                fontSize: 20,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-              }}
-            >
-              Share ID
-            </span>
-            <span style={{ color: ogColors.textStrong, fontFamily: "ui-monospace", fontSize: 30 }}>
-              {shareIdLabel}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, display: "flex", gap: 22, marginTop: 18 }}>
           <div
             style={{
-              width: "67%",
               display: "flex",
               flexDirection: "column",
-              justifyContent: "space-between",
+              gap: 22,
+              flex: 1,
+              maxWidth: 860,
+              position: "relative",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <span
-                style={{
-                  color: isAvailable ? "#8ec5ff" : "#fda4af",
-                  fontSize: 30,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {isAvailable ? "Ready to import" : "Link unavailable"}
-              </span>
+            <span
+              style={{
+                color: COLOR_PRIMARY,
+                fontFamily:
+                  '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                fontSize: 13,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase" as const,
+              }}
+            >
+              Shared Skill Preview
+            </span>
 
-              <span
-                style={{
-                  color: ogColors.textStrong,
-                  fontSize: headingSize,
-                  fontWeight: 730,
-                  letterSpacing: "-0.03em",
-                  lineHeight: 1,
-                }}
-              >
-                {skillName}
-              </span>
+            <span
+              style={{
+                color: COLOR_FOREGROUND,
+                fontSize: 78,
+                lineHeight: 0.92,
+                fontWeight: 500,
+                letterSpacing: "-0.06em",
+                maxWidth: 760,
+              }}
+            >
+              {skillName}
+            </span>
 
-              <p
-                style={{
-                  margin: 0,
-                  color: ogColors.text,
-                  fontSize: 22,
-                  lineHeight: 1.36,
-                  maxWidth: 700,
-                }}
-              >
-                {skillDescription}
-              </p>
+            <span
+              style={{
+                color: COLOR_MUTED_FOREGROUND,
+                fontSize: 30,
+                lineHeight: 1.34,
+                letterSpacing: "-0.03em",
+                maxWidth: 840,
+              }}
+            >
+              {skillDescription}
+            </span>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StatChip label="skills" value={String(stats.skills)} />
-                <StatChip label="resources" value={String(stats.resources)} />
-                <StatChip label="links" value={String(stats.links)} />
-              </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+              <Metric label="Linked skills" value={String(linkedSkillCount)} />
+              <Metric label="References" value={String(referenceCount)} />
             </div>
+          </div>
 
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              marginTop: 30,
+              position: "relative",
+            }}
+          >
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                borderTop: `1px solid ${ogColors.border}`,
-                paddingTop: 14,
+                gap: 8,
+                color: COLOR_FOREGROUND,
+                fontSize: 40,
+                fontWeight: 500,
+                letterSpacing: "-0.04em",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                <span
-                  style={{
-                    color: ogColors.textMuted,
-                    fontSize: 17,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  slug
-                </span>
-                <span
-                  style={{ color: ogColors.textStrong, fontFamily: "ui-monospace", fontSize: 30 }}
-                >
-                  {slugLabel}
-                </span>
-              </div>
-
-              <span style={{ color: ogColors.textMuted, fontSize: 25 }}>
-                {shareDateLabel ? `Shared ${shareDateLabel}` : "Shared snapshot"}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ width: "33%", display: "flex" }}>
-            <div
-              style={{
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                gap: 14,
-                border: `1px solid ${ogColors.border}`,
-                background: "rgba(12, 16, 24, 0.94)",
-                padding: 16,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <PanelLabel text="root skill" />
-                <span style={{ color: ogColors.textStrong, fontSize: 46, fontWeight: 640 }}>
-                  {rootSkillName}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  borderTop: `1px solid ${ogColors.borderSoft}`,
-                  borderBottom: `1px solid ${ogColors.borderSoft}`,
-                  padding: "12px 0",
-                }}
-              >
-                <PanelLabel text="included skills" />
-
-                {includedPreview.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {includedPreview.map((skill) => (
-                      <div key={skill.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            display: "flex",
-                            background: "#7bb8ff",
-                          }}
-                        />
-                        <span style={{ color: ogColors.text, fontSize: 25 }}>
-                          {truncateText(skill.name, 20)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span style={{ color: ogColors.textMuted, fontSize: 24 }}>
-                    No skills in snapshot
-                  </span>
-                )}
-
-                {includedOverflow > 0 ? (
-                  <span style={{ color: "#8ec5ff", fontSize: 22 }}>+{includedOverflow} more</span>
-                ) : null}
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 5,
-                  border: `1px solid ${ogColors.border}`,
-                  background: ogColors.panel,
-                  padding: "10px 12px",
-                }}
-              >
-                <PanelLabel text="import" />
-                <span style={{ color: ogColors.text, fontFamily: "ui-monospace", fontSize: 21 }}>
-                  {importCommand}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  marginTop: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <BrandMark size={28} stroke={ogColors.textStrong} dot={ogColors.primary} />
-                <span
-                  style={{
-                    color: ogColors.textStrong,
-                    fontSize: 34,
-                    fontWeight: 600,
-                    letterSpacing: "0.03em",
-                  }}
-                >
-                  BETTER-SKILLS.
-                </span>
-              </div>
+              <BrandMark size={34} stroke={COLOR_FOREGROUND} dot={COLOR_PRIMARY} />
+              <span>BETTER-SKILLS.</span>
             </div>
           </div>
         </div>
       </div>
-    </LandingOgFrame>,
-    size,
+    </div>,
+    {
+      ...size,
+      fonts: [
+        {
+          name: "Geist Sans",
+          data: geistRegular,
+          style: "normal",
+          weight: 400,
+        },
+        {
+          name: "Geist Mono",
+          data: geistMonoRegular,
+          style: "normal",
+          weight: 400,
+        },
+      ],
+    },
   );
 }

@@ -168,7 +168,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
           {copied ? (
             <Check className="size-4 text-primary" />
           ) : (
-            <Copy className="size-4 text-muted-foreground/50 transition-opacity group-hover:text-primary/70" />
+            <Copy className="size-4 text-muted-foreground/60 transition-opacity group-hover:text-primary/70" />
           )}
         </span>
       </div>

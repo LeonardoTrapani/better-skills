@@ -1,7 +1,8 @@
+import { readFile } from "node:fs/promises";
+
 import { ImageResponse } from "next/og";
 
 import { BrandMark } from "@/app/_og/brand-mark";
-import { LandingOgFrame, ogColors } from "@/app/_og/landing-frame";
 
 export const alt = "BETTER-SKILLS - Your Agent's Second Brain";
 export const size = {
@@ -10,214 +11,277 @@ export const size = {
 };
 export const contentType = "image/png";
 
-function ActionButton({ text, primary = false }: { text: string; primary?: boolean }) {
+const COLOR_FOREGROUND = "#171717";
+const COLOR_MUTED_FOREGROUND = "#737373";
+const COLOR_PRIMARY = "#FE9A00";
+const COLOR_BORDER = "#E5E7EB";
+
+function Tag({ index, label }: { index: string; label: string }) {
   return (
     <div
       style={{
-        minWidth: 270,
-        height: 56,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: `1px solid ${primary ? "rgba(250, 188, 18, 0.95)" : ogColors.border}`,
-        background: primary ? ogColors.primary : ogColors.panel,
-        color: primary ? "#1f180a" : ogColors.textStrong,
-        fontSize: 32,
-        fontWeight: 520,
+        flexDirection: "column",
+        justifyContent: "space-between",
+        width: 168,
+        height: 78,
+        border: `1px solid ${COLOR_BORDER}`,
+        background: "#FFFFFF",
+        padding: "12px 14px",
       }}
     >
-      {text}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            background: COLOR_PRIMARY,
+          }}
+        />
+        <span
+          style={{
+            color: COLOR_MUTED_FOREGROUND,
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase" as const,
+          }}
+        >
+          {index}
+        </span>
+      </div>
+      <span
+        style={{
+          color: COLOR_FOREGROUND,
+          fontSize: 22,
+          lineHeight: 1.05,
+          letterSpacing: "-0.04em",
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
-export default function OpenGraphImage() {
+function PixelCluster({
+  left,
+  top,
+  columns,
+  rows,
+  cell = 9,
+  gap = 5,
+  opacity = 0.08,
+}: {
+  left: number;
+  top: number;
+  columns: number;
+  rows: number;
+  cell?: number;
+  gap?: number;
+  opacity?: number;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        position: "absolute",
+        left,
+        top,
+        width: columns * cell + (columns - 1) * gap,
+        height: rows * cell + (rows - 1) * gap,
+      }}
+    >
+      {Array.from({ length: rows * columns }, (_, index) => {
+        const row = Math.floor(index / columns);
+        const column = index % columns;
+        const alpha = opacity * (((row + column) % 3) + 1);
+
+        return (
+          <div
+            key={`${row}-${column}`}
+            style={{
+              position: "absolute",
+              left: column * (cell + gap),
+              top: row * (cell + gap),
+              width: cell,
+              height: cell,
+              background: `rgba(23, 23, 23, ${Math.min(alpha, 0.16)})`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function pngToDataUrl(data: Uint8Array) {
+  return `data:image/png;base64,${Buffer.from(data).toString("base64")}`;
+}
+
+function Node({
+  left,
+  top,
+  size,
+  color,
+}: {
+  left: number;
+  top: number;
+  size: number;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: size,
+        height: size,
+        background: color,
+      }}
+    />
+  );
+}
+
+export default async function OpenGraphImage() {
+  const [geistRegular, graphPng] = await Promise.all([
+    readFile(new URL("./_og/fonts/Geist-Regular.ttf", import.meta.url)),
+    readFile(new URL("./_og/images/graph.png", import.meta.url)),
+  ]);
+  const graphSrc = pngToDataUrl(graphPng);
+
   return new ImageResponse(
-    <LandingOgFrame>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        position: "relative",
+        background: "#FFFFFF",
+        color: COLOR_FOREGROUND,
+        overflow: "hidden",
+        fontFamily: '"Geist Sans", ui-sans-serif, system-ui, sans-serif',
+      }}
+    >
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          position: "absolute",
+          inset: 0,
           display: "flex",
-          flexDirection: "column",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <BrandMark size={28} stroke={ogColors.textStrong} dot={ogColors.primary} />
-            <span
-              style={{
-                color: ogColors.textStrong,
-                fontSize: 36,
-                fontWeight: 610,
-                letterSpacing: "0.04em",
-              }}
-            >
-              BETTER-SKILLS.
-            </span>
-          </div>
+        <PixelCluster left={834} top={82} columns={6} rows={4} opacity={0.028} />
+        <PixelCluster left={1016} top={278} columns={5} rows={3} opacity={0.024} />
+        <PixelCluster left={896} top={470} columns={6} rows={3} opacity={0.022} />
+        <PixelCluster left={174} top={520} columns={5} rows={2} opacity={0.03} />
 
+        <Node left={846} top={102} size={8} color="rgba(254, 154, 0, 0.18)" />
+        <Node left={1006} top={220} size={12} color="rgba(254, 154, 0, 0.22)" />
+        <Node left={868} top={506} size={8} color="rgba(254, 154, 0, 0.16)" />
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          top: 120,
+          right: 18,
+          width: 376,
+          height: 420,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <img
+          src={graphSrc}
+          alt=""
+          width="470"
+          height="720"
+          style={{
+            display: "flex",
+            objectFit: "contain",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          padding: "46px 54px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <BrandMark size={48} stroke={COLOR_FOREGROUND} dot={COLOR_PRIMARY} />
           <span
             style={{
-              border: `1px solid ${ogColors.border}`,
-              background: ogColors.panel,
-              color: ogColors.text,
-              fontFamily: "ui-monospace",
-              fontSize: 20,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              padding: "9px 16px",
+              fontSize: 32,
+              fontWeight: 500,
+              letterSpacing: "-0.03em",
             }}
           >
-            Open source - terminal first
+            BETTER-SKILLS.
           </span>
         </div>
 
         <div
           style={{
-            flex: 1,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingBottom: 24,
+            flexDirection: "column",
+            gap: 28,
+            marginTop: 56,
+            maxWidth: 760,
           }}
         >
           <div
             style={{
-              width: 860,
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              gap: 18,
-              textAlign: "center",
+              gap: 6,
+              fontSize: 82,
+              fontWeight: 500,
+              lineHeight: 0.92,
+              letterSpacing: "-0.065em",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 9,
-                border: `1px solid ${ogColors.border}`,
-                background: ogColors.panel,
-                padding: "8px 14px",
-              }}
-            >
-              <span
-                style={{
-                  width: 9,
-                  height: 9,
-                  display: "flex",
-                  background: ogColors.primary,
-                }}
-              />
-              <span
-                style={{
-                  color: ogColors.text,
-                  fontSize: 24,
-                }}
-              >
-                19 skills in your vault
-              </span>
-            </div>
+            <span>Your Agent&apos;s</span>
+            <span style={{ color: COLOR_PRIMARY }}>Second Brain</span>
+          </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-                lineHeight: 1,
-              }}
-            >
-              <span
-                style={{
-                  color: ogColors.textStrong,
-                  fontSize: 88,
-                  fontWeight: 730,
-                  letterSpacing: "-0.03em",
-                }}
-              >
-                Your Agent&apos;s
-              </span>
+          <div
+            style={{
+              display: "flex",
+              maxWidth: 740,
+              color: COLOR_MUTED_FOREGROUND,
+              fontSize: 34,
+              lineHeight: 1.28,
+              letterSpacing: "-0.035em",
+            }}
+          >
+            Build, share, and manage a graph of reusable skills for your AI agents.
+          </div>
 
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  color: ogColors.primary,
-                  fontFamily: "ui-monospace",
-                  fontSize: 82,
-                  fontWeight: 730,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                <span>Sec</span>
-                <span style={{ width: 48, height: 48, display: "flex" }}>
-                  <BrandMark size={48} stroke={ogColors.textStrong} dot={ogColors.primary} />
-                </span>
-                <span>nd Brain</span>
-              </span>
-            </div>
-
-            <p
-              style={{
-                margin: 0,
-                color: ogColors.textMuted,
-                fontSize: 25,
-                lineHeight: 1.35,
-                maxWidth: 760,
-              }}
-            >
-              Build, share, and manage a graph of reusable skills for your AI agents.
-            </p>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <ActionButton text="Go to Vault  ->" primary />
-              <ActionButton text="See on GitHub" />
-            </div>
-
-            <div
-              style={{
-                width: "100%",
-                height: 56,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                border: `1px solid ${ogColors.border}`,
-                background: ogColors.panel,
-                padding: "0 16px",
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  color: ogColors.textMuted,
-                  fontFamily: "ui-monospace",
-                  fontSize: 23,
-                }}
-              >
-                <span style={{ color: ogColors.primary }}>$</span>
-                curl -fsSL https://better-skills.dev/install | bash
-              </span>
-
-              <span
-                style={{
-                  width: 22,
-                  height: 22,
-                  display: "flex",
-                  border: `1px solid ${ogColors.border}`,
-                  background: ogColors.panelStrong,
-                }}
-              />
-            </div>
+          <div style={{ display: "flex", gap: 14, marginTop: 8 }}>
+            <Tag index="01" label="CLI + Web" />
+            <Tag index="02" label="Skill Graph" />
+            <Tag index="03" label="Sync" />
           </div>
         </div>
       </div>
-    </LandingOgFrame>,
-    size,
+    </div>,
+    {
+      ...size,
+      fonts: [
+        {
+          name: "Geist Sans",
+          data: geistRegular,
+          style: "normal",
+          weight: 400,
+        },
+      ],
+    },
   );
 }

@@ -230,7 +230,7 @@ export default function SkillsTable({
                   style={getRowStyle(skill.id)}
                   className="group flex items-center gap-4 border-b border-border px-5 py-2.5 transition-colors hover:bg-secondary/50"
                 >
-                  <span className="text-sm text-neutral-300 tabular-nums shrink-0">
+                  <span className="text-sm text-muted-foreground/60 tabular-nums shrink-0">
                     {index + 1}
                   </span>
 

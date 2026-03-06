@@ -71,10 +71,10 @@ function UserAvatar({
 
 interface UserMenuProps {
   onOpenCommandPalette?: () => void;
-  onSearchVault?: () => void;
+  onOpenGlobalSearch?: () => void;
 }
 
-export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMenuProps) {
+export default function UserMenu({ onOpenCommandPalette, onOpenGlobalSearch }: UserMenuProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
@@ -149,12 +149,12 @@ export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMe
 
         {/* ── Navigation section ── */}
         <DropdownMenuGroup className="p-1">
-          <DropdownMenuLabel className="uppercase font-mono text-[10px] text-neutral-300">
+          <DropdownMenuLabel className="uppercase font-mono text-[10px] text-muted-foreground/60">
             Navigation
           </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => onSearchVault?.()}>
+          <DropdownMenuItem onClick={() => onOpenGlobalSearch?.()}>
             <Search aria-hidden="true" className="text-muted-foreground" />
-            Search your vault
+            Search Everywhere
             <DropdownMenuShortcut className="text-muted-foreground ml-auto tracking-widest flex items-center gap-0.5 text-[10px] font-mono">
               <Command className="h-2 w-2" />/
             </DropdownMenuShortcut>
@@ -172,7 +172,7 @@ export default function UserMenu({ onOpenCommandPalette, onSearchVault }: UserMe
 
         {/* ── Preferences section ── */}
         <DropdownMenuGroup className="p-1">
-          <DropdownMenuLabel className="uppercase font-mono text-[10px] text-neutral-300">
+          <DropdownMenuLabel className="uppercase font-mono text-[10px] text-muted-foreground/60">
             Preferences
           </DropdownMenuLabel>
           <DropdownMenuItem onClick={toggleTheme}>

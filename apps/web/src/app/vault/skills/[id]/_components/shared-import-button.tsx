@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth/auth-client";
 import { buildLoginHref } from "@/lib/skills/routes";
+import { cn } from "@/lib/utils";
 
 type IncludedSkill = {
   id: string;
@@ -40,18 +41,22 @@ function CommandBlock({ command }: { command: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="group flex w-full items-start gap-3 border border-border bg-muted/20 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+      className="group flex w-full items-center justify-between gap-4 border border-border/80 bg-background px-4 py-3 text-left font-mono text-[11px] text-foreground transition-colors hover:border-border hover:bg-muted/10 sm:px-5 sm:text-xs"
     >
-      <span className="text-primary/60 select-none">$</span>
-      <code className="min-w-0 flex-1 break-all font-mono text-xs text-foreground">{command}</code>
-      {copied ? (
-        <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-      ) : (
-        <Copy
-          className="size-3.5 shrink-0 text-muted-foreground opacity-40 transition-opacity group-hover:opacity-80"
-          aria-hidden="true"
-        />
-      )}
+      <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        <span className="shrink-0 select-none text-primary">$</span>
+        <code className="min-w-0 flex-1 break-all">{command}</code>
+      </span>
+      <span className="inline-flex size-6 shrink-0 items-center justify-center border border-border/70 bg-background sm:size-7">
+        {copied ? (
+          <Check className="size-3 text-primary sm:size-4" aria-hidden="true" />
+        ) : (
+          <Copy
+            className="size-3 text-muted-foreground transition-colors group-hover:text-foreground sm:size-4"
+            aria-hidden="true"
+          />
+        )}
+      </span>
     </button>
   );
 }
@@ -61,19 +66,23 @@ type ImportDialogView = "choices" | "install";
 export function SharedImportButton({
   shareId,
   includedSkills,
+  resourcesCount,
   isImporting,
   onConfirmImport,
   variant = "default",
   size = "sm",
   label = "Import",
+  className,
 }: {
   shareId: string;
   includedSkills: IncludedSkill[];
+  resourcesCount: number;
   isImporting: boolean;
   onConfirmImport: () => void;
   variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "link";
   size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg";
   label?: string;
+  className?: string;
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogView, setDialogView] = useState<ImportDialogView>("choices");
@@ -114,6 +123,7 @@ export function SharedImportButton({
       <Button
         variant={variant}
         size={size}
+        className={cn(className)}
         onClick={() => setDialogOpen(true)}
         disabled={isImporting}
       >
@@ -126,72 +136,107 @@ export function SharedImportButton({
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {dialogView === "choices" ? "choose how to add this shared skill" : "just install"}
+        <DialogContent className="max-w-[calc(100%-1.5rem)] justify-items-stretch gap-0 p-0 sm:max-w-lg">
+          <DialogHeader className="gap-1.5 border-b border-border px-4 py-4 sm:px-5">
+            <DialogTitle className="text-base">
+              {dialogView === "choices" ? "Add this shared skill" : "Install on this machine"}
             </DialogTitle>
             {dialogView === "choices" ? (
               <DialogDescription>
-                option 1 just installs it to your machine. option 2 imports to your vault for
-                syncing and management
+                Install adds these skills locally right now. Import saves them to your vault so you
+                can sync, manage, and reuse them later.
               </DialogDescription>
             ) : (
               <DialogDescription>
-                install this shared skill directly to your machine.
+                Run these commands to install the CLI and add this shared bundle directly from the
+                terminal.
               </DialogDescription>
             )}
           </DialogHeader>
 
           {dialogView === "choices" ? (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-mono uppercase tracking-wide text-muted-foreground">
-                  included skills ({includedSkills.length})
-                </p>
-                <ul className="max-h-44 space-y-1 overflow-y-auto border border-border px-3 py-2">
+            <div className="space-y-4 px-4 py-4 sm:px-5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="border border-border bg-muted/10 px-3 py-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                    Includes
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {includedSkills.length} skills
+                  </p>
+                </div>
+                <div className="border border-border bg-muted/10 px-3 py-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                    Resources
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {resourcesCount} total
+                  </p>
+                </div>
+              </div>
+
+              <div className="border border-border bg-background">
+                <div className="border-b border-border bg-muted/10 px-3 py-2">
+                  <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                    Skills included in this share
+                  </p>
+                </div>
+                <ul className="max-h-52 space-y-0.5 overflow-y-auto p-2">
                   {includedSkills.map((skill, index) => (
-                    <li key={skill.id} className="text-[11px] text-foreground">
-                      <span className="font-medium">{skill.name}</span>
-                      <span className="ml-1 text-muted-foreground">({skill.slug})</span>
-                      {index > 0 ? (
-                        <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          connected
-                        </span>
-                      ) : null}
+                    <li key={skill.id} className="flex items-start gap-2 px-1.5 py-1.5">
+                      <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center border border-border bg-muted/20 font-mono text-[9px] text-muted-foreground">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="truncate text-sm font-medium text-foreground">{skill.name}</p>
+                        <p className="truncate font-mono text-[10px] text-muted-foreground">
+                          {skill.slug}
+                          {index > 0 ? " · connected" : ""}
+                        </p>
+                      </div>
                     </li>
                   ))}
                 </ul>
               </div>
-
-              <p className="text-[11px] text-muted-foreground">import to vault is recommended</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                  1. install cli (if not already installed)
+            <div className="space-y-6 px-4 py-4 sm:px-5">
+              <div className="space-y-2">
+                <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                  1. Install CLI
                 </p>
                 <CommandBlock command={CLI_INSTALL_COMMAND} />
+                <p className="text-xs text-muted-foreground/60">
+                  Skip this if `better-skills` is already installed.
+                </p>
               </div>
 
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                  2. install this shared skill
+              <div className="space-y-2">
+                <p className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                  2. Install shared bundle
                 </p>
                 <CommandBlock command={installShareCommand} />
+                <p className="text-xs text-muted-foreground/60">
+                  This installs the shared skills locally without adding them to your vault.
+                </p>
               </div>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="border-t border-border px-4 py-3 sm:justify-stretch sm:px-5">
             {dialogView === "choices" ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setDialogView("install")}>
-                  just install
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1 text-sm font-medium"
+                  onClick={() => setDialogView("install")}
+                >
+                  Install Only
                 </Button>
                 <Button
                   size="sm"
+                  className="h-9 flex-1 text-sm font-medium"
                   onClick={handleImportIntoVault}
                   disabled={isImporting || isSessionPending}
                 >
@@ -200,15 +245,24 @@ export function SharedImportButton({
                   ) : (
                     <Download className="size-3.5" aria-hidden="true" />
                   )}
-                  Import to vault
+                  Import to Vault
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="outline" size="sm" onClick={() => setDialogView("choices")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1 text-sm font-medium"
+                  onClick={() => setDialogView("choices")}
+                >
                   Back
                 </Button>
-                <Button size="sm" onClick={() => setDialogOpen(false)}>
+                <Button
+                  size="sm"
+                  className="h-9 flex-1 text-sm font-medium"
+                  onClick={() => setDialogOpen(false)}
+                >
                   Done
                 </Button>
               </>
