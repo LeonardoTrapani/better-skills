@@ -26,15 +26,10 @@
   <img alt="license mit" src="https://img.shields.io/badge/license-MIT-22c55e">
 </p>
 
-## Product Preview
-
 <p align="center">
-  <img src="apps/web/public/landing/features/feature-image-1.png" alt="better-skills dashboard" width="31%">
-  <img src="apps/web/public/landing/features/feature-image-2.png" alt="better-skills skill details" width="31%">
-  <img src="apps/web/public/landing/features/feature-image-3.png" alt="better-skills graph view" width="31%">
+  <img src="apps/web/public/readme/landing-hero.png" alt="better-skills hero" width="100%">
 </p>
 
-> **building note**
 > better-skills is in active development, focused on understanding and nailing product and market needs.
 > for now we prioritize fast iteration and real-world feedback, intentionally leaving code quality temporarly behind
 
