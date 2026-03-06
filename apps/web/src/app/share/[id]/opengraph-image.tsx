@@ -14,6 +14,9 @@ type ShareOgImageProps = {
   params: Promise<{ id: string }>;
 };
 
+const shellBackground =
+  "radial-gradient(circle at 86% 14%, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0) 42%), radial-gradient(circle at 12% 88%, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0) 38%), linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(148deg, #070b14 0%, #0b1324 52%, #091120 100%)";
+
 function compactText(value: string | null | undefined) {
   return (value ?? "").replace(/\s+/g, " ").trim();
 }
@@ -58,8 +61,8 @@ function StatBadge({ label, value }: { label: string; value: string }) {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        border: "1px solid rgba(148, 163, 184, 0.34)",
-        background: "rgba(15, 23, 42, 0.48)",
+        border: "1px solid rgba(148, 163, 184, 0.3)",
+        background: "rgba(10, 16, 31, 0.65)",
         borderRadius: 999,
         padding: "8px 14px",
       }}
@@ -79,28 +82,43 @@ function StatBadge({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SideLabel({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        color: "#94A3B8",
+        fontSize: 12,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default async function ShareOpenGraphImage({ params }: ShareOgImageProps) {
   const { id } = await params;
   const sharePreview = await getSharePreview({ shareId: id });
 
   const activeSkill = sharePreview?.activeSkill;
-  const skillName = truncateText(compactText(activeSkill?.name) || "Shared Skill", 72);
+  const isAvailable = Boolean(sharePreview);
+  const skillName = truncateText(compactText(activeSkill?.name) || "Shared skill", 64);
   const skillDescription = truncateText(
     compactText(activeSkill?.description) ||
       "Open this shared skill to preview the content and import it into your own vault.",
-    210,
+    188,
   );
 
   const slugLabel = activeSkill?.slug ? truncateText(activeSkill.slug, 44) : "shared-skill";
   const sourceLabel =
-    truncateText(compactText(activeSkill?.sourceIdentifier ?? activeSkill?.sourceUrl), 62) || null;
+    truncateText(compactText(activeSkill?.sourceIdentifier ?? activeSkill?.sourceUrl), 48) || null;
   const shareDateLabel = formatDateLabel(sharePreview?.createdAt);
   const shareIdLabel = shortId(id);
-  const rootSkillName = compactText(sharePreview?.rootSkill.name) || skillName;
+  const rootSkillName = truncateText(compactText(sharePreview?.rootSkill.name) || skillName, 30);
   const includedSkills = sharePreview?.includedSkills ?? [];
-  const includedPreview = includedSkills.slice(0, 4);
+  const includedPreview = includedSkills.slice(0, 5);
   const includedOverflow = Math.max(0, includedSkills.length - includedPreview.length);
-
   const stats = sharePreview?.stats ?? { skills: 0, resources: 0, links: 0 };
 
   return new ImageResponse(
@@ -110,8 +128,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
         height: "100%",
         display: "flex",
         position: "relative",
-        backgroundImage:
-          "radial-gradient(circle at 12% 12%, rgba(254, 154, 0, 0.2), rgba(254, 154, 0, 0) 44%), radial-gradient(circle at 78% 90%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 36%), linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(150deg, #030712 0%, #0a1020 44%, #04070c 100%)",
+        backgroundImage: shellBackground,
         backgroundSize: "100% 100%, 100% 100%, 42px 42px, 42px 42px, 100% 100%",
         color: "#F8FAFC",
         overflow: "hidden",
@@ -124,9 +141,48 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
           inset: 0,
           display: "flex",
           background:
-            "linear-gradient(120deg, rgba(2, 6, 23, 0.62) 0%, rgba(2, 6, 23, 0.2) 55%, rgba(2, 6, 23, 0.68) 100%)",
+            "linear-gradient(108deg, rgba(2, 6, 23, 0.58) 0%, rgba(2, 6, 23, 0.16) 55%, rgba(2, 6, 23, 0.62) 100%)",
         }}
       />
+
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 46,
+            width: 1,
+            background: "rgba(148, 163, 184, 0.23)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            right: 46,
+            width: 1,
+            background: "rgba(148, 163, 184, 0.23)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 46,
+            right: 46,
+            bottom: 84,
+            height: 1,
+            background: "rgba(148, 163, 184, 0.2)",
+          }}
+        />
+      </div>
 
       <div
         style={{
@@ -135,7 +191,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
           flexDirection: "column",
           width: "100%",
           height: "100%",
-          padding: "42px 52px",
+          padding: "40px 52px",
           gap: 22,
         }}
       >
@@ -145,10 +201,10 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
               display: "flex",
               alignItems: "center",
               gap: 10,
-              border: "1px solid rgba(248, 250, 252, 0.24)",
+              border: "1px solid rgba(148, 163, 184, 0.34)",
               borderRadius: 999,
               padding: "8px 14px",
-              background: "rgba(15, 23, 42, 0.55)",
+              background: "rgba(10, 16, 31, 0.72)",
             }}
           >
             <span
@@ -157,7 +213,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                 height: 8,
                 display: "flex",
                 borderRadius: 999,
-                background: "#FE9A00",
+                background: "#F59E0B",
               }}
             />
             <span
@@ -198,28 +254,22 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span
                   style={{
                     fontSize: 18,
-                    color: "#93C5FD",
+                    color: isAvailable ? "#93C5FD" : "#FCA5A5",
                     textTransform: "uppercase",
                     letterSpacing: "0.08em",
                   }}
                 >
-                  {sharePreview ? "ready to import" : "link unavailable"}
+                  {isAvailable ? "ready to import" : "link unavailable"}
                 </span>
                 <span
                   style={{
-                    fontSize: 64,
+                    fontSize: 68,
                     fontWeight: 780,
-                    lineHeight: 1.02,
+                    lineHeight: 1,
                     letterSpacing: "-0.03em",
                     color: "#F8FAFC",
                   }}
@@ -230,8 +280,8 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
 
               <div
                 style={{
-                  fontSize: 28,
-                  lineHeight: 1.34,
+                  fontSize: 30,
+                  lineHeight: 1.32,
                   color: "#D1D5DB",
                   maxWidth: 710,
                 }}
@@ -251,12 +301,12 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                borderTop: "1px solid rgba(148, 163, 184, 0.26)",
+                borderTop: "1px solid rgba(148, 163, 184, 0.24)",
                 paddingTop: 16,
-                gap: 18,
+                gap: 16,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span
                   style={{
                     color: "#94A3B8",
@@ -273,7 +323,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
               </div>
 
               {sourceLabel ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span
                     style={{
                       color: "#94A3B8",
@@ -284,7 +334,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                   >
                     source
                   </span>
-                  <span style={{ color: "#CBD5E1", fontSize: 16 }}>{sourceLabel}</span>
+                  <span style={{ color: "#CBD5E1", fontSize: 15 }}>{sourceLabel}</span>
                 </div>
               ) : null}
 
@@ -303,24 +353,15 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                 border: "1px solid rgba(148, 163, 184, 0.26)",
                 borderRadius: 20,
                 background:
-                  "linear-gradient(175deg, rgba(9, 15, 24, 0.95) 0%, rgba(2, 6, 23, 0.84) 100%)",
+                  "linear-gradient(176deg, rgba(8, 13, 25, 0.96) 0%, rgba(2, 6, 23, 0.86) 100%)",
                 padding: 16,
                 gap: 14,
               }}
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span
-                  style={{
-                    color: "#94A3B8",
-                    fontSize: 13,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  root skill
-                </span>
+                <SideLabel label="root skill" />
                 <span style={{ color: "#F8FAFC", fontSize: 22, fontWeight: 650 }}>
-                  {truncateText(rootSkillName, 32)}
+                  {rootSkillName}
                 </span>
               </div>
 
@@ -334,16 +375,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                   padding: "12px 0",
                 }}
               >
-                <span
-                  style={{
-                    color: "#94A3B8",
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  included skills
-                </span>
+                <SideLabel label="included skills" />
 
                 {includedPreview.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -355,11 +387,11 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                             height: 5,
                             display: "flex",
                             borderRadius: 999,
-                            background: "#6366F1",
+                            background: "#60A5FA",
                           }}
                         />
                         <span style={{ color: "#E2E8F0", fontSize: 16 }}>
-                          {truncateText(skill.name, 28)}
+                          {truncateText(skill.name, 30)}
                         </span>
                       </div>
                     ))}
@@ -384,40 +416,34 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
                   background: "rgba(15, 23, 42, 0.42)",
                 }}
               >
-                <span
-                  style={{
-                    color: "#94A3B8",
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  import
-                </span>
+                <SideLabel label="import" />
                 <span style={{ color: "#E2E8F0", fontFamily: "ui-monospace", fontSize: 14 }}>
                   better-skills sync --share {shareIdLabel}
                 </span>
               </div>
+
+              <div
+                style={{
+                  marginTop: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <BrandMark size={30} />
+                <span
+                  style={{
+                    color: "#E2E8F0",
+                    fontSize: 18,
+                    fontWeight: 600,
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  BETTER-SKILLS.
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div
-          style={{
-            position: "absolute",
-            right: 52,
-            bottom: 34,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <BrandMark size={36} />
-          <span
-            style={{ color: "#E2E8F0", fontSize: 20, fontWeight: 600, letterSpacing: "0.03em" }}
-          >
-            BETTER-SKILLS.
-          </span>
         </div>
       </div>
     </div>,
