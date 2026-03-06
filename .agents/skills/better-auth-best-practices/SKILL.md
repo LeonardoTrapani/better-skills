@@ -9,8 +9,6 @@ description: Skill for integrating Better Auth - the comprehensive TypeScript au
 
 Better Auth is a TypeScript-first, framework-agnostic auth framework supporting email/password, OAuth, magic links, passkeys, and more via plugins.
 
-For Hono-specific API composition and endpoint testing workflows, pair this with [[skill:163548c3-4601-4830-b25d-6973456df135]].
-
 ---
 
 ## Quick Reference

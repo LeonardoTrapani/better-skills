@@ -88,4 +88,3 @@ hono optimize [entry] -t cloudflare-workers
 - Use `--pretty` flag with `hono search` (default output is JSON)
 - `hono request` works without starting an HTTP server
 - Search for middleware usage with `hono search "middleware name"`
-- For authentication/session architecture in Hono projects, also consult [[skill:7a18af56-f25f-4b55-b1af-fac93a5dae49]]
