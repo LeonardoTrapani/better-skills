@@ -12,7 +12,7 @@ import { authClient } from "@/lib/auth/auth-client";
 import UserMenu from "./user-menu";
 import { SkillCommandPalette } from "./skill-command-palette";
 
-type PaletteMode = "command" | "vault";
+type PaletteMode = "command" | "global" | "personal";
 
 type NavItem =
   | { label: string; href: Route; kind: "route" }
@@ -66,12 +66,13 @@ export default function Navbar() {
     };
   }, [mobileOpen]);
 
-  // read ?q= param to auto-open palette
+  // read ?q= param to auto-open palette in global search mode
   useEffect(() => {
     if (!session) return;
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     if (!q) return;
+    setCmdInitialMode("global");
     setCmdInitialSearch(q);
     setCmdOpen(true);
     params.delete("q");
@@ -79,7 +80,7 @@ export default function Navbar() {
     window.history.replaceState(null, "", cleaned);
   }, [pathname, session]);
 
-  // global Cmd+K listener (command mode) and Cmd+/ listener (vault mode)
+  // global Cmd+K listener (command mode) and Cmd+/ listener (global mode)
   useEffect(() => {
     if (!session) return;
     const handler = (e: KeyboardEvent) => {
@@ -91,7 +92,7 @@ export default function Navbar() {
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
-        setCmdInitialMode("vault");
+        setCmdInitialMode("global");
         setCmdInitialSearch("");
         setCmdOpen(true);
       }
@@ -106,8 +107,8 @@ export default function Navbar() {
     setCmdOpen(true);
   }, []);
 
-  const openVaultSearch = useCallback(() => {
-    setCmdInitialMode("vault");
+  const openGlobalSearch = useCallback(() => {
+    setCmdInitialMode("global");
     setCmdInitialSearch("");
     setCmdOpen(true);
   }, []);
@@ -221,7 +222,7 @@ export default function Navbar() {
                       <Command className="h-2 w-2" />K
                     </span>
                   </button>
-                  <UserMenu onOpenCommandPalette={openCmd} onSearchVault={openVaultSearch} />
+                  <UserMenu onOpenCommandPalette={openCmd} onOpenGlobalSearch={openGlobalSearch} />
                 </>
               ) : (
                 <Link
@@ -237,7 +238,7 @@ export default function Navbar() {
             {mounted &&
               !isPending &&
               (session ? (
-                <UserMenu onOpenCommandPalette={openCmd} onSearchVault={openVaultSearch} />
+                <UserMenu onOpenCommandPalette={openCmd} onOpenGlobalSearch={openGlobalSearch} />
               ) : (
                 <Link
                   href="/login"

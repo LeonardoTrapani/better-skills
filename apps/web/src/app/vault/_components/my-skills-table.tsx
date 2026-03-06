@@ -86,7 +86,7 @@ export default function MySkillsTable({ height, className }: MySkillsTableProps)
                 href={buildSkillHref(skill.id)}
                 className="flex gap-6 items-center border-b border-border px-6 py-2 transition-colors hover:bg-secondary/50 group"
               >
-                <span className="text-sm text-neutral-300 tabular-nums">{index + 1}</span>
+                <span className="text-sm text-muted-foreground/60 tabular-nums">{index + 1}</span>
 
                 <div className="min-w-0 w-full flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2">

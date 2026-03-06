@@ -14,9 +14,9 @@ import {
   ArrowDown,
   ArrowUp,
   BookOpen,
-  Building2,
   CornerDownLeft,
   FileText,
+  Globe,
   Loader2,
   LogOut,
   Moon,
@@ -31,6 +31,7 @@ import { useDebouncedValue } from "@/hooks/skills/use-skill-search";
 import { authClient } from "@/lib/auth/auth-client";
 import { trpc } from "@/lib/api/trpc";
 import { buildResourceTabHref } from "@/lib/skills/routes";
+import { getEffectiveVaultColor } from "@/lib/skills/vault-colors";
 import { VaultColorHex } from "@/components/skills/vault-color-hex";
 import { cn } from "@/lib/utils";
 import {
@@ -43,8 +44,8 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-/** "command" | "vault" | enterprise vault id (uuid) */
-type PaletteMode = "command" | "vault" | (string & {});
+/** "command" | "global" | "personal" | enterprise vault id (uuid) */
+type PaletteMode = "command" | "global" | "personal" | (string & {});
 
 interface EnterpriseVault {
   id: string;
@@ -56,6 +57,7 @@ interface EnterpriseVault {
 interface PersonalVault {
   id: string;
   name: string;
+  color: string;
 }
 
 interface CommandItem {
@@ -78,6 +80,7 @@ interface FlatItem {
     type: "personal" | "enterprise" | "system_default";
     color: string | null;
     isReadOnly: boolean;
+    isEnabled: boolean;
   } | null;
   icon: React.ReactNode;
   action: () => void;
@@ -85,11 +88,10 @@ interface FlatItem {
   sectionLabel?: string;
 }
 
-function getVaultIndicatorColor(vault: FlatItem["vault"]): string | null {
+function getVaultIconColor(vault: FlatItem["vault"]): string | null {
   if (!vault) return null;
-  if (vault.type === "personal") return "#eab308";
-  if (vault.type === "enterprise") return vault.color?.trim() ?? "var(--primary)";
-  return null;
+  if (vault.type === "personal") return vault.color?.trim() ?? "#eab308";
+  return getEffectiveVaultColor(vault);
 }
 
 // ─── Mode badge ──────────────────────────────────────────────────────────────
@@ -97,16 +99,27 @@ function getVaultIndicatorColor(vault: FlatItem["vault"]): string | null {
 function ModeBadge({
   mode,
   enterpriseVaults,
+  personalColor,
 }: {
   mode: PaletteMode;
   enterpriseVaults: EnterpriseVault[];
+  personalColor: string;
 }) {
   if (mode === "command") return null;
 
-  if (mode === "vault") {
+  if (mode === "global") {
     return (
       <span className="inline-flex items-center gap-1 shrink-0 border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground font-mono">
-        <VaultColorHex color="#eab308" className="size-2.5" />
+        <Globe className="size-2.5" />
+        Everywhere
+      </span>
+    );
+  }
+
+  if (mode === "personal") {
+    return (
+      <span className="inline-flex items-center gap-1 shrink-0 border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground font-mono">
+        <VaultColorHex color={personalColor} className="size-2.5" />
         My vault
       </span>
     );
@@ -158,7 +171,7 @@ function PaletteFooter({
             <kbd className="inline-flex items-center justify-center h-4 px-1 border border-border bg-muted rounded-sm text-[10px] font-mono">
               /
             </kbd>
-            <span>vault</span>
+            <span>search</span>
           </span>
         )}
         <span className="inline-flex items-center gap-1">
@@ -186,16 +199,25 @@ function PaletteRow({
   onSelect,
   onHover,
   innerRef,
-  showVaultIndicator,
 }: {
   item: FlatItem;
   isSelected: boolean;
   onSelect: () => void;
   onHover: () => void;
   innerRef: (el: HTMLButtonElement | null) => void;
-  showVaultIndicator: boolean;
 }) {
-  const vaultColor = showVaultIndicator ? getVaultIndicatorColor(item.vault) : null;
+  const vaultColor = getVaultIconColor(item.vault);
+  const isDisabledVault = item.vault?.isEnabled === false;
+  const isVaultSearchEntry =
+    item.kind !== "skill" &&
+    item.kind !== "resource" &&
+    (item.id === "search-personal" ||
+      item.id === "__search-personal" ||
+      item.id.startsWith("search-enterprise-") ||
+      item.id.startsWith("__search-enterprise-"));
+  const vaultLabel = item.id.includes("personal")
+    ? "My Vault"
+    : (item.vault?.slug ?? item.label.replace(/^Search\s+/, ""));
 
   return (
     <button
@@ -205,19 +227,45 @@ function PaletteRow({
       onMouseEnter={onHover}
       className={cn(
         "flex items-center gap-3 w-full px-4 py-2.5 text-left text-xs transition-colors",
+        !isSelected && isDisabledVault ? "opacity-65" : undefined,
         isSelected ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/50",
       )}
     >
-      <span className="flex-shrink-0 text-neutral-300">{item.icon}</span>
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
-        {vaultColor ? <VaultColorHex color={vaultColor} className="size-2.5" /> : null}
-        <span className="min-w-0 truncate">{item.label}</span>
+      <span
+        className="flex-shrink-0 text-muted-foreground/60"
+        style={
+          item.kind === "skill" || item.kind === "resource"
+            ? vaultColor
+              ? { color: vaultColor }
+              : undefined
+            : undefined
+        }
+      >
+        {item.icon}
       </span>
-      {item.subtitle && (
-        <span className="flex-shrink-0 text-[11px] text-muted-foreground truncate max-w-[40%]">
-          {item.subtitle}
-        </span>
-      )}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        {isVaultSearchEntry ? (
+          <span className="min-w-0 truncate">
+            <span>Search </span>
+            <span
+              style={vaultColor ? { color: vaultColor } : undefined}
+              className="font-mono font-medium text-muted-foreground"
+            >
+              {vaultLabel}
+            </span>
+          </span>
+        ) : (
+          <span className="min-w-0 truncate">{item.label}</span>
+        )}
+        {isDisabledVault ? (
+          <span className="border border-border bg-muted/40 px-1 py-px text-[9px] font-mono uppercase tracking-wider">
+            Disabled
+          </span>
+        ) : null}
+      </span>
+      <span className="ml-auto flex flex-shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground max-w-[45%]">
+        {item.subtitle ? <span className="truncate">{item.subtitle}</span> : null}
+      </span>
       {item.shortcut && <span className="flex-shrink-0 ml-1">{item.shortcut}</span>}
     </button>
   );
@@ -269,7 +317,7 @@ export function SkillCommandPalette({
   const enterpriseVaults = useMemo<EnterpriseVault[]>(() => {
     if (!myVaultsQuery.data) return [];
     return myVaultsQuery.data
-      .filter((m) => m.vault.type === "enterprise")
+      .filter((m) => m.vault.type === "enterprise" && m.isEnabled)
       .sort(
         (a, b) =>
           new Date(a.membershipCreatedAt).getTime() - new Date(b.membershipCreatedAt).getTime(),
@@ -284,18 +332,31 @@ export function SkillCommandPalette({
 
   const personalVault = useMemo<PersonalVault | null>(() => {
     if (!myVaultsQuery.data) return null;
-    const personal = myVaultsQuery.data.find((m) => m.vault.type === "personal");
+    const personal = myVaultsQuery.data.find((m) => m.vault.type === "personal" && m.isEnabled);
     if (!personal) return null;
-    return { id: personal.vaultId, name: personal.vault.name };
+    return {
+      id: personal.vaultId,
+      name: personal.vault.name,
+      color: "#eab308",
+    };
   }, [myVaultsQuery.data]);
 
-  const hasAdditionalLinkedVault = enterpriseVaults.length > 0;
+  const enabledSearchableVaultCount = useMemo(() => {
+    if (!myVaultsQuery.data) return 0;
+    return myVaultsQuery.data.filter(
+      (m) => m.isEnabled && (m.vault.type === "personal" || m.vault.type === "enterprise"),
+    ).length;
+  }, [myVaultsQuery.data]);
 
-  // ── Mode cycle order: command → vault → enterprise1 → enterprise2 → … ───────
+  const hasScopedVaultSearch = enabledSearchableVaultCount > 1;
+
+  // ── Mode cycle order: command → global → personal → enterprise1 → … ───────────
 
   const modeOrder = useMemo<PaletteMode[]>(() => {
-    return ["command", "vault", ...enterpriseVaults.map((v) => v.id)];
-  }, [enterpriseVaults]);
+    if (!hasScopedVaultSearch) return ["command", "global"];
+    const withPersonal = personalVault ? (["personal"] as const) : [];
+    return ["command", "global", ...withPersonal, ...enterpriseVaults.map((v) => v.id)];
+  }, [enterpriseVaults, hasScopedVaultSearch, personalVault]);
 
   const navigateTo = useCallback(
     (href: Route | string) => {
@@ -355,6 +416,14 @@ export function SkillCommandPalette({
     setSelectedIndex(0);
   }, [modeOrder]);
 
+  useEffect(() => {
+    if (!modeOrder.includes(mode)) {
+      setMode("command");
+      setSearch("");
+      setSelectedIndex(0);
+    }
+  }, [mode, modeOrder]);
+
   // ── Suggestions: top 3 user skills ─────────────────────────────────────────
 
   const suggestionsQuery = useQuery({
@@ -371,28 +440,52 @@ export function SkillCommandPalette({
   const commands = useMemo<CommandItem[]>(
     () => [
       {
-        id: "search-vault",
-        label: "Search your vault",
-        description: "Find skills & resources",
-        icon: <Search className="size-4" />,
-        keywords: ["search", "find", "vault", "my"],
+        id: "search-global",
+        label: "Search Everywhere",
+        description: "Find skills & resources across vaults",
+        icon: <Globe className="size-4" />,
+        keywords: ["search", "find", "global", "all", "vaults"],
         action: () => {
-          setMode("vault");
+          setMode("global");
           setSearch("");
           setSelectedIndex(0);
         },
       },
+      ...(hasScopedVaultSearch && personalVault
+        ? [
+            {
+              id: "search-personal",
+              label: "Search My Vault",
+              description: "Find skills & resources in your personal vault",
+              icon: <Search className="size-4" />,
+              vault: {
+                slug: personalVault.name,
+                type: "personal" as const,
+                color: personalVault.color,
+                isReadOnly: false,
+                isEnabled: true,
+              },
+              keywords: ["search", "find", "vault", "my", "personal"],
+              action: () => {
+                setMode("personal");
+                setSearch("");
+                setSelectedIndex(0);
+              },
+            },
+          ]
+        : []),
       // One command per enterprise vault
       ...enterpriseVaults.map((ev) => ({
         id: `search-enterprise-${ev.id}`,
-        label: `Search through ${ev.name} vault`,
+        label: `Search ${ev.name}`,
         description: `Find skills & resources in ${ev.name}`,
-        icon: <Building2 className="size-4" />,
+        icon: <Search className="size-4" />,
         vault: {
           slug: ev.name,
           type: "enterprise" as const,
           color: ev.color,
           isReadOnly: false,
+          isEnabled: true,
         },
         keywords: ["search", "find", "enterprise", ev.name.toLowerCase()],
         action: () => {
@@ -434,14 +527,24 @@ export function SkillCommandPalette({
           ),
       },
     ],
-    [isDark, setTheme, close, runAndClose, router, navigateTo, enterpriseVaults],
+    [
+      isDark,
+      setTheme,
+      close,
+      runAndClose,
+      router,
+      navigateTo,
+      enterpriseVaults,
+      hasScopedVaultSearch,
+      personalVault,
+    ],
   );
 
   // ── Vault search (personal vault — all vaults) ─────────────────────────────
 
   const vaultDebouncedQuery = useDebouncedValue(search.trim(), 200);
 
-  // ── Global search in command mode ──────────────────────────────────────────
+  // ── Global search ───────────────────────────────────────────────────────────
 
   const globalQuery = useQuery({
     ...trpc.skills.searchMentions.queryOptions({
@@ -449,13 +552,14 @@ export function SkillCommandPalette({
       limit: 10,
     }),
     placeholderData: keepPreviousData,
-    enabled: open && mode === "command" && vaultDebouncedQuery.length > 0,
+    enabled: open && mode === "global" && vaultDebouncedQuery.length > 0,
   });
   const globalItems = globalQuery.data?.items ?? [];
 
-  const isPersonalVaultMode = mode === "vault";
+  const isGlobalMode = mode === "global";
+  const isPersonalVaultMode = mode === "personal";
   const activeEnterpriseVaultId =
-    mode !== "command" && mode !== "vault"
+    mode !== "command" && mode !== "global" && mode !== "personal"
       ? (enterpriseVaults.find((v) => v.id === mode)?.id ?? null)
       : null;
 
@@ -504,15 +608,15 @@ export function SkillCommandPalette({
 
       // Suggestions section (only when not filtering)
       if (!queryLower) {
-        // "Search your vault" as first suggestion
+        // Global Search as first suggestion
         items.push({
           kind: "suggestion",
-          id: "__search-vault-suggestion",
-          label: "Search your vault",
-          subtitle: "Find skills & resources",
-          icon: <Search className="size-4" />,
+          id: "__search-global-suggestion",
+          label: "Search Everywhere",
+          subtitle: "Find skills & resources across vaults",
+          icon: <Globe className="size-4" />,
           action: () => {
-            setMode("vault");
+            setMode("global");
             setSearch("");
             setSelectedIndex(0);
           },
@@ -524,19 +628,42 @@ export function SkillCommandPalette({
           sectionLabel: "Suggestions",
         });
 
+        if (hasScopedVaultSearch && personalVault) {
+          items.push({
+            kind: "suggestion",
+            id: "__search-personal",
+            label: "Search My Vault",
+            subtitle: "Find skills & resources in your personal vault",
+            icon: <Search className="size-4" />,
+            vault: {
+              slug: personalVault.name,
+              type: "personal",
+              color: personalVault.color,
+              isReadOnly: false,
+              isEnabled: true,
+            },
+            action: () => {
+              setMode("personal");
+              setSearch("");
+              setSelectedIndex(0);
+            },
+          });
+        }
+
         // Enterprise vault quick-access suggestions
         for (const ev of enterpriseVaults) {
           items.push({
             kind: "suggestion",
             id: `__search-enterprise-${ev.id}`,
-            label: `Search through ${ev.name} vault`,
+            label: `Search ${ev.name}`,
             subtitle: `Find skills & resources in ${ev.name}`,
-            icon: <Building2 className="size-4" />,
+            icon: <Search className="size-4" />,
             vault: {
               slug: ev.name,
               type: "enterprise",
               color: ev.color,
               isReadOnly: false,
+              isEnabled: true,
             },
             action: () => {
               setMode(ev.id);
@@ -546,7 +673,6 @@ export function SkillCommandPalette({
           });
         }
 
-        // Top 3 user skills
         for (const skill of suggestedSkills) {
           items.push({
             kind: "suggestion",
@@ -556,45 +682,6 @@ export function SkillCommandPalette({
             icon: <BookOpen className="size-4" />,
             vault: skill.vault,
             action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
-          });
-        }
-      }
-
-      if (queryLower) {
-        const skills = globalItems.filter((it) => it.type === "skill");
-        const resources = globalItems.filter((it) => it.type === "resource");
-
-        for (const skill of skills) {
-          items.push({
-            kind: "skill",
-            id: skill.id,
-            label: skill.label,
-            subtitle: skill.subtitle ?? "",
-            icon: <BookOpen className="size-4" />,
-            vault: skill.vault,
-            action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
-            sectionLabel: items.length === 0 ? "Skills" : undefined,
-          });
-        }
-
-        for (const res of resources) {
-          items.push({
-            kind: "resource",
-            id: res.id,
-            label: res.label,
-            subtitle: res.subtitle ?? "",
-            icon: <FileText className="size-4" />,
-            vault: res.vault,
-            action: () =>
-              runAndClose(() => {
-                if (!res.parentSkillId) return;
-                const href = buildResourceTabHref(res.parentSkillId, res.label);
-                navigateTo(href);
-              }),
-            sectionLabel:
-              items.length === skills.length && resources.indexOf(res) === 0
-                ? "Resources"
-                : undefined,
           });
         }
       }
@@ -616,6 +703,48 @@ export function SkillCommandPalette({
       return items;
     }
 
+    if (isGlobalMode) {
+      const items: FlatItem[] = [];
+      const skills = globalItems.filter((it) => it.type === "skill");
+      const resources = globalItems.filter((it) => it.type === "resource");
+
+      for (const skill of skills) {
+        items.push({
+          kind: "skill",
+          id: skill.id,
+          label: skill.label,
+          subtitle: skill.subtitle ?? "",
+          icon: <BookOpen className="size-4" />,
+          vault: skill.vault,
+          action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
+          sectionLabel: items.length === 0 ? "Skills" : undefined,
+        });
+      }
+
+      for (const res of resources) {
+        items.push({
+          kind: "resource",
+          id: res.id,
+          label: res.label,
+          subtitle: res.subtitle ?? "",
+          icon: <FileText className="size-4" />,
+          vault: res.vault,
+          action: () =>
+            runAndClose(() => {
+              if (!res.parentSkillId) return;
+              const href = buildResourceTabHref(res.parentSkillId, res.label);
+              navigateTo(href);
+            }),
+          sectionLabel:
+            items.length === skills.length && resources.indexOf(res) === 0
+              ? "Resources"
+              : undefined,
+        });
+      }
+
+      return items;
+    }
+
     if (isPersonalVaultMode) {
       const items: FlatItem[] = [];
 
@@ -624,21 +753,12 @@ export function SkillCommandPalette({
       const resources = vaultItems.filter((it) => it.type === "resource");
 
       for (const skill of skills) {
-        const enterpriseColor =
-          skill.vault?.type === "enterprise"
-            ? (skill.vault.color?.trim() ?? "var(--primary)")
-            : null;
         items.push({
           kind: "skill",
           id: skill.id,
           label: skill.label,
           subtitle: skill.subtitle ?? "",
-          icon: (
-            <BookOpen
-              className="size-4"
-              style={enterpriseColor ? { color: enterpriseColor } : undefined}
-            />
-          ),
+          icon: <BookOpen className="size-4" />,
           vault: skill.vault,
           action: () => runAndClose(() => navigateTo(`/vault/skills/${skill.id}` as Route)),
           sectionLabel: items.length === 0 ? "Skills" : undefined,
@@ -646,19 +766,12 @@ export function SkillCommandPalette({
       }
 
       for (const res of resources) {
-        const enterpriseColor =
-          res.vault?.type === "enterprise" ? (res.vault.color?.trim() ?? "var(--primary)") : null;
         items.push({
           kind: "resource",
           id: res.id,
           label: res.label,
           subtitle: res.subtitle ?? "",
-          icon: (
-            <FileText
-              className="size-4"
-              style={enterpriseColor ? { color: enterpriseColor } : undefined}
-            />
-          ),
+          icon: <FileText className="size-4" />,
           vault: res.vault,
           action: () =>
             runAndClose(() => {
@@ -731,10 +844,13 @@ export function SkillCommandPalette({
     mode,
     search,
     commands,
+    hasScopedVaultSearch,
+    personalVault,
     suggestedSkills,
     enterpriseVaults,
     globalItems,
     vaultDebouncedQuery,
+    isGlobalMode,
     vaultItems,
     isPersonalVaultMode,
     activeEnterpriseVaultId,
@@ -759,11 +875,12 @@ export function SkillCommandPalette({
   // ── Loading states ─────────────────────────────────────────────────────────
 
   const isLoading =
-    (mode === "command" && vaultDebouncedQuery.length > 0 && globalQuery.isLoading) ||
+    (isGlobalMode && vaultDebouncedQuery.length > 0 && globalQuery.isLoading) ||
     (isPersonalVaultMode && vaultQuery.isLoading) ||
     (activeEnterpriseVaultId !== null && enterpriseQuery.isLoading);
 
   const showEmpty =
+    (mode === "command" && search.trim().length > 0 && flatItems.length === 0) ||
     (isPersonalVaultMode &&
       vaultDebouncedQuery.length > 0 &&
       !vaultQuery.isLoading &&
@@ -772,26 +889,23 @@ export function SkillCommandPalette({
       vaultDebouncedQuery.length > 0 &&
       !enterpriseQuery.isLoading &&
       flatItems.length === 0) ||
-    (mode === "command" &&
-      search.trim().length > 0 &&
-      !globalQuery.isLoading &&
-      flatItems.length === 0);
+    (isGlobalMode && search.trim().length > 0 && !globalQuery.isLoading && flatItems.length === 0);
 
   // ── Keyboard handler ───────────────────────────────────────────────────────
 
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLInputElement>) => {
-      // Tab -> cycle modes (command → vault → enterprise vaults)
+      // Tab -> cycle modes (command → global → personal → enterprise vaults)
       if (e.key === "Tab") {
         e.preventDefault();
         cycleMode();
         return;
       }
 
-      // "/" at start of empty input in command mode -> vault mode
+      // "/" at start of empty input in command mode -> global search mode
       if (e.key === "/" && mode === "command" && search === "") {
         e.preventDefault();
-        setMode("vault");
+        setMode("global");
         setSearch("");
         setSelectedIndex(0);
         return;
@@ -855,7 +969,6 @@ export function SkillCommandPalette({
           isSelected={i === selectedIndex}
           onSelect={() => item.action()}
           onHover={() => setSelectedIndex(i)}
-          showVaultIndicator={hasAdditionalLinkedVault}
           innerRef={(el) => {
             rowRefs.current[i] = el;
           }}
@@ -863,13 +976,14 @@ export function SkillCommandPalette({
       );
     }
     return elements;
-  }, [flatItems, selectedIndex, hasAdditionalLinkedVault]);
+  }, [flatItems, selectedIndex]);
 
   // ── Derive placeholder from current mode ───────────────────────────────────
 
   const placeholder = useMemo(() => {
-    if (mode === "command") return "Search skills, resources, or commands...";
-    if (mode === "vault") return "Search skills & resources...";
+    if (mode === "command") return "Search commands...";
+    if (mode === "global") return "Search skills & resources across vaults...";
+    if (mode === "personal") return "Search your vault...";
     const ev = enterpriseVaults.find((v) => v.id === mode);
     return ev ? `Search ${ev.name} skills & resources...` : "Search skills & resources...";
   }, [mode, enterpriseVaults]);
@@ -888,8 +1002,8 @@ export function SkillCommandPalette({
       >
         {/* ── Search input ── */}
         <div className="flex items-center gap-3 px-4 py-3">
-          <Search className="size-4 text-neutral-300 flex-shrink-0" />
-          <ModeBadge mode={mode} enterpriseVaults={enterpriseVaults} />
+          <Search className="size-4 text-muted-foreground/60 flex-shrink-0" />
+          <ModeBadge mode={mode} enterpriseVaults={enterpriseVaults} personalColor="#eab308" />
           <input
             ref={inputRef}
             type="text"

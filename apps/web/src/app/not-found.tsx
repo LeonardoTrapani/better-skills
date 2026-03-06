@@ -176,7 +176,11 @@ function TerminalLines() {
     () => [
       { prefix: "$", text: "bs vibes --check", delay: 0.3 },
       { prefix: "ERR", text: "panic: page went mass extinct", delay: 0.55 },
-      { prefix: "ERR", text: "have you tried turning the internet off and on", delay: 0.75 },
+      {
+        prefix: "ERR",
+        text: "have you tried turning the internet off and on",
+        delay: 0.75,
+      },
       { prefix: "~", text: "hint: skill issue (literally)", delay: 0.95 },
     ],
     [],
@@ -198,7 +202,7 @@ function TerminalLines() {
                 ? "text-destructive/80"
                 : line.prefix === "$"
                   ? "text-primary/60"
-                  : "text-muted-foreground/50"
+                  : "text-muted-foreground/60"
             }
           >
             {line.prefix}
@@ -391,7 +395,7 @@ export default function NotFound() {
             {/* Terminal header */}
             <div className="mb-3 flex items-center gap-2 border-b border-border/50 pb-2.5">
               <Terminal className="size-3 text-muted-foreground/60" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
                 diagnostic
               </span>
             </div>

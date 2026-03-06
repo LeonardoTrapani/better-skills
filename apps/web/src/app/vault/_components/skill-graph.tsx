@@ -99,6 +99,7 @@ export default function SkillGraph({ height, className, variant = "panel" }: Ski
             height={forceGraphHeight}
             centerXBias={graphCenterXBias}
             mobileInitialScale={0.9}
+            showSettingsButton
           />
         )}
 

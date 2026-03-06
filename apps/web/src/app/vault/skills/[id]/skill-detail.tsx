@@ -214,7 +214,9 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
   });
 
   const graphForShareQuery = useQuery({
-    ...trpc.skills.graphForShare.queryOptions({ shareId: shareId ?? EMPTY_UUID }),
+    ...trpc.skills.graphForShare.queryOptions({
+      shareId: shareId ?? EMPTY_UUID,
+    }),
     staleTime: SKILL_DETAIL_STALE_TIME_MS,
     enabled: mode === "share" && shouldLoadGraph && Boolean(shareId),
   });
@@ -226,9 +228,15 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
     trpc.skills.importShare.mutationOptions({
       onSuccess: async () => {
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: trpc.skills.list.queryKey() }),
-          queryClient.invalidateQueries({ queryKey: trpc.skills.listByOwner.queryKey() }),
-          queryClient.invalidateQueries({ queryKey: trpc.skills.graph.queryKey() }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.skills.list.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.skills.listByOwner.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.skills.graph.queryKey(),
+          }),
         ]);
 
         toast.success("shared skill imported. run better-skills sync in your terminal.");
@@ -439,25 +447,24 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
   const includedShareSkills = mode === "share" ? (sharedSkillQuery.data?.includedSkills ?? []) : [];
   const shareStats = mode === "share" ? sharedSkillQuery.data?.stats : null;
 
-  const headerAction =
-    mode === "share" ? null : canShareSkill ? <SkillShareButton skillId={skillId} /> : null;
+  const showShareAction = mode !== "share" && canShareSkill;
 
   const viewingResourceLabel = activeTab.kind === "resource" ? activeTab.path : null;
 
   return (
     <main className="relative min-h-screen bg-background lg:h-[calc(100dvh-52px)] lg:min-h-0 lg:overflow-hidden">
       <div className="relative p-4 pb-6 sm:p-6 lg:hidden">
-        <div className="mx-auto max-w-3xl space-y-5">
+        <div className="mx-auto space-y-5">
           <SkillDetailHeader
             {...headerProps}
             compact
             mobile
             viewingResource={mobileSection === "content" ? viewingResourceLabel : null}
-            actions={headerAction}
+            actions={showShareAction ? <SkillShareButton skillId={skillId} /> : null}
           />
 
           {mode === "share" && shareId ? (
-            <div className="border border-border bg-primary/5 px-4 py-3 sm:px-5">
+            <div className="border border-border bg-primary/5 px-4 py-3 sm:px-">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Import this shared skill</p>
                 <p className="text-xs text-muted-foreground">
@@ -468,6 +475,7 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
                 <SharedImportButton
                   shareId={shareId}
                   includedSkills={includedShareSkills}
+                  resourcesCount={shareStats?.resources ?? 0}
                   isImporting={importShareMutation.isPending}
                   onConfirmImport={() => importShareMutation.mutate({ shareId })}
                   label="Import to vault"
@@ -602,14 +610,20 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
 
       <div className="relative hidden h-full lg:flex">
         <aside className="w-[280px] xl:w-[320px] shrink-0 border-r border-border flex flex-col">
-          <div className="px-5 pb-5 pt-2 overflow-y-auto shrink-0 border-b border-border">
+          <div className="px-5 pt-2 overflow-y-auto shrink-0 border-border">
             <SkillDetailHeader
               {...headerProps}
               compact
               viewingResource={viewingResourceLabel}
-              actions={headerAction}
+              actions={null}
             />
           </div>
+
+          {showShareAction ? (
+            <div className="border-b border-border px-5 py-4">
+              <SkillShareButton skillId={skillId} className="h-10 w-full justify-center" />
+            </div>
+          ) : null}
 
           <SidebarPanel
             graphContent={
@@ -638,8 +652,8 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
 
         <div className="flex-1 min-w-0 flex flex-col">
           {mode === "share" && shareId ? (
-            <div className="border-b border-border bg-primary/5 px-8 xl:px-12 py-3">
-              <div className="mx-auto max-w-4xl flex items-center justify-between gap-4">
+            <div className="border-b border-border bg-primary/5 py-3">
+              <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">Import this shared skill</p>
                   <p className="text-xs text-muted-foreground">
@@ -651,6 +665,7 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
                 <SharedImportButton
                   shareId={shareId}
                   includedSkills={includedShareSkills}
+                  resourcesCount={shareStats?.resources ?? 0}
                   isImporting={importShareMutation.isPending}
                   onConfirmImport={() => importShareMutation.mutate({ shareId })}
                   size="default"
@@ -671,7 +686,7 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
 
           <div className="flex-1 min-h-0 overflow-y-auto">
             {activeTab.kind === "skill" ? (
-              <div className="max-w-4xl mx-auto px-8 xl:px-12 py-8">
+              <div className="mx-auto px-8 xl:px-16 py-8">
                 <article className="mt-3 min-w-0 break-words">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -684,7 +699,7 @@ function SkillDetailInner({ id, shareId }: SkillDetailProps) {
               </div>
             ) : mode === "share" ? (
               activeSharedResource ? (
-                <div className="max-w-4xl mx-auto px-8 xl:px-12 py-8">
+                <div className="mx-auto px-8 xl:px-16 py-8">
                   <article className="mt-3 min-w-0 break-words">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}

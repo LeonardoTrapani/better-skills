@@ -7,6 +7,8 @@ description: Next.js 16 Cache Components - PPR, use cache directive, cacheLife, 
 
 Cache Components enable Partial Prerendering (PPR) - mix static, cached, and dynamic content in a single route.
 
+For broader Next.js architecture patterns, also load [[skill:6c8fb709-3056-453d-a45d-4fd933b05824]]. For React rendering and bundle optimization patterns around these flows, see [[skill:6c915b98-367f-4940-b91d-f2ac70815d3d]].
+
 ## Enable Cache Components
 
 ```ts
