@@ -4,7 +4,7 @@ import { join } from "node:path";
 import matter from "gray-matter";
 
 import type { SupportedAgent } from "./agents";
-import { getAgentDisplayName, getAgentSkillDir } from "./agents";
+import { formatAgentDisplayNames, getAgentSkillDir, groupAgentsBySkillDir } from "./agents";
 
 const INSTALL_METADATA_FILE = ".better-skills-install.json";
 
@@ -27,11 +27,10 @@ function readSkillSlug(skillMarkdown: string, fallback: string): string {
 export async function findUnsyncedLocalSkills(
   agents: SupportedAgent[],
 ): Promise<UnsyncedSkillsByAgent[]> {
-  const uniqueAgents = [...new Set(agents)];
   const grouped: UnsyncedSkillsByAgent[] = [];
 
-  for (const agent of uniqueAgents) {
-    const skillsDir = getAgentSkillDir(agent);
+  for (const group of groupAgentsBySkillDir([...new Set(agents)])) {
+    const skillsDir = getAgentSkillDir(group.agents[0]!);
     const entries = await readdir(skillsDir, { withFileTypes: true }).catch(() => []);
     const slugs = new Set<string>();
 
@@ -58,7 +57,7 @@ export async function findUnsyncedLocalSkills(
     }
 
     grouped.push({
-      displayName: getAgentDisplayName(agent),
+      displayName: formatAgentDisplayNames(group.agents, " / "),
       skillsDir,
       slugs: [...slugs].sort((a, b) => a.localeCompare(b)),
     });

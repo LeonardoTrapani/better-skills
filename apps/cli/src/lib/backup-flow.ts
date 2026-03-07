@@ -3,7 +3,12 @@ import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
 import type { SupportedAgent } from "./agents";
-import { getAgentDisplayName, getAgentSkillDir } from "./agents";
+import {
+  formatAgentDisplayNames,
+  getAgentDisplayName,
+  getAgentSkillDir,
+  groupAgentsBySkillDir,
+} from "./agents";
 import { readErrorMessage } from "./errors";
 
 const INSTALL_METADATA_FILE = ".better-skills-install.json";
@@ -100,9 +105,9 @@ function resolveDiscoveryRoots(options: BackupCopyOptions): DiscoveryRoot[] {
   }
 
   if (options.agents && options.agents.length > 0) {
-    return uniqueBy(options.agents, (entry) => entry).map((agent) => ({
-      path: getAgentSkillDir(agent),
-      label: getAgentDisplayName(agent),
+    return groupAgentsBySkillDir(uniqueBy(options.agents, (entry) => entry)).map((group) => ({
+      path: group.skillsDir,
+      label: formatAgentDisplayNames(group.agents, " / "),
       includeSelf: false,
     }));
   }

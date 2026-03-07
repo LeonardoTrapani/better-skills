@@ -63,7 +63,16 @@ export async function select<T>(options: SelectOptions<T>): Promise<T | symbol> 
 
 type MultiselectOptions<T> = Parameters<typeof p.multiselect<T>>[0];
 
+type AutocompleteMultiselectOptions<T> = Parameters<typeof p.autocompleteMultiselect<T>>[0];
+
 export async function multiselect<T>(options: MultiselectOptions<T>): Promise<T[] | symbol> {
   if (isInteractive) return p.multiselect(options);
+  return CANCEL;
+}
+
+export async function autocompleteMultiselect<T>(
+  options: AutocompleteMultiselectOptions<T>,
+): Promise<T[] | symbol> {
+  if (isInteractive) return p.autocompleteMultiselect(options);
   return CANCEL;
 }

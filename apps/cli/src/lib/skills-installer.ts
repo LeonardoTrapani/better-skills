@@ -7,7 +7,7 @@ import matter from "gray-matter";
 import { env } from "@better-skills/env/cli";
 
 import type { SupportedAgent } from "./agents";
-import { getAgentSkillDir } from "./agents";
+import { getAgentSkillDir, groupAgentsBySkillDir } from "./agents";
 
 const BETTER_SKILLS_DIR = join(homedir(), ".better-skills", "skills");
 const LOCK_FILE_PATH = join(BETTER_SKILLS_DIR, "lock.json");
@@ -335,9 +335,15 @@ export async function installSkill(
 
   const targets: AgentInstallResult[] = [];
 
-  for (const agent of new Set(agents)) {
-    const target = await linkSkillToAgent(canonicalPath, agent, skillFolder);
-    targets.push(target);
+  for (const group of groupAgentsBySkillDir([...new Set(agents)])) {
+    const target = await linkSkillToAgent(canonicalPath, group.agents[0]!, skillFolder);
+
+    for (const agent of group.agents) {
+      targets.push({
+        ...target,
+        agent,
+      });
+    }
   }
 
   const result: InstallSkillResult = {
