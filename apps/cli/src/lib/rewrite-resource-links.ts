@@ -126,6 +126,7 @@ const BARE_PATH_RE =
   /(^|[\s>→├└│─-])((?:\.\.?[\\/])?[^\s`"'<>()[\]{}]+(?:[\\/][^\s`"'<>()[\]{}]+)*(?:[?#][^\s`"'<>()[\]{}]+)?)/g;
 
 const FENCE_START_RE = /^\s{0,3}(`{3,}|~{3,})/;
+const MENTION_TOKEN_RE = /(?<!\\)\[\[[^\]\n]+\]\]/g;
 
 // ---- Helpers ----
 
@@ -155,6 +156,50 @@ function stripTrailingPunctuation(value: string): { token: string; suffix: strin
     token = token.slice(0, -1);
   }
   return { token, suffix };
+}
+
+function rewriteBarePathsInPlainText(
+  text: string,
+  fromFile: string,
+  index: SkillFileIndex,
+): { text: string; replacements: number } {
+  let replacements = 0;
+  const rewritten = text.replace(BARE_PATH_RE, (match, prefix: string, rawToken: string) => {
+    const { token, suffix } = stripTrailingPunctuation(rawToken);
+    const resolved = resolveToKnownFile(token, fromFile, index);
+    if (!resolved) return match;
+    replacements++;
+    return `${prefix}${mentionToken(resolved)}${suffix}`;
+  });
+
+  return { text: rewritten, replacements };
+}
+
+function rewriteBarePathsOutsideMentions(
+  text: string,
+  fromFile: string,
+  index: SkillFileIndex,
+): { text: string; replacements: number } {
+  let cursor = 0;
+  let replacements = 0;
+  let output = "";
+
+  for (const match of text.matchAll(MENTION_TOKEN_RE)) {
+    const start = match.index ?? -1;
+    if (start < 0) continue;
+    const token = match[0] ?? "";
+    const before = rewriteBarePathsInPlainText(text.slice(cursor, start), fromFile, index);
+    output += before.text;
+    replacements += before.replacements;
+    output += token;
+    cursor = start + token.length;
+  }
+
+  const tail = rewriteBarePathsInPlainText(text.slice(cursor), fromFile, index);
+  output += tail.text;
+  replacements += tail.replacements;
+
+  return { text: output, replacements };
 }
 
 // ---- Segment Rewriter ----
@@ -199,14 +244,11 @@ function rewriteSegment(
     return mentionToken(resolved);
   });
 
-  // 4. Bare paths — last pass picks up unstructured references
-  text = text.replace(BARE_PATH_RE, (match, prefix: string, rawToken: string) => {
-    const { token, suffix } = stripTrailingPunctuation(rawToken);
-    const resolved = resolveToKnownFile(token, fromFile, index);
-    if (!resolved) return match;
-    n++;
-    return `${prefix}${mentionToken(resolved)}${suffix}`;
-  });
+  // 4. Bare paths — last pass picks up unstructured references, but must not
+  // scan inside mention tokens created by earlier passes.
+  const barePathRewrite = rewriteBarePathsOutsideMentions(text, fromFile, index);
+  text = barePathRewrite.text;
+  n += barePathRewrite.replacements;
 
   return { text, replacements: n };
 }

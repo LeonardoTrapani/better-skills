@@ -175,6 +175,32 @@ describe("rewriteResourceLinksInMarkdown", () => {
     expect(second.replacements).toBe(0);
     expect(second.text).toBe(first.text);
   });
+
+  test("does not partially rewrite filenames inside newly created mention tokens", () => {
+    const source = [
+      "- [Text](rules/text-animations.md)",
+      "- [Transparent](rules/transparent-videos.md)",
+    ].join("\n");
+
+    const result = rewriteResourceLinksInMarkdown(
+      source,
+      "SKILL.md",
+      resourceSet(
+        "rules/text-animations.md",
+        "rules/animations.md",
+        "rules/transparent-videos.md",
+        "rules/videos.md",
+      ),
+    );
+
+    expect(result.replacements).toBe(2);
+    expect(result.text).toBe(
+      [
+        "- [[resource:new:rules/text-animations.md]]",
+        "- [[resource:new:rules/transparent-videos.md]]",
+      ].join("\n"),
+    );
+  });
 });
 
 describe("resolveToKnownFile", () => {
