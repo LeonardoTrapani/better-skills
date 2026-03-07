@@ -3,6 +3,8 @@ import pc from "picocolors";
 import { getAgentDisplayName, resolveInstallAgents } from "../lib/agents";
 import type { SupportedAgent } from "../lib/agents";
 import { readErrorMessage } from "../lib/errors";
+import { maybePromptGithubStar, PROJECT_GITHUB_REPO } from "../lib/github-star";
+import { isInteractive } from "../lib/output-mode";
 import {
   installSkill,
   readInstallLock,
@@ -342,5 +344,18 @@ export async function syncCommand() {
     return;
   }
 
-  await syncSkills(selectedAgents);
+  const result = await syncSkills(selectedAgents);
+
+  if (!result.ok || !result.authenticated) {
+    return;
+  }
+
+  const githubStarResult = await maybePromptGithubStar({ isInteractive });
+  if (githubStarResult === "starred") {
+    ui.log.success(pc.green(`starred ${PROJECT_GITHUB_REPO}`));
+  }
+
+  if (githubStarResult === "failed") {
+    ui.log.warn(pc.yellow(`couldn't star ${PROJECT_GITHUB_REPO} with github cli`));
+  }
 }

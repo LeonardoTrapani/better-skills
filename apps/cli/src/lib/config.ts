@@ -11,6 +11,7 @@ const CONFIG_VERSION = 1;
 type StoredConfig = {
   version: number;
   agents: string[];
+  githubStarPromptedAt?: string;
 };
 
 function getConfigDir() {
@@ -35,7 +36,8 @@ function parseStoredConfig(raw: string): StoredConfig | null {
       parsed === null ||
       typeof parsed.version !== "number" ||
       !Array.isArray(parsed.agents) ||
-      !parsed.agents.every((a: unknown) => typeof a === "string")
+      !parsed.agents.every((a: unknown) => typeof a === "string") ||
+      (parsed.githubStarPromptedAt !== undefined && typeof parsed.githubStarPromptedAt !== "string")
     ) {
       return null;
     }
@@ -43,6 +45,7 @@ function parseStoredConfig(raw: string): StoredConfig | null {
     return {
       version: parsed.version,
       agents: parsed.agents,
+      githubStarPromptedAt: parsed.githubStarPromptedAt,
     };
   } catch {
     return null;
@@ -85,9 +88,26 @@ export function readConfig(): SupportedAgent[] | null {
 }
 
 export async function saveConfig(agents: SupportedAgent[]) {
+  const current = readStoredConfig();
   const config: StoredConfig = {
     version: CONFIG_VERSION,
     agents,
+    githubStarPromptedAt: current?.githubStarPromptedAt,
+  };
+
+  await writeConfigFile(config);
+}
+
+export function hasSeenGithubStarPrompt(): boolean {
+  return typeof readStoredConfig()?.githubStarPromptedAt === "string";
+}
+
+export async function markGithubStarPromptSeen(at = new Date().toISOString()) {
+  const current = readStoredConfig();
+  const config: StoredConfig = {
+    version: CONFIG_VERSION,
+    agents: current?.agents ?? [],
+    githubStarPromptedAt: at,
   };
 
   await writeConfigFile(config);
