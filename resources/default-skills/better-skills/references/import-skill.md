@@ -39,11 +39,27 @@ If nothing is relevant, move on.
 
 Clone or fetch the source material into cwd. Never use a tmp directory.
 
+If the user pastes a third-party install command (`npx skills add ...`,
+`skills add ...`, similar) while asking for a better-skills vault import, do not
+execute that command. Treat it as source context only:
+
+- Extract the real source (`https://skills.sh/...`, GitHub URL, npm package,
+  docs/blog URL, repo shorthand) and continue with the matching option below.
+- Extract any skill selector (`--skill <name>`) and use it when resolving the
+  target skill folder.
+- When the prompt says both "better-skills vault" and an external install
+  command, the vault import request wins.
+- Only run third-party install commands if the user explicitly wants local agent
+  installation instead of a vault import.
+
 ### A. skills.sh URL
 
 URL pattern: `https://skills.sh/<org>/<repo>/<skill-name>`
 
 The path segments map to a GitHub repo plus the skill folder name.
+
+If the pasted command already includes a `skills.sh` URL, use the URL as the
+source and treat `--skill <name>` as the folder selector when needed.
 
 ```bash
 git clone --depth 1 https://github.com/<org>/<repo>.git ./<repo>
@@ -62,6 +78,9 @@ Set `$skill_dir` to the resolved path.
 
 Handle both repo URLs and subdirectory URLs.
 
+If the pasted command includes a GitHub URL, use that URL as the source and
+carry over any `--skill <name>` selector while resolving `$skill_dir`.
+
 Never clone a `/tree/...` or `/blob/...` URL directly.
 
 ```bash
@@ -76,6 +95,9 @@ Resolve `$skill_dir` from the original URL:
 
 ### C. Other URL (blog post, docs page, npm package)
 
+This also covers pasted install commands whose source is an npm package or other
+non-GitHub URL. Extract the package/URL from the command instead of running it.
+
 1. WebFetch the URL.
 2. If the page links to a source repo (e.g. npm → GitHub), clone it (path B).
 3. If no repo exists, extract the content and create the folder in cwd:
@@ -85,6 +107,8 @@ mkdir -p ./<skill-name>/references
 ```
 
 Use the fetched content as source material to author SKILL.md and references.
+
+This also applies if a command was provided and you can't find a source, in that case execute that and use that as the source.
 
 ## Step 3: Rewrite links
 

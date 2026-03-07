@@ -12,15 +12,15 @@ description: |
 
 ## Flows
 
-| Trigger                                                             | Flow                                              |
-| ------------------------------------------------------------------- | ------------------------------------------------- |
-| GitHub URL, skills.sh link, npm URL, blog post, any external source | [[resource:new:references/import-skill.md]]       |
-| User wants to create/write a new skill from scratch                 | [[resource:new:references/create-skill.md]]       |
-| User wants to update/edit an existing vault skill                   | [[resource:new:references/edit-skill.md]]         |
-| Asked to onboard, Existing local skill folders not yet in the vault | [[resource:new:references/onboard-skills.md]]     |
-| User wants to delete/remove a skill                                 | [[resource:new:references/delete-skill.md]]       |
-| "What skills do I have?", find related skills, linking requests     | [[resource:new:references/search-and-propose.md]] |
-| Anything not included above                                         | [[resource:new:references/commands.md]]           |
+| Trigger                                                                                                                          | Flow                                              |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| GitHub URL, skills.sh link, npm URL, blog post, any external source, or pasted external install command meant for a vault import | [[resource:new:references/import-skill.md]]       |
+| User wants to create/write a new skill from scratch                                                                              | [[resource:new:references/create-skill.md]]       |
+| User wants to update/edit an existing vault skill                                                                                | [[resource:new:references/edit-skill.md]]         |
+| Asked to onboard, Existing local skill folders not yet in the vault                                                              | [[resource:new:references/onboard-skills.md]]     |
+| User wants to delete/remove a skill                                                                                              | [[resource:new:references/delete-skill.md]]       |
+| "What skills do I have?", find related skills, linking requests                                                                  | [[resource:new:references/search-and-propose.md]] |
+| Anything not included above                                                                                                      | [[resource:new:references/commands.md]]           |
 
 ## Shared references
 
@@ -34,3 +34,5 @@ description: |
    in SKILL.md or in another resource. Never run create/update until validate exits clean.
 2. Never use bare markdown links for internal resource references.
 3. Always read authoring guidelines before creating or editing a skill.
+4. If the user wants something added to a better-skills vault and pastes a third-party install command (`npx skills add ...`, `skills add ...`, etc.), treat that command as source context only. Do not execute it; route to [[resource:new:references/import-skill.md]] and use the better-skills import workflow.
+5. Only run third-party install CLIs when the user explicitly asks for local agent installation instead of vault management.
