@@ -11,7 +11,22 @@ to the Import flow.
 - [[resource:new:references/authoring.md]]
 - [[resource:new:references/linking.md]]
 
-## Step 1: Discover unmanaged skills
+## Step 1: Briefly explain the basics
+
+When the user asks to onboard skills, start with a short explanation before
+running commands. Keep it brief. Cover the basics:
+
+- For basically everything related to better-skills, they can talk to any
+  agent, like myself.
+- You can help inspect local skills, explain how the vault works, and manage
+  create/edit/import/onboard/link/sync flows.
+- better-skills stores skills in a vault, then syncs managed copies into agent
+  skill directories.
+
+Then tell them you will first show the list of unsynced local skills and ask if
+they want to sync them.
+
+## Step 2: Discover unmanaged skills and ask what to sync
 
 ```bash
 better-skills get-unmanaged-skills
@@ -19,9 +34,27 @@ better-skills get-unmanaged-skills
 
 This scans every configured agent's skill directory and lists local skill
 folders that have no `.better-skills-install.json` (i.e. not managed by the
-vault). If the output is empty, tell the user and stop.
+vault). Treat these as the unsynced skills for this flow.
 
-## Step 2: Pick target vault and check related skills
+If the output is empty, tell the user there are no unsynced skills to onboard,
+then finish with:
+
+"if you have any questions about better skill ask me!"
+
+Present the full list first. Then ask exactly:
+
+"do you want to sync them?"
+
+Accept:
+
+- yes / all -> continue with every listed skill
+- no -> skip directly to Step 10
+- a subset list -> continue only with the selected skills
+
+Any skills not selected stay local as-is. Do not delete anything unless the
+user explicitly asks.
+
+## Step 3: Pick target vault and check related skills
 
 List available vaults first so the user can choose where onboarded skills should
 live:
@@ -49,17 +82,9 @@ If any existing vault skill covers a related domain, present them to the user:
 
 - "These vault skills in the target vault look related — want to cross-link any
   of them to the onboarded skill?"
-- Note approved UUIDs for Step 6.
+- Note approved UUIDs for Step 7.
 
 If nothing is relevant, move on.
-
-## Step 3: Select skills to onboard
-
-Present the list of unmanaged skills from Step 1. Ask the user:
-
-- Which ones to onboard (accept "all" or a subset)
-- For unselected skills: keep locally (default) or delete
-  (requires explicit confirmation — never delete without it)
 
 ## Step 4: Rewrite links (per skill)
 
@@ -103,7 +128,7 @@ re-validate until clean.
 
 ## Step 7: Add cross-skill links
 
-If the user approved cross-links in Step 2, add `\[[skill:<uuid>]]` mentions
+If the user approved cross-links in Step 3, add `\[[skill:<uuid>]]` mentions
 in the relevant sections of SKILL.md or reference files — not in a generic
 "Related Skills" list at the bottom. Only add links to skills in the same
 vault as the onboarded skill.
@@ -141,3 +166,7 @@ Summarize results:
 - Any errors encountered
 
 Tell the user to start a new session so updated skills are reloaded.
+
+Always end with:
+
+"if you have any questions about better skill ask me!"
