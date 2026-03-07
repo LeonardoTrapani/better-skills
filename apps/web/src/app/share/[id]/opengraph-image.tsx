@@ -49,7 +49,7 @@ function Metric({ label, value }: { label: string; value: string }) {
       <span
         style={{
           color: COLOR_MUTED_FOREGROUND,
-          fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontFamily: '"Geist Sans", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
           fontSize: 12,
           letterSpacing: "0.08em",
           textTransform: "uppercase" as const,
@@ -154,10 +154,9 @@ function PixelCluster({
 
 export default async function ShareOpenGraphImage({ params }: ShareOgImageProps) {
   const { id } = await params;
-  const [sharePreview, geistRegular, geistMonoRegular] = await Promise.all([
+  const [sharePreview, geistRegular] = await Promise.all([
     getSharePreview({ shareId: id }),
     readFile(new URL("../../_og/fonts/Geist-Regular.ttf", import.meta.url)),
-    readFile(new URL("../../_og/fonts/GeistMono-Regular.ttf", import.meta.url)),
   ]);
 
   const activeSkill = sharePreview?.activeSkill;
@@ -419,7 +418,7 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
               style={{
                 color: COLOR_PRIMARY,
                 fontFamily:
-                  '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                  '"Geist Sans", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                 fontSize: 13,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase" as const,
@@ -492,12 +491,6 @@ export default async function ShareOpenGraphImage({ params }: ShareOgImageProps)
         {
           name: "Geist Sans",
           data: geistRegular,
-          style: "normal",
-          weight: 400,
-        },
-        {
-          name: "Geist Mono",
-          data: geistMonoRegular,
           style: "normal",
           weight: 400,
         },
