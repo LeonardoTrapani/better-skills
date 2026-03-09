@@ -100,7 +100,7 @@ shared mention tooling: packages/markdown
 
 ## Quickstart CLI
 
-install the latest cli:
+install the latest cli on macos or linux:
 
 ```bash
 curl -fsSL https://better-skills.dev/install | bash
@@ -132,6 +132,7 @@ notes:
 - installer default server is `https://server.better-skills.dev`
 - override at install time with `--server-url`, or at runtime with `SERVER_URL`
 - installer source is `apps/web/public/install`
+- windows users should download the matching `.exe` from github releases
 
 ## CLI Commands
 
@@ -182,6 +183,9 @@ non-interactive mode is auto-enabled for no-tty/ci contexts (`CI=true`, `AGENT=1
   - `darwin-x64`
   - `darwin-arm64`
   - `linux-x64`
+  - `linux-arm64`
+  - `windows-x64`
+  - `windows-arm64`
 - release workflow: `.github/workflows/release-cli.yml`
 
 ## Skill Package Format

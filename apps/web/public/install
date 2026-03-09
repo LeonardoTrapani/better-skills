@@ -116,8 +116,15 @@ elif [[ "$VERSION" != v* ]]; then
   VERSION="v${VERSION}"
 fi
 
+if [[ -z "${release_json:-}" ]]; then
+  release_json="$(curl -fsSL -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}")"
+fi
+
 asset_name="${BIN_NAME}-${os}-${arch}"
 download_url="https://github.com/${REPO}/releases/download/${VERSION}/${asset_name}"
+available_assets="$({
+  printf '%s' "$release_json" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\(better-skills-[^"]*\)".*/\1/p'
+} | sed '/^$/d')"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -126,7 +133,18 @@ tmp_binary="${tmp_dir}/${asset_name}"
 tmp_wrapper="${tmp_dir}/${BIN_NAME}"
 
 printf 'downloading %s (%s)\n' "$asset_name" "$VERSION"
-curl -fL "$download_url" -o "$tmp_binary"
+if ! curl -fL "$download_url" -o "$tmp_binary"; then
+  printf '\nno published binary for %s on %s\n' "$asset_name" "$VERSION" >&2
+
+  if [[ -n "$available_assets" ]]; then
+    printf 'available binaries:\n' >&2
+    printf '%s\n' "$available_assets" | sed 's/^/  - /' >&2
+  fi
+
+  printf 'if you need a different target, download from github releases or build from source\n' >&2
+  exit 1
+fi
+
 chmod +x "$tmp_binary"
 
 mkdir -p "$INSTALL_DIR"
