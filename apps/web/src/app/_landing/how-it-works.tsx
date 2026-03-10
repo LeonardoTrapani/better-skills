@@ -1,203 +1,205 @@
 "use client";
 
-import { SectionHeader, SectionBackdrop } from "./grid-background";
-import { LandingContainer, SectionTailSpacer } from "./design-system";
 import { GeistPixelSquare } from "geist/font/pixel";
+
+import { LandingContainer, SectionTailSpacer } from "./design-system";
+import { SectionBackdrop, SectionHeader } from "./grid-background";
+
+type StepPatternVariant = "cli" | "graph" | "agent";
 
 const steps: {
   num: string;
-  titlePlain: string;
+  title: string;
   titleAccent: string;
-  titleSuffix?: string;
   description: string;
-  pattern: "cli" | "graph" | "agent";
+  pattern: StepPatternVariant;
 }[] = [
   {
     num: "01",
-    titlePlain: "Install &",
-    titleAccent: " run",
-    titleSuffix: " in seconds",
+    title: "Start from the Terminal with the",
+    titleAccent: " CLI.",
     description:
-      "One command installs the CLI, authenticates your account, and syncs your vault. Your agent workflow is live before you finish your coffee.",
+      "Install Better Skills CLI, sign in once, and sync your local vault so the right context is already in place when work begins.",
     pattern: "cli",
   },
   {
     num: "02",
-    titlePlain: "Explore the",
-    titleAccent: " graph",
+    title: "See it in your ",
+    titleAccent: "Dashboard and Graph.",
     description:
-      "Browse and manage every skill from the dashboard, then jump into the graph to trace connections, structure, and knowledge flow at a glance.",
+      "Open the dashboard to manage skills, then jump into the graph for a quick read on structure, relationships, and knowledge flow.",
     pattern: "graph",
   },
   {
     num: "03",
-    titlePlain: "Ship with any",
-    titleAccent: " agent",
+    title: "Use it with your favorites",
+    titleAccent: " AI and Agent.",
     description:
-      "Drop your skills into Claude, Cursor, or any other agent. Refine and evolve them in place — your second brain grows with every project.",
+      "Bring the same skills into the agent you already use and keep refining them as your prompts, tools, and projects evolve.",
     pattern: "agent",
   },
 ];
 
-// ── CLI illustration: pixel-art "code lines" using squares ──────────────────
-function CliIllustration() {
-  // Each row: array of [x, kind] where kind = "accent" | "dim" | "off"
-  const rows: { x: number; kind: "accent" | "dim" | "off" }[][] = [
-    [
-      { x: 0, kind: "accent" },
-      { x: 1, kind: "dim" },
-      { x: 2, kind: "dim" },
-      { x: 3, kind: "dim" },
-      { x: 4, kind: "dim" },
-      { x: 5, kind: "off" },
-    ],
-    [
-      { x: 0, kind: "off" },
-      { x: 1, kind: "accent" },
-      { x: 2, kind: "dim" },
-      { x: 3, kind: "dim" },
-      { x: 4, kind: "off" },
-      { x: 5, kind: "off" },
-    ],
-    [
-      { x: 0, kind: "accent" },
-      { x: 1, kind: "dim" },
-      { x: 2, kind: "accent" },
-      { x: 3, kind: "dim" },
-      { x: 4, kind: "dim" },
-      { x: 5, kind: "dim" },
-    ],
-    [
-      { x: 0, kind: "off" },
-      { x: 1, kind: "accent" },
-      { x: 2, kind: "dim" },
-      { x: 3, kind: "off" },
-      { x: 4, kind: "off" },
-      { x: 5, kind: "off" },
-    ],
-    [
-      { x: 0, kind: "accent" },
-      { x: 1, kind: "accent" },
-      { x: 2, kind: "dim" },
-      { x: 3, kind: "dim" },
-      { x: 4, kind: "accent" },
-      { x: 5, kind: "off" },
-    ],
-  ];
-  const S = 7; // square size
-  const G = 3; // gap
-  const step = S + G;
+function PixelSquare({ x, y, accent = false }: { x: number; y: number; accent?: boolean }) {
+  return (
+    <rect x={x} y={y} width="6" height="6" fill={accent ? "var(--primary)" : "currentColor"} />
+  );
+}
 
-  const fill = (kind: "accent" | "dim" | "off") => {
-    if (kind === "accent") return "var(--primary)";
-    if (kind === "dim") return "var(--border)";
-    return "transparent";
-  };
+function StepIllustration({ pattern }: { pattern: StepPatternVariant }) {
+  if (pattern === "graph") {
+    return (
+      <svg
+        className="h-full w-full text-border transition-colors duration-200 group-hover:text-muted-foreground/50"
+        viewBox="0 0 84 48"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path d="M12 12H32" stroke="currentColor" strokeWidth="1" />
+        <path d="M32 12V24" stroke="currentColor" strokeWidth="1" />
+        <path d="M32 24H52" stroke="currentColor" strokeWidth="1" />
+        <path d="M52 24V12" stroke="currentColor" strokeWidth="1" />
+        <path d="M52 24V36" stroke="currentColor" strokeWidth="1" />
+        <path d="M52 12H68" stroke="currentColor" strokeWidth="1" />
+        <path d="M52 36H68" stroke="currentColor" strokeWidth="1" />
+
+        <PixelSquare x={9} y={9} />
+        <PixelSquare x={29} y={9} />
+        <PixelSquare x={29} y={21} />
+        <PixelSquare x={49} y={21} accent />
+        <PixelSquare x={65} y={9} />
+        <PixelSquare x={65} y={33} />
+      </svg>
+    );
+  }
+
+  if (pattern === "agent") {
+    const robotCells = [
+      [12, 0, true],
+      [18, 0, true],
+      [24, 0, true],
+      [30, 0, true],
+      [36, 0, true],
+      [42, 0, true],
+      [48, 0, true],
+      [54, 0, true],
+
+      [12, 6, true],
+      [18, 6, false],
+      [24, 6, true],
+      [30, 6, true],
+      [36, 6, true],
+      [42, 6, true],
+      [48, 6, false],
+      [54, 6, true],
+
+      [0, 12, true],
+      [6, 12, true],
+      [12, 12, true],
+      [18, 12, true],
+      [24, 12, true],
+      [30, 12, true],
+      [36, 12, true],
+      [42, 12, true],
+      [48, 12, true],
+      [54, 12, true],
+      [60, 12, true],
+      [66, 12, true],
+
+      [0, 18, true],
+      [6, 18, true],
+      [12, 18, true],
+      [18, 18, true],
+      [24, 18, true],
+      [30, 18, true],
+      [36, 18, true],
+      [42, 18, true],
+      [48, 18, true],
+      [54, 18, true],
+      [60, 18, true],
+      [66, 18, true],
+
+      [12, 24, true],
+      [18, 24, true],
+      [24, 24, true],
+      [30, 24, true],
+      [36, 24, true],
+      [42, 24, true],
+      [48, 24, true],
+      [54, 24, true],
+
+      [12, 30, true],
+      [18, 30, true],
+      [24, 30, true],
+      [30, 30, true],
+      [36, 30, true],
+      [42, 30, true],
+      [48, 30, true],
+      [54, 30, true],
+
+      [12, 36, true],
+      [24, 36, true],
+      [42, 36, true],
+      [54, 36, true],
+
+      [12, 42, true],
+      [24, 42, true],
+      [42, 42, true],
+      [54, 42, true],
+    ] as const;
+
+    return (
+      <svg
+        className="h-full w-full text-background transition-colors duration-200 group-hover:text-foreground"
+        viewBox="0 0 72 54"
+        fill="none"
+        aria-hidden="true"
+      >
+        {robotCells.map(([x, y, accent]) => (
+          <PixelSquare key={`${x}-${y}`} x={x} y={y} accent={accent} />
+        ))}
+      </svg>
+    );
+  }
+
+  const cliCells = [
+    [0, 10, true],
+    [8, 6, false],
+    [16, 6, false],
+    [24, 6, false],
+    [40, 6, false],
+    [48, 6, false],
+    [56, 6, true],
+    [8, 18, false],
+    [16, 18, true],
+    [24, 18, false],
+    [32, 18, false],
+    [40, 18, false],
+    [48, 18, false],
+    [56, 18, false],
+    [64, 18, false],
+    [0, 30, true],
+    [8, 30, false],
+    [24, 30, false],
+    [32, 30, false],
+    [40, 30, true],
+    [48, 30, false],
+    [56, 30, false],
+    [64, 30, false],
+  ] as const;
 
   return (
     <svg
-      width={6 * step - G}
-      height={5 * step - G}
-      viewBox={`0 0 ${6 * step - G} ${5 * step - G}`}
+      className="h-full w-full text-border transition-colors duration-200 group-hover:text-muted-foreground/50"
+      viewBox="0 0 84 48"
       fill="none"
       aria-hidden="true"
     >
-      {rows.map((row, ri) =>
-        row.map(({ x, kind }) =>
-          kind === "off" ? null : (
-            <rect
-              key={`${ri}-${x}`}
-              x={x * step}
-              y={ri * step}
-              width={S}
-              height={S}
-              fill={fill(kind)}
-            />
-          ),
-        ),
-      )}
+      {cliCells.map(([x, y, accent]) => (
+        <PixelSquare key={`${x}-${y}`} x={x} y={y} accent={accent} />
+      ))}
     </svg>
   );
-}
-
-// ── Graph illustration (unchanged) ──────────────────────────────────────────
-function GraphIllustration() {
-  return (
-    <svg width="58" height="34" viewBox="0 0 58 34" fill="none" aria-hidden="true">
-      {/* edges */}
-      <line x1="7" y1="7" x2="25" y2="7" stroke="var(--border)" strokeOpacity="0.5" />
-      <line x1="25" y1="7" x2="25" y2="21" stroke="var(--border)" strokeOpacity="0.5" />
-      <line x1="25" y1="21" x2="43" y2="21" stroke="var(--border)" strokeOpacity="0.4" />
-      <line x1="7" y1="7" x2="7" y2="21" stroke="var(--border)" strokeOpacity="0.3" />
-      <line x1="7" y1="21" x2="25" y2="21" stroke="var(--border)" strokeOpacity="0.3" />
-      {/* nodes */}
-      <rect x="4" y="4" width="6" height="6" fill="var(--border)" />
-      <rect x="22" y="4" width="6" height="6" fill="var(--border)" />
-      <rect x="4" y="18" width="6" height="6" fill="var(--border)" />
-      <rect x="22" y="18" width="6" height="6" fill="var(--border)" />
-      <rect x="40" y="18" width="6" height="6" fill="var(--primary)" />
-    </svg>
-  );
-}
-
-// ── Agent illustration: pixel-art robot using squares ────────────────────────
-function AgentIllustration() {
-  // Pixel grid: 1 = border colour, 2 = primary colour, 0 = transparent
-  // 11-wide × 13-tall grid (each cell = 4px, gap = 1px)
-  const grid = [
-    //  0  1  2  3  4  5  6  7  8  9 10
-    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], // 0  antenna top
-    [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0], // 1  antenna base
-    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], // 2  neck
-    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0], // 3  head top
-    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], // 4  head upper
-    [0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 0], // 5  eyes
-    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], // 6  head lower
-    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0], // 7  head bottom
-    [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1], // 8  arms + shoulder
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 9  arms mid
-    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 10 torso
-    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 11 legs upper
-    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 12 legs lower
-  ];
-
-  const S = 4; // cell size
-  const G = 1; // gap
-  const step = S + G;
-  const cols = grid[0]!.length;
-  const rows = grid.length;
-
-  return (
-    <svg
-      width={cols * step - G}
-      height={rows * step - G}
-      viewBox={`0 0 ${cols * step - G} ${rows * step - G}`}
-      fill="none"
-      aria-hidden="true"
-    >
-      {grid.map((row, ri) =>
-        row.map((v, ci) => {
-          if (v === 0) return null;
-          return (
-            <rect
-              key={`${ri}-${ci}`}
-              x={ci * step}
-              y={ri * step}
-              width={S}
-              height={S}
-              fill={v === 2 ? "var(--primary)" : "var(--border)"}
-            />
-          );
-        }),
-      )}
-    </svg>
-  );
-}
-
-function StepIllustration({ pattern }: { pattern: "cli" | "graph" | "agent" }) {
-  if (pattern === "cli") return <CliIllustration />;
-  if (pattern === "graph") return <GraphIllustration />;
-  return <AgentIllustration />;
 }
 
 function CornerInsetMarks() {
@@ -205,19 +207,38 @@ function CornerInsetMarks() {
     <>
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 h-3 w-3 border-l border-t border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+        className="pointer-events-none absolute left-0 top-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 h-3 w-3 border-r border-t border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+        className="pointer-events-none absolute left-0 top-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
+      />
+
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 border-b border-r border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+        className="pointer-events-none absolute right-0 top-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
+      />
+
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b border-l border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+        className="pointer-events-none absolute bottom-0 left-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
+      />
+
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 right-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 right-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
       />
     </>
   );
@@ -239,43 +260,43 @@ export default function HowItWorks() {
           subtitle="From install to publish in minutes. No configuration required."
         />
 
-        <div className="flex lg:flex-row flex-col gap-px border border-border bg-border">
+        <div className="flex flex-wrap gap-4">
           {steps.map((step) => (
             <div
               key={step.num}
-              className="group relative flex flex-1 flex-col gap-7 overflow-hidden bg-background px-8 py-9 text-left"
+              className="group relative flex min-w-[280px] flex-1 basis-full flex-col gap-6 overflow-hidden border border-border bg-background px-8 py-9 text-left transition-colors duration-200 lg:basis-[calc(33.333%-1.1rem)]"
             >
               <CornerInsetMarks />
 
-              {/* Top row: illustration + step number */}
-              <div className="flex items-start justify-between gap-4">
-                <StepIllustration pattern={step.pattern} />
-                <span
-                  className={`font-mono text-lg font-semibold tracking-tight text-border/60 ${GeistPixelSquare.className}`}
-                >
+              <div className="flex h-16 items-start justify-between">
+                <div className="flex h-12 w-[104px] items-center">
+                  <StepIllustration pattern={step.pattern} />
+                </div>
+
+                <span className="pt-1 font-mono text-[1.15rem] leading-none tracking-[-0.08em] text-primary transition-colors duration-200">
                   {step.num}
                 </span>
               </div>
 
-              {/* Divider */}
-              <div className="h-px w-full bg-gradient-to-r from-primary/30 via-border/60 to-transparent" />
+              <div className="flex items-center gap-2">
+                <span className="h-px w-10 bg-primary/70 transition-colors duration-200" />
+                <span className="h-px flex-1 bg-border transition-colors duration-200" />
+              </div>
 
-              {/* Content */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <h3
-                  className={`text-xl font-semibold leading-tight tracking-tight ${GeistPixelSquare.className}`}
+                  className={`text-2xl leading-[1.15] tracking-tight text-foreground ${GeistPixelSquare.className}`}
                 >
-                  <span className="text-foreground">{step.titlePlain}</span>
+                  <span>{step.title}</span>
                   <span className="text-primary">{step.titleAccent}</span>
-                  {step.titleSuffix && <span className="text-foreground">{step.titleSuffix}</span>}
                 </h3>
-                <p className="max-w-[36ch] text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
+
+                <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
             </div>
           ))}
         </div>
+
         <SectionTailSpacer />
       </LandingContainer>
     </section>

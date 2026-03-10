@@ -10,6 +10,7 @@ import { LandingContainer, SectionTailSpacer } from "./design-system";
 import { LANDING_INSTALL_COMMAND } from "./constants";
 import { useClipboardCopy } from "./use-clipboard-copy";
 import { useLandingCta } from "./use-landing-cta";
+import { GeistPixelSquare } from "geist/font/pixel";
 
 function ClaudeIcon() {
   return (
@@ -168,19 +169,23 @@ export default function CliDemo() {
           className="flex flex-col overflow-hidden border border-border/70 bg-background lg:flex-row"
         >
           <div className="flex flex-col justify-center gap-4 border-b border-border/70 px-8 py-10 lg:w-2/5 lg:border-r lg:border-b-0 lg:px-10 lg:py-12">
-            <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
               // One Command Setup \\
             </p>
 
-            <h3 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h3
+              className={`text-3xl font-semibold tracking-tight text-foreground ${GeistPixelSquare.className}`}
+            >
               Skills + <span className="text-primary">CLI</span>
             </h3>
-            <p className="max-w-[350px] text-sm leading-[1.35] text-foreground/85">
+            <p className="max-w-[350px] text-sm leading-[1.35] text-muted-foreground">
               Give your AI agents web data with a single command.
             </p>
 
             <Button
-              className="h-11 gap-2 border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:border-primary [a]:hover:bg-primary [a]:hover:text-background"
+              animated
+              variant="outline"
+              className="h-11 gap-2 border border-border bg-background px-5 text-sm font-medium text-foreground"
               render={<Link href={ctaHref} />}
             >
               {ctaLabel}

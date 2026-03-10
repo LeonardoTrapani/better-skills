@@ -910,25 +910,24 @@ export function SectionBackdrop({
       {/* ── Desktop decorations ── */}
       <LandingCenteredOverlay className="top-0 bottom-0 hidden lg:block">
         {/* Horizontal rules — structural rhythm */}
-        <div className="absolute top-20 left-0 h-px w-[140px] bg-border" />
-        <div className="absolute top-20 right-0 h-px w-[140px] bg-border" />
-        <div className="absolute bottom-20 left-0 h-px w-[140px] bg-border" />
-        <div className="absolute bottom-20 right-0 h-px w-[140px] bg-border" />
+        <div className="absolute top-40 left-0 h-px w-[140px] bg-border" />
+        <div className="absolute top-40 right-0 h-px w-[140px] bg-border" />
+        <div className="absolute top-40 left-[140px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+        <div className="absolute top-40 right-[140px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+
+        <div className="absolute top-20 left-0 h-px w-[180px] bg-border" />
+        <div className="absolute top-20 right-0 h-px w-[180px] bg-border" />
+        <div className="absolute top-20 left-[180px] size-2 -translate-y-1/2 bg-primary rounded-xs lg:block" />
+        <div className="absolute top-20 right-[180px] size-2 -translate-y-1/2 bg-primary rounded-xs lg:block" />
 
         {/* Per-variant graph decorations — positioned cleanly below/above rules */}
         {variant === "default" && (
           <>
-            <div className="absolute left-4 top-28">
+            <div className="absolute left-4 top-30">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28">
+            <div className="absolute right-4 top-30">
               <SkillGraph variant="a" size="md" mirror />
-            </div>
-            <div className="absolute left-6 bottom-28">
-              <SkillGraph variant="b" />
-            </div>
-            <div className="absolute right-6 bottom-28">
-              <SkillGraph variant="b" mirror />
             </div>
           </>
         )}
@@ -939,12 +938,6 @@ export function SectionBackdrop({
             </div>
             <div className="absolute right-4 top-28">
               <SkillGraph variant="c" size="md" mirror />
-            </div>
-            <div className="absolute left-8 bottom-28">
-              <SkillGraph variant="c" />
-            </div>
-            <div className="absolute right-8 bottom-28">
-              <SkillGraph variant="b" mirror />
             </div>
             <DotBlock
               rows={3}
@@ -966,17 +959,11 @@ export function SectionBackdrop({
         )}
         {variant === "how-it-works" && (
           <>
-            <div className="absolute left-4 top-28">
+            <div className="absolute left-4 top-25">
               <SkillGraph variant="b" size="md" />
             </div>
-            <div className="absolute right-4 top-28">
+            <div className="absolute right-4 top-25">
               <SkillGraph variant="b" size="md" mirror />
-            </div>
-            <div className="absolute left-6 bottom-28">
-              <SkillGraph variant="a" />
-            </div>
-            <div className="absolute right-6 bottom-28">
-              <SkillGraph variant="c" mirror />
             </div>
             <DotBlock
               rows={3}
@@ -1004,12 +991,6 @@ export function SectionBackdrop({
             <div className="absolute right-4 top-28">
               <SkillGraph variant="a" size="md" mirror />
             </div>
-            <div className="absolute left-6 bottom-28">
-              <SkillGraph variant="b" />
-            </div>
-            <div className="absolute right-6 bottom-28">
-              <SkillGraph variant="a" mirror />
-            </div>
           </>
         )}
         {variant === "cli-demo" && (
@@ -1019,12 +1000,6 @@ export function SectionBackdrop({
             </div>
             <div className="absolute right-4 top-28">
               <SkillGraph variant="b" size="md" mirror />
-            </div>
-            <div className="absolute left-8 bottom-28">
-              <SkillGraph variant="c" />
-            </div>
-            <div className="absolute right-8 bottom-28">
-              <SkillGraph variant="c" mirror />
             </div>
           </>
         )}
@@ -1097,18 +1072,6 @@ interface SectionHeaderProps {
 export function SectionHeader({ decorator, headline, subtitle }: SectionHeaderProps) {
   return (
     <div className="relative flex flex-col items-center gap-4 px-14 py-20 text-center lg:py-24">
-      {/* Desktop: horizontal rails — extend from heading to page edges */}
-      <div className="absolute left-0 top-1/2 hidden h-px w-[80px] bg-border lg:block" />
-      <div className="absolute left-[80px] top-1/2 hidden size-1.5 -translate-y-1/2 bg-primary lg:block" />
-      <div className="absolute right-0 top-1/2 hidden h-px w-[80px] bg-border lg:block" />
-      <div className="absolute right-[80px] top-1/2 hidden size-1.5 -translate-y-1/2 bg-primary lg:block" />
-
-      {/* Mobile: shorter rails */}
-      <div className="absolute left-0 top-1/2 h-px w-[40px] bg-border lg:hidden" />
-      <div className="absolute left-[40px] top-1/2 size-1 -translate-y-1/2 bg-primary lg:hidden" />
-      <div className="absolute right-0 top-1/2 h-px w-[40px] bg-border lg:hidden" />
-      <div className="absolute right-[40px] top-1/2 size-1 -translate-y-1/2 bg-primary lg:hidden" />
-
       <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
         // {decorator} \\
       </p>

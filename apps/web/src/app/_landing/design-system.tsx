@@ -17,7 +17,7 @@ export function LandingContainer({
   contentClassName?: string;
 }) {
   return (
-    <div className={cn("relative z-10 flex w-full justify-center px-4 sm:px-6 lg:px-0", className)}>
+    <div className={cn("relative z-10 flex w-full justify-center px-4 lg:px-0", className)}>
       <div
         className={cn("flex w-full flex-col", LANDING_CONTENT_MAX_WIDTH_CLASS, contentClassName)}
       >
@@ -49,5 +49,5 @@ export function LandingCenteredOverlay({
 }
 
 export function SectionTailSpacer() {
-  return <div className="h-20" aria-hidden="true" />;
+  return <div className="h-30" aria-hidden="true" />;
 }
