@@ -1,97 +1,225 @@
 "use client";
 
-import { Terminal, Network, Bot, type LucideIcon } from "lucide-react";
 import { SectionHeader, SectionBackdrop } from "./grid-background";
 import { LandingContainer, SectionTailSpacer } from "./design-system";
+import { GeistPixelSquare } from "geist/font/pixel";
 
 const steps: {
   num: string;
-  icon: LucideIcon;
-  title: string;
+  titlePlain: string;
+  titleAccent: string;
+  titleSuffix?: string;
   description: string;
-  pattern: "cli" | "graph" | "cli-muted";
+  pattern: "cli" | "graph" | "agent";
 }[] = [
   {
     num: "01",
-    icon: Terminal,
-    title: "Start from the CLI",
+    titlePlain: "Install &",
+    titleAccent: " run",
+    titleSuffix: " in seconds",
     description:
-      "One command installs Better Skills CLI, authenticates your account, and syncs your local vault so your workflow starts in seconds.",
+      "One command installs the CLI, authenticates your account, and syncs your vault. Your agent workflow is live before you finish your coffee.",
     pattern: "cli",
   },
   {
     num: "02",
-    icon: Network,
-    title: "Visualize in Dashboard + Graph",
+    titlePlain: "Explore the",
+    titleAccent: " graph",
     description:
-      "Open the dashboard to view and manage skills, then jump into the graph to understand connections, structure, and knowledge flow at a glance.",
+      "Browse and manage every skill from the dashboard, then jump into the graph to trace connections, structure, and knowledge flow at a glance.",
     pattern: "graph",
   },
   {
     num: "03",
-    icon: Bot,
-    title: "Use with your favorite agent",
+    titlePlain: "Ship with any",
+    titleAccent: " agent",
     description:
-      "Use your skills with your preferred agent and iterate fast: create, edit, refine, and evolve them directly as your projects grow.",
-    pattern: "cli-muted",
+      "Drop your skills into Claude, Cursor, or any other agent. Refine and evolve them in place — your second brain grows with every project.",
+    pattern: "agent",
   },
 ];
 
-function StepPattern({ pattern }: { pattern: "cli" | "graph" | "cli-muted" }) {
-  if (pattern === "graph") {
-    return (
-      <svg width="48" height="24" viewBox="0 0 48 24" fill="none" aria-hidden="true">
-        <line x1="6" y1="6" x2="22" y2="6" stroke="var(--muted-foreground)" strokeOpacity="0.35" />
-        <line
-          x1="22"
-          y1="6"
-          x2="22"
-          y2="18"
-          stroke="var(--muted-foreground)"
-          strokeOpacity="0.35"
-        />
-        <line
-          x1="22"
-          y1="18"
-          x2="38"
-          y2="18"
-          stroke="var(--muted-foreground)"
-          strokeOpacity="0.3"
-        />
-        <rect x="3" y="3" width="6" height="6" fill="var(--muted-foreground)" fillOpacity="0.45" />
-        <rect x="19" y="3" width="6" height="6" fill="var(--muted-foreground)" fillOpacity="0.45" />
-        <rect
-          x="19"
-          y="15"
-          width="6"
-          height="6"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.35"
-        />
-        <rect x="35" y="15" width="6" height="6" fill="var(--primary)" fillOpacity="0.6" />
-      </svg>
-    );
-  }
+// ── CLI illustration: pixel-art "code lines" using squares ──────────────────
+function CliIllustration() {
+  // Each row: array of [x, kind] where kind = "accent" | "dim" | "off"
+  const rows: { x: number; kind: "accent" | "dim" | "off" }[][] = [
+    [
+      { x: 0, kind: "accent" },
+      { x: 1, kind: "dim" },
+      { x: 2, kind: "dim" },
+      { x: 3, kind: "dim" },
+      { x: 4, kind: "dim" },
+      { x: 5, kind: "off" },
+    ],
+    [
+      { x: 0, kind: "off" },
+      { x: 1, kind: "accent" },
+      { x: 2, kind: "dim" },
+      { x: 3, kind: "dim" },
+      { x: 4, kind: "off" },
+      { x: 5, kind: "off" },
+    ],
+    [
+      { x: 0, kind: "accent" },
+      { x: 1, kind: "dim" },
+      { x: 2, kind: "accent" },
+      { x: 3, kind: "dim" },
+      { x: 4, kind: "dim" },
+      { x: 5, kind: "dim" },
+    ],
+    [
+      { x: 0, kind: "off" },
+      { x: 1, kind: "accent" },
+      { x: 2, kind: "dim" },
+      { x: 3, kind: "off" },
+      { x: 4, kind: "off" },
+      { x: 5, kind: "off" },
+    ],
+    [
+      { x: 0, kind: "accent" },
+      { x: 1, kind: "accent" },
+      { x: 2, kind: "dim" },
+      { x: 3, kind: "dim" },
+      { x: 4, kind: "accent" },
+      { x: 5, kind: "off" },
+    ],
+  ];
+  const S = 7; // square size
+  const G = 3; // gap
+  const step = S + G;
 
-  const blocks =
-    pattern === "cli"
-      ? ["accent", "muted", "muted", "accent", "muted", "muted", "accent"]
-      : ["muted", "muted", "muted", "accent-soft", "muted", "muted", "muted"];
+  const fill = (kind: "accent" | "dim" | "off") => {
+    if (kind === "accent") return "var(--primary)";
+    if (kind === "dim") return "var(--border)";
+    return "transparent";
+  };
 
   return (
-    <svg width="58" height="14" viewBox="0 0 58 14" fill="none" aria-hidden="true">
-      {blocks.map((kind, i) => (
-        <rect
-          key={i}
-          x={i * 8 + 1}
-          y="4"
-          width="6"
-          height="6"
-          fill={kind.startsWith("accent") ? "var(--primary)" : "var(--muted-foreground)"}
-          fillOpacity={kind === "accent" ? 0.75 : kind === "accent-soft" ? 0.45 : 0.3}
-        />
-      ))}
+    <svg
+      width={6 * step - G}
+      height={5 * step - G}
+      viewBox={`0 0 ${6 * step - G} ${5 * step - G}`}
+      fill="none"
+      aria-hidden="true"
+    >
+      {rows.map((row, ri) =>
+        row.map(({ x, kind }) =>
+          kind === "off" ? null : (
+            <rect
+              key={`${ri}-${x}`}
+              x={x * step}
+              y={ri * step}
+              width={S}
+              height={S}
+              fill={fill(kind)}
+            />
+          ),
+        ),
+      )}
     </svg>
+  );
+}
+
+// ── Graph illustration (unchanged) ──────────────────────────────────────────
+function GraphIllustration() {
+  return (
+    <svg width="58" height="34" viewBox="0 0 58 34" fill="none" aria-hidden="true">
+      {/* edges */}
+      <line x1="7" y1="7" x2="25" y2="7" stroke="var(--border)" strokeOpacity="0.5" />
+      <line x1="25" y1="7" x2="25" y2="21" stroke="var(--border)" strokeOpacity="0.5" />
+      <line x1="25" y1="21" x2="43" y2="21" stroke="var(--border)" strokeOpacity="0.4" />
+      <line x1="7" y1="7" x2="7" y2="21" stroke="var(--border)" strokeOpacity="0.3" />
+      <line x1="7" y1="21" x2="25" y2="21" stroke="var(--border)" strokeOpacity="0.3" />
+      {/* nodes */}
+      <rect x="4" y="4" width="6" height="6" fill="var(--border)" />
+      <rect x="22" y="4" width="6" height="6" fill="var(--border)" />
+      <rect x="4" y="18" width="6" height="6" fill="var(--border)" />
+      <rect x="22" y="18" width="6" height="6" fill="var(--border)" />
+      <rect x="40" y="18" width="6" height="6" fill="var(--primary)" />
+    </svg>
+  );
+}
+
+// ── Agent illustration: pixel-art robot using squares ────────────────────────
+function AgentIllustration() {
+  // Pixel grid: 1 = border colour, 2 = primary colour, 0 = transparent
+  // 11-wide × 13-tall grid (each cell = 4px, gap = 1px)
+  const grid = [
+    //  0  1  2  3  4  5  6  7  8  9 10
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], // 0  antenna top
+    [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0], // 1  antenna base
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], // 2  neck
+    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0], // 3  head top
+    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], // 4  head upper
+    [0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 0], // 5  eyes
+    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0], // 6  head lower
+    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0], // 7  head bottom
+    [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1], // 8  arms + shoulder
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], // 9  arms mid
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 10 torso
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 11 legs upper
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // 12 legs lower
+  ];
+
+  const S = 4; // cell size
+  const G = 1; // gap
+  const step = S + G;
+  const cols = grid[0]!.length;
+  const rows = grid.length;
+
+  return (
+    <svg
+      width={cols * step - G}
+      height={rows * step - G}
+      viewBox={`0 0 ${cols * step - G} ${rows * step - G}`}
+      fill="none"
+      aria-hidden="true"
+    >
+      {grid.map((row, ri) =>
+        row.map((v, ci) => {
+          if (v === 0) return null;
+          return (
+            <rect
+              key={`${ri}-${ci}`}
+              x={ci * step}
+              y={ri * step}
+              width={S}
+              height={S}
+              fill={v === 2 ? "var(--primary)" : "var(--border)"}
+            />
+          );
+        }),
+      )}
+    </svg>
+  );
+}
+
+function StepIllustration({ pattern }: { pattern: "cli" | "graph" | "agent" }) {
+  if (pattern === "cli") return <CliIllustration />;
+  if (pattern === "graph") return <GraphIllustration />;
+  return <AgentIllustration />;
+}
+
+function CornerInsetMarks() {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 h-3 w-3 border-l border-t border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 h-3 w-3 border-r border-t border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 border-b border-r border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 border-b border-l border-foreground/25 transition-colors duration-300 group-hover:border-foreground/60"
+      />
+    </>
   );
 }
 
@@ -111,32 +239,39 @@ export default function HowItWorks() {
           subtitle="From install to publish in minutes. No configuration required."
         />
 
-        <div className="flex flex-wrap gap-px border border-border bg-border">
+        <div className="flex lg:flex-row flex-col gap-px border border-border bg-border">
           {steps.map((step) => (
             <div
               key={step.num}
-              className="flex min-w-[280px] flex-1 basis-full flex-col items-center gap-6 bg-background px-8 py-10 text-center lg:basis-[calc(33.333%-1px)]"
+              className="group relative flex flex-1 flex-col gap-7 overflow-hidden bg-background px-8 py-9 text-left"
             >
-              {/* Decorative pattern */}
-              <div className="flex flex-col items-center gap-4">
-                <StepPattern pattern={step.pattern} />
+              <CornerInsetMarks />
+
+              {/* Top row: illustration + step number */}
+              <div className="flex items-start justify-between gap-4">
+                <StepIllustration pattern={step.pattern} />
+                <span
+                  className={`font-mono text-lg font-semibold tracking-tight text-border/60 ${GeistPixelSquare.className}`}
+                >
+                  {step.num}
+                </span>
               </div>
 
-              {/* Step number + icon */}
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-lg font-semibold text-primary">{step.num}</span>
-                <div className="h-px w-4 bg-border" />
-                <div className="flex size-8 items-center justify-center border border-border bg-background text-primary">
-                  <step.icon className="size-3.5" />
-                </div>
-              </div>
+              {/* Divider */}
+              <div className="h-px w-full bg-gradient-to-r from-primary/30 via-border/60 to-transparent" />
 
               {/* Content */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                  {step.title}
+              <div className="flex flex-col gap-3">
+                <h3
+                  className={`text-xl font-semibold leading-tight tracking-tight ${GeistPixelSquare.className}`}
+                >
+                  <span className="text-foreground">{step.titlePlain}</span>
+                  <span className="text-primary">{step.titleAccent}</span>
+                  {step.titleSuffix && <span className="text-foreground">{step.titleSuffix}</span>}
                 </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+                <p className="max-w-[36ch] text-sm leading-relaxed text-muted-foreground">
+                  {step.description}
+                </p>
               </div>
             </div>
           ))}

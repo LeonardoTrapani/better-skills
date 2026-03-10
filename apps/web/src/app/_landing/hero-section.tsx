@@ -33,7 +33,7 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
     <section className="relative flex min-h-[calc(90vh-52px)] flex-col items-center justify-center overflow-hidden lg:min-h-[calc(90vh-52px)]">
       <HeroGridOverlay />
 
-      <div className="relative z-10 flex w-full -translate-y-8 justify-center px-4 sm:translate-y-0">
+      <div className="relative z-10 flex w-full justify-center px-4 sm:translate-y-10">
         <div className="flex w-full max-w-4xl flex-col items-center gap-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: -12 }}

@@ -35,7 +35,14 @@ export function LandingCenteredOverlay({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn(LANDING_CENTERED_OVERLAY_CLASS, LANDING_CONTENT_MAX_WIDTH_CLASS, className)}>
+    <div
+      className={cn(
+        LANDING_CENTERED_OVERLAY_CLASS,
+        LANDING_CONTENT_MAX_WIDTH_CLASS,
+        "lg:w-[72rem] lg:max-w-none",
+        className,
+      )}
+    >
       {children}
     </div>
   );

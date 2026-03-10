@@ -3,13 +3,14 @@
 import { Brain, TerminalSquare, Globe, Bot, Network, RefreshCcw } from "lucide-react";
 import { SectionHeader, SectionBackdrop } from "./grid-background";
 import { LandingContainer, SectionTailSpacer } from "./design-system";
+import { GeistPixelSquare } from "geist/font/pixel";
 
 const features = [
   {
     icon: Brain,
     label: "Second Brain",
-    title: "A persistent knowledge graph.",
-    titleBold: "",
+    title: "A persistent",
+    titleBold: " knowledge graph.",
     description:
       "Every skill, resource, and connection lives in a structured graph your agents can query at runtime. Knowledge that persists across sessions.",
   },
@@ -66,8 +67,7 @@ export default function Features() {
           headline={
             <>
               Everything your agent
-              <br />
-              <span className="text-primary">needs</span>
+              <span className="text-primary"> needs</span>
             </>
           }
           subtitle="Fully interactive through an API, MCP, or CLI. Open source and extensible."
@@ -87,8 +87,12 @@ export default function Features() {
               </div>
 
               <h3 className="text-lg text-foreground">
-                <span className="font-semibold">{feat.title}</span>
-                {feat.titleBold && <span className="font-bold">{feat.titleBold}</span>}
+                <span className={`font-semibold ${GeistPixelSquare.className}`}>{feat.title}</span>
+                {feat.titleBold && (
+                  <span className={`text-primary ${GeistPixelSquare.className}`}>
+                    {feat.titleBold}
+                  </span>
+                )}
               </h3>
 
               <p className="text-sm leading-relaxed text-muted-foreground">{feat.description}</p>

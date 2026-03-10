@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-none border border-transparent bg-clip-padding text-xs font-medium focus-visible:ring-1 aria-invalid:ring-1 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 [&_svg]:transition-transform [&_svg]:duration-200 [&_svg]:ease-out [&>*]:transition-transform [&>*]:duration-200 [&>*]:ease-out outline-none group/button select-none",
+  "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-none border border-transparent bg-clip-padding text-xs font-medium focus-visible:ring-1 aria-invalid:ring-1 [&_svg:not([class*='size-'])]:size-4 inline-flex items-center justify-center whitespace-nowrap transition-colors duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none shrink-0 [&_svg]:shrink-0 [&>[data-slot='button-content']]:transition-transform [&>[data-slot='button-content']]:duration-200 [&>[data-slot='button-content']]:ease-out outline-none group/button select-none",
   {
     variants: {
       variant: {
@@ -45,6 +45,7 @@ function Button({
   variant = "default",
   size = "default",
   animated = false,
+  children,
   nativeButton,
   render,
   ...props
@@ -53,18 +54,28 @@ function Button({
     animated?: boolean;
   }) {
   const resolvedNativeButton = nativeButton ?? !render;
+  const content = animated ? (
+    <span data-slot="button-content" className="inline-flex items-center [gap:inherit]">
+      {children}
+    </span>
+  ) : (
+    children
+  );
 
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(
         buttonVariants({ variant, size, className }),
-        animated && "motion-safe:hover:[&_svg]:scale-[1.03] motion-safe:hover:[&>*]:scale-[1.01]",
+        animated &&
+          "motion-safe:[&>[data-slot='button-content']]:transform-gpu motion-safe:[&>[data-slot='button-content']]:origin-center motion-safe:hover:[&>[data-slot='button-content']]:scale-[1.03]",
       )}
       nativeButton={resolvedNativeButton}
       render={render}
       {...props}
-    />
+    >
+      {content}
+    </ButtonPrimitive>
   );
 }
 

@@ -10,11 +10,12 @@ import {
   LANDING_CONTENT_MAX_WIDTH_CLASS,
   LANDING_CONTENT_MAX_WIDTH_PX,
 } from "./design-system";
+import { GeistPixelSquare } from "geist/font/pixel";
 
 const HERO_GRID_SIDE_UNIT_PX = 100;
 const HERO_OUTER_FRAME_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX + HERO_GRID_SIDE_UNIT_PX * 2;
 const HERO_MID_COLUMN_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
-const HERO_INNER_COLUMN_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 4;
+const HERO_INNER_COLUMN_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
 const HERO_UPPER_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
 const HERO_CORE_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 4;
 
@@ -80,8 +81,8 @@ function CenteredFrame({
 }) {
   return (
     <div
-      className={cn("absolute left-1/2 w-full -translate-x-1/2", className)}
-      style={{ maxWidth }}
+      className={cn("absolute left-1/2 -translate-x-1/2", className)}
+      style={{ width: maxWidth }}
     >
       {children}
     </div>
@@ -337,8 +338,9 @@ export function HeroGridOverlay() {
   const contentToInnerInsetMirrorX = `calc(100% - ${contentToInnerInset}px)`;
 
   const majorRows = [100, 200, 300, 400] as const;
+  const topAndMajorRows = [0, 100, 200, 300, 400] as const;
   const contentInnerBoundaryRows = [300, 400] as const;
-  const innerColumnNodeRows = [100] as const;
+  const innerColumnNodeRows = [0, 100] as const;
 
   const sideGraphPrimaryOffset = Math.round((contentToMidInset - 36) / 2);
   const sideGraphSecondaryOffset = contentToMidInset + 14;
@@ -394,13 +396,13 @@ export function HeroGridOverlay() {
             keyPrefix: "outer-right-rule",
           })}
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: "0px",
             which: LEFT_EDGE_INTERSECTION,
             keyPrefix: "outer-left-int",
           })}
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: "100%",
             which: RIGHT_EDGE_INTERSECTION,
             keyPrefix: "outer-right-int",
@@ -409,25 +411,25 @@ export function HeroGridOverlay() {
 
         <LandingCenteredOverlay className="top-0 bottom-0 z-[2]">
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: "0px",
             which: CROSS_INTERSECTION,
             keyPrefix: "content-left-edge-int",
           })}
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: "100%",
             which: CROSS_INTERSECTION,
             keyPrefix: "content-right-edge-int",
           })}
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: contentToMidInsetX,
             which: CROSS_INTERSECTION,
             keyPrefix: "content-mid-left-int",
           })}
           {renderRowIntersections({
-            rows: majorRows,
+            rows: topAndMajorRows,
             x: contentToMidInsetMirrorX,
             which: CROSS_INTERSECTION,
             keyPrefix: "content-mid-right-int",
@@ -482,26 +484,31 @@ export function HeroGridOverlay() {
 
         <CenteredFrame
           maxWidth={HERO_UPPER_COLUMN_WIDTH_PX}
-          className="top-[100px] h-[100px] border-x border-border"
+          className="top-0 h-[200px] border-x border-border"
         >
-          {/* Upper-column edges × y=100: T-intersection (column starts) → bl + br */}
+          {/* Top-edge half nodes */}
           <Intersection x="0px" y="0px" which={["bl", "br"]} />
           <Intersection x="100%" y="0px" which={["bl", "br"]} />
+          {/* Midpoint nodes where top rule crosses */}
+          <Intersection x="0px" y="50%" which={CROSS_INTERSECTION} />
+          <Intersection x="100%" y="50%" which={CROSS_INTERSECTION} />
           {/* Upper-column edges × y=200: T-intersection (column ends) → tl + tr */}
           <Intersection x="0px" y="100%" which={["tl", "tr"]} />
           <Intersection x="100%" y="100%" which={["tl", "tr"]} />
         </CenteredFrame>
         <CenteredFrame
           maxWidth={HERO_CORE_COLUMN_WIDTH_PX}
-          className="top-[100px] h-[100px] border-x border-border"
+          className="top-0 h-[200px] border-x border-border"
         >
           <Intersection x="0px" y="0px" which={["bl", "br"]} />
           <Intersection x="100%" y="0px" which={["bl", "br"]} />
+          <Intersection x="0px" y="50%" which={CROSS_INTERSECTION} />
+          <Intersection x="100%" y="50%" which={CROSS_INTERSECTION} />
           <Intersection x="0px" y="100%" which={["tl", "tr"]} />
           <Intersection x="100%" y="100%" which={["tl", "tr"]} />
         </CenteredFrame>
 
-        <LandingCenteredOverlay className="top-[30px]">
+        <LandingCenteredOverlay className="top-0">
           <div className="absolute left-[10px] top-0">
             <DotBlock rows={6} cols={10} seed={101} />
           </div>
@@ -513,7 +520,7 @@ export function HeroGridOverlay() {
           </div>
         </LandingCenteredOverlay>
 
-        <LandingCenteredOverlay className="top-[30px]">
+        <LandingCenteredOverlay className="top-0">
           <div className="absolute right-[10px] top-0">
             <DotBlock rows={3} cols={8} seed={201} cellSize={6} gap={2} />
           </div>
@@ -526,13 +533,13 @@ export function HeroGridOverlay() {
         </LandingCenteredOverlay>
 
         <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-[220px]">
-          <div className="absolute left-[20px] top-0">
+          <div className="absolute left-[20px] top-[120px]">
             <DotBlock rows={6} cols={6} seed={301} cellSize={6} gap={3} />
           </div>
-          <div className="absolute top-[90px] left-[100px]">
+          <div className="absolute left-[100px]">
             <DotBlock rows={2} cols={10} seed={302} cellSize={4} gap={2} />
           </div>
-          <div className="absolute top-[50px] left-[210px]">
+          <div className="absolute top-[50px] left-[0px]">
             <DotBlock rows={4} cols={6} seed={210} cellSize={5} gap={2} />
           </div>
         </CenteredFrame>
@@ -541,7 +548,7 @@ export function HeroGridOverlay() {
           <div className="absolute right-[10px] top-0">
             <DotBlock rows={5} cols={5} seed={401} cellSize={7} gap={3} />
           </div>
-          <div className="absolute top-[60px] right-[200px]">
+          <div className="absolute -top-[130px] right-[200px]">
             <DotBlock rows={10} cols={6} seed={210} cellSize={6} gap={2} />
           </div>
           <div className="absolute top-[120px] right-[120px]">
@@ -550,20 +557,26 @@ export function HeroGridOverlay() {
         </CenteredFrame>
 
         <LandingCenteredOverlay className="top-0 bottom-0">
+          <div className="absolute left-[220px] top-[40px]">
+            <SkillGraph variant="b" />
+          </div>
           <div className="absolute top-[150px] -left-[80px]">
             <SkillGraph variant="a" />
           </div>
-          <div className="absolute top-[225px]" style={{ left: sideGraphSecondaryOffset }}>
+          <div className="absolute top-[150px]" style={{ left: sideGraphSecondaryOffset }}>
             <SkillGraph variant="c" />
           </div>
           <div className="absolute top-[330px]" style={{ left: sideGraphPrimaryOffset }}>
             <SkillGraph variant="b" />
           </div>
 
+          <div className="absolute right-[220px] top-[40px]">
+            <SkillGraph variant="b" mirror />
+          </div>
           <div className="absolute top-[120px]" style={{ right: sideGraphPrimaryOffset }}>
             <SkillGraph variant="b" mirror />
           </div>
-          <div className="absolute top-[225px]" style={{ right: sideGraphSecondaryOffset }}>
+          <div className="absolute top-[225px] -right-[80px]">
             <SkillGraph variant="a" mirror />
           </div>
           <div className="absolute top-[330px]" style={{ right: sideGraphPrimaryOffset }}>
@@ -1058,11 +1071,9 @@ export function SectionDivider({ index, total, label }: SectionDividerProps) {
   return (
     <div className="border-y border-border">
       <div className="flex w-full justify-center py-6">
-        <div
-          className={cn("relative w-full px-4 sm:px-6 lg:px-0", LANDING_CONTENT_MAX_WIDTH_CLASS)}
-        >
-          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-primary" />
-          <div className="flex items-center gap-3 lg:px-16">
+        <div className={cn("relative w-full px-4 lg:px-0", LANDING_CONTENT_MAX_WIDTH_CLASS)}>
+          <span className="absolute lg:left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-primary" />
+          <div className="flex items-center gap-3 px-6 lg:px-12">
             <span className="font-mono text-xs tracking-wider text-muted-foreground">
               [ <span className="text-primary">{idx}</span> / {tot} ] &middot;{" "}
               <span className="uppercase">{label}</span>
@@ -1085,7 +1096,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ decorator, headline, subtitle }: SectionHeaderProps) {
   return (
-    <div className="relative flex flex-col items-center gap-4 py-20 text-center lg:py-24">
+    <div className="relative flex flex-col items-center gap-4 px-14 py-20 text-center lg:py-24">
       {/* Desktop: horizontal rails — extend from heading to page edges */}
       <div className="absolute left-0 top-1/2 hidden h-px w-[80px] bg-border lg:block" />
       <div className="absolute left-[80px] top-1/2 hidden size-1.5 -translate-y-1/2 bg-primary lg:block" />
@@ -1098,10 +1109,12 @@ export function SectionHeader({ decorator, headline, subtitle }: SectionHeaderPr
       <div className="absolute right-0 top-1/2 h-px w-[40px] bg-border lg:hidden" />
       <div className="absolute right-[40px] top-1/2 size-1 -translate-y-1/2 bg-primary lg:hidden" />
 
-      <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
         // {decorator} \\
       </p>
-      <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+      <h2
+        className={`text-3xl font-semibold tracking-tight text-foreground sm:text-[2.75rem] ${GeistPixelSquare.className}`}
+      >
         {headline}
       </h2>
       {subtitle && (
