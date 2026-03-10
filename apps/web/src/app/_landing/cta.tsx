@@ -1,24 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import type { Route } from "next";
-import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 
 import { Button } from "@/components/ui/button";
-import { LandingContainer } from "./design-system";
+import { LandingCenteredOverlay, LandingContainer } from "./design-system";
 import { SectionBackdrop } from "./grid-background";
-import { authClient } from "@/lib/auth/auth-client";
+import { useLandingCta } from "./use-landing-cta";
 
 export default function CTA() {
-  const [mounted, setMounted] = useState(false);
-  const { data: session } = authClient.useSession();
-  const ctaHref = (mounted && session ? "/vault" : "/login") as Route;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { ctaHref, ctaLabel } = useLandingCta();
 
   return (
     <section className="relative overflow-hidden border-t border-border">
@@ -27,7 +19,7 @@ export default function CTA() {
       {/* Extra CTA-specific decorative layer */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {/* Desktop decorations */}
-        <div className="absolute top-0 bottom-0 left-1/2 hidden w-full max-w-[1112px] -translate-x-1/2 lg:block">
+        <LandingCenteredOverlay className="top-0 bottom-0 hidden lg:block">
           {/* Cross-hatch horizontal rules at multiple heights */}
           <div className="absolute top-12 left-0 h-px w-[100px] bg-border/40" />
           <div className="absolute top-12 right-0 h-px w-[100px] bg-border/40" />
@@ -47,7 +39,7 @@ export default function CTA() {
           <div className="absolute right-[50px] top-12 h-[40px] w-px bg-border/25" />
           <div className="absolute left-[50px] bottom-12 h-[40px] w-px bg-border/25" />
           <div className="absolute right-[50px] bottom-12 h-[40px] w-px bg-border/25" />
-        </div>
+        </LandingCenteredOverlay>
 
         {/* Mobile extra decorations */}
         <div className="lg:hidden">
@@ -99,7 +91,7 @@ export default function CTA() {
               className="h-11 w-full justify-center gap-2 px-7 text-sm sm:w-auto"
               render={<Link href={ctaHref} />}
             >
-              {mounted && session ? "Go to Vault" : "Get Started"}
+              {ctaLabel}
               <ArrowRight className="size-3.5" />
             </Button>
           </div>

@@ -1,36 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Route } from "next";
 import { Copy, Check, ArrowRight, Github } from "lucide-react";
 import { motion } from "motion/react";
 
-import { authClient } from "@/lib/auth/auth-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TextScramble } from "@/components/ui/text-scramble";
+import { LANDING_INSTALL_COMMAND } from "./constants";
 import { HeroGridOverlay } from "./grid-background";
+import { useClipboardCopy } from "./use-clipboard-copy";
+import { useLandingCta } from "./use-landing-cta";
+import { GeistPixelLine, GeistPixelSquare } from "geist/font/pixel";
 
 export default function HeroSection({ skillCount }: { skillCount: number }) {
-  const [didCopy, setDidCopy] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const { data: session } = authClient.useSession();
-
-  const ctaHref = (mounted && session ? "/vault" : "/login") as Route;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { copied: didCopy, copy } = useClipboardCopy();
+  const { ctaHref, ctaLabel } = useLandingCta();
+  const [shouldScrambleCommand, setShouldScrambleCommand] = useState(false);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText("curl -fsSL https://better-skills.dev/install | bash");
-      setDidCopy(true);
-      setTimeout(() => setDidCopy(false), 1500);
-    } catch {
-      setDidCopy(false);
-    }
+    await copy(LANDING_INSTALL_COMMAND);
   };
 
   const skillBadgeText =
@@ -39,21 +30,25 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
       : "Open source";
 
   return (
-    <section className="relative flex min-h-[calc(100vh-52px)] flex-col items-center justify-center overflow-hidden lg:min-h-[calc(90vh-52px)]">
+    <section className="relative flex min-h-[calc(90vh-52px)] flex-col items-center justify-center overflow-hidden lg:min-h-[calc(90vh-52px)]">
       <HeroGridOverlay />
 
-      <div className="relative z-10 flex w-full justify-center px-4">
-        <div className="flex w-full max-w-3xl flex-col items-center gap-6 text-center">
+      <div className="relative z-10 flex w-full -translate-y-8 justify-center px-4 sm:translate-y-0">
+        <div className="flex w-full max-w-4xl flex-col items-center gap-6 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
           >
             <Badge
               variant="outline"
-              className="gap-2 border-primary/30 bg-background/80 px-3.5 py-1.5 text-xs font-normal text-muted-foreground backdrop-blur-sm"
+              className="gap-2 border-primary/30 text-xs font-normal text-muted-foreground backdrop-blur-sm"
             >
-              <span className="inline-block size-1.5 bg-primary" />
+              <span className="relative flex h-1.5 w-1.5 animate-[rotate-sequence_2s_linear_infinite]">
+                <span className="absolute inline-flex h-full w-full bg-primary opacity-75 animate-[ping-sequence_2s_linear_infinite]" />
+                <span className="relative inline-flex h-1.5 w-1.5 bg-primary" />
+              </span>
+
               {skillBadgeText}
             </Badge>
           </motion.div>
@@ -62,12 +57,12 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-semibold leading-[1.08] tracking-tight text-foreground text-5xl md:text-6xl"
+            className="font-semibold leading-[1.08] tracking-tight text-foreground text-[3.15rem] md:text-7xl"
           >
-            Your Agent&rsquo;s
+            <span className={GeistPixelLine.className}>Your Agent's</span>
             <br />
             <span className="text-primary font-mono">
-              <span className="inline-flex items-baseline">
+              <span className={`inline-flex items-baseline ${GeistPixelSquare.className}`}>
                 <span>Sec</span>
                 <span
                   aria-hidden="true"
@@ -108,16 +103,18 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.24 }}
+            onAnimationComplete={() => setShouldScrambleCommand(true)}
             className="flex w-full sm:w-auto max-w-xl flex-col items-center gap-3 px-4 sm:px-6 lg:px-0"
           >
             <div className="flex w-full flex-row gap-3">
               <Button
                 size="lg"
+                animated
                 className="h-11 min-w-0 flex-1 gap-2 px-4 text-sm sm:px-7"
                 render={<Link href={ctaHref} />}
               >
                 <span className="flex items-center gap-2">
-                  {mounted && session ? "Go to Vault" : "Get Started"}
+                  {ctaLabel}
                   <ArrowRight className="size-3.5" data-icon="inline-end" />
                 </span>
               </Button>
@@ -125,6 +122,7 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
               <Button
                 variant="outline"
                 size="lg"
+                animated
                 className="h-11 min-w-0 flex-1 gap-2 text-sm justify-center items-center"
                 render={
                   <Link
@@ -149,17 +147,25 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
             >
               <span className="flex min-w-0 items-center gap-2 text-left">
                 <span className="shrink-0 text-primary/60">$</span>
-                <span className="truncate">
-                  curl -fsSL https://better-skills.dev/install | bash
-                </span>
+                <TextScramble
+                  as="span"
+                  trigger={shouldScrambleCommand}
+                  className={`truncate${shouldScrambleCommand ? "" : " opacity-0"}`}
+                >
+                  {LANDING_INSTALL_COMMAND}
+                </TextScramble>
               </span>
-              <span className="inline-flex size-6 shrink-0 items-center justify-center border border-border/70 bg-background cursor-pointer">
+              <motion.span
+                className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center border border-border/70 bg-background transition-transform duration-200 ease-out group-hover:scale-105"
+                animate={didCopy ? { scale: [1, 1.12, 1], y: [0, -0.5, 0] } : { scale: 1, y: 0 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              >
                 {didCopy ? (
                   <Check className="size-3 text-primary" />
                 ) : (
                   <Copy className="size-3 opacity-70 transition-opacity group-hover:opacity-100" />
                 )}
-              </span>
+              </motion.span>
             </Button>
           </motion.div>
         </div>

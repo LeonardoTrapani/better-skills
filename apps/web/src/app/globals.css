@@ -55,7 +55,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(76.9% 0.188 70.08);
+  --primary: var(--color-amber-500);
   --primary-foreground: var(--color-amber-950);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -68,7 +68,7 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: var(--color-amber-300);
-  --chart-2: var(--color-amber-400);
+  --chart-2: var(--color-amber-500);
   --chart-3: var(--color-amber-500);
   --chart-4: var(--color-amber-600);
   --chart-5: var(--color-amber-700);
@@ -90,7 +90,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: var(--color-amber-400);
+  --primary: var(--color-amber-500);
   --primary-foreground: var(--color-amber-950);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
@@ -99,17 +99,17 @@
   --accent: oklch(0.371 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: #2f2f2f;
+  --input: oklch(1 0 0 / 20%);
   --ring: oklch(0.556 0 0);
   --chart-1: var(--color-amber-300);
-  --chart-2: var(--color-amber-400);
+  --chart-2: var(--color-amber-500);
   --chart-3: var(--color-amber-500);
   --chart-4: var(--color-amber-600);
   --chart-5: var(--color-amber-700);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: var(--color-amber-400);
+  --sidebar-primary: var(--color-amber-500);
   --sidebar-primary-foreground: var(--color-amber-950);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -160,6 +160,161 @@
   animation-timing-function: steps(3, end);
   animation-iteration-count: infinite;
   will-change: opacity;
+}
+
+@keyframes rotate-sequence {
+  0% {
+    transform: rotate(0deg);
+  }
+  3% {
+    transform: rotate(45deg);
+  }
+  6% {
+    transform: rotate(45deg);
+  }
+  9% {
+    transform: rotate(45deg);
+  }
+  12.5% {
+    transform: rotate(45deg);
+  }
+  15.5% {
+    transform: rotate(90deg);
+  }
+  18.5% {
+    transform: rotate(90deg);
+  }
+  21.5% {
+    transform: rotate(90deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  28% {
+    transform: rotate(135deg);
+  }
+  31% {
+    transform: rotate(135deg);
+  }
+  34% {
+    transform: rotate(135deg);
+  }
+  37.5% {
+    transform: rotate(135deg);
+  }
+  40.5% {
+    transform: rotate(180deg);
+  }
+  43.5% {
+    transform: rotate(180deg);
+  }
+  46.5% {
+    transform: rotate(180deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  53% {
+    transform: rotate(225deg);
+  }
+  56% {
+    transform: rotate(225deg);
+  }
+  59% {
+    transform: rotate(225deg);
+  }
+  62.5% {
+    transform: rotate(225deg);
+  }
+  65.5% {
+    transform: rotate(270deg);
+  }
+  68.5% {
+    transform: rotate(270deg);
+  }
+  71.5% {
+    transform: rotate(270deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  78% {
+    transform: rotate(315deg);
+  }
+  81% {
+    transform: rotate(315deg);
+  }
+  84% {
+    transform: rotate(315deg);
+  }
+  87.5% {
+    transform: rotate(315deg);
+  }
+  90.5% {
+    transform: rotate(360deg);
+  }
+  93.5% {
+    transform: rotate(360deg);
+  }
+  96.5% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping-sequence {
+  0%,
+  6.5%,
+  12.5%,
+  19%,
+  25%,
+  31.5%,
+  37.5%,
+  44%,
+  50%,
+  56.5%,
+  62.5%,
+  69%,
+  75%,
+  81.5%,
+  87.5%,
+  94%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  8.5%,
+  21%,
+  33.5%,
+  46%,
+  58.5%,
+  71%,
+  83.5%,
+  96% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+  11.5%,
+  24%,
+  36.5%,
+  49%,
+  61.5%,
+  74%,
+  86.5%,
+  99% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.animate-\[rotate-sequence_2s_linear_infinite\] {
+  animation: 8s linear infinite rotate-sequence;
+}
+
+.animate-\[ping-sequence_2s_linear_infinite\] {
+  animation: 8s linear infinite ping-sequence;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
+import { GeistPixelSquare } from "geist/font/pixel";
 import { Command, Search, Hexagon, Globe } from "lucide-react";
 
 import { authClient } from "@/lib/auth/auth-client";
@@ -165,7 +166,7 @@ export default function Navbar() {
                 priority
               />
             </span>
-            <span>BETTER-SKILLS.</span>
+            <span className={GeistPixelSquare.className}>BETTER-SKILLS.</span>
           </Link>
 
           <div className="hidden lg:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">

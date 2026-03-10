@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Check, Copy } from "lucide-react";
-import type { Route } from "next";
 
 import { SectionBackdrop } from "./grid-background";
 import { Button } from "@/components/ui/button";
 import { LandingContainer, SectionTailSpacer } from "./design-system";
-import { authClient } from "@/lib/auth/auth-client";
-
-const command = "curl -fsSL https://better-skills.dev/install | bash";
+import { LANDING_INSTALL_COMMAND } from "./constants";
+import { useClipboardCopy } from "./use-clipboard-copy";
+import { useLandingCta } from "./use-landing-cta";
 
 function ClaudeIcon() {
   return (
@@ -149,23 +147,11 @@ const iconItems = [
 ];
 
 export default function CliDemo() {
-  const [copied, setCopied] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const { data: session } = authClient.useSession();
-  const ctaHref = (mounted && session ? "/vault" : "/login") as Route;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { copied, copy } = useClipboardCopy();
+  const { ctaHref, ctaLabel } = useLandingCta();
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
+    await copy(LANDING_INSTALL_COMMAND);
   };
 
   return (
@@ -197,7 +183,7 @@ export default function CliDemo() {
               className="h-11 gap-2 border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:border-primary [a]:hover:bg-primary [a]:hover:text-background"
               render={<Link href={ctaHref} />}
             >
-              {mounted && session ? "Go to Vault" : "Get Started"}
+              {ctaLabel}
               <ArrowRight className="size-4" />
             </Button>
           </div>
@@ -242,7 +228,7 @@ export default function CliDemo() {
               >
                 <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
                   <span className="shrink-0 text-primary">$</span>
-                  <span className="truncate">{command}</span>
+                  <span className="truncate">{LANDING_INSTALL_COMMAND}</span>
                 </span>
                 <span className="inline-flex size-6 shrink-0 items-center justify-center border border-border/70 bg-background sm:size-7 cursor-pointer">
                   {copied ? (
