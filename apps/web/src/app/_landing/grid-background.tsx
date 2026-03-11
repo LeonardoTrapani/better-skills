@@ -20,7 +20,16 @@ const HERO_UPPER_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_U
 const HERO_CORE_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 4;
 
 type IntersectionCorner = "tl" | "tr" | "bl" | "br";
-type BackdropVariant = "default" | "how-it-works" | "features" | "pricing" | "cli-demo";
+type BackdropVariant =
+  | "default"
+  | "how-it-works"
+  | "features"
+  | "problem"
+  | "skill"
+  | "solution"
+  | "pricing"
+  | "cli-demo"
+  | "enterprise";
 type PageGridIntersectionEdge = "top" | "bottom";
 
 const CROSS_INTERSECTION: readonly IntersectionCorner[] = ["tl", "tr", "bl", "br"];
@@ -907,6 +916,46 @@ export function SectionBackdrop({
             />
           </>
         )}
+        {variant === "problem" && (
+          <>
+            <div className="absolute left-6 bottom-16">
+              <SkillGraph variant="c" />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={6}
+              seed={7705}
+              cellSize={3}
+              gap={2}
+              className="absolute right-7 bottom-24"
+            />
+          </>
+        )}
+        {variant === "skill" && (
+          <>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="a" mirror />
+            </div>
+            <DotBlock
+              rows={3}
+              cols={4}
+              seed={7706}
+              cellSize={3}
+              gap={2}
+              className="absolute left-6 bottom-24"
+            />
+          </>
+        )}
+        {variant === "solution" && (
+          <>
+            <div className="absolute left-6 bottom-16">
+              <SkillGraph variant="b" />
+            </div>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="a" mirror />
+            </div>
+          </>
+        )}
         {variant === "pricing" && (
           <>
             <div className="absolute left-6 bottom-20">
@@ -926,6 +975,21 @@ export function SectionBackdrop({
           <div className="absolute right-6 bottom-16">
             <SkillGraph variant="b" mirror />
           </div>
+        )}
+        {variant === "enterprise" && (
+          <>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="c" mirror />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={6}
+              seed={7707}
+              cellSize={3}
+              gap={2}
+              className="absolute left-6 bottom-24"
+            />
+          </>
         )}
       </div>
 
@@ -979,6 +1043,44 @@ export function SectionBackdrop({
             </div>
           </>
         )}
+        {variant === "problem" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="b" size="md" />
+            </div>
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="c" size="md" mirror />
+            </div>
+            <DotBlock
+              rows={3}
+              cols={5}
+              seed={8711}
+              cellSize={4}
+              gap={2}
+              className="absolute left-10 bottom-12"
+            />
+          </>
+        )}
+        {variant === "skill" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="a" size="md" />
+            </div>
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="b" size="md" mirror />
+            </div>
+          </>
+        )}
+        {variant === "solution" && (
+          <>
+            <div className="absolute left-4 bottom-12">
+              <SkillGraph variant="b" size="md" />
+            </div>
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="a" size="md" mirror />
+            </div>
+          </>
+        )}
         {variant === "pricing" && (
           <>
             <div className="absolute left-4 top-26">
@@ -997,6 +1099,24 @@ export function SectionBackdrop({
             <div className="absolute right-4 bottom-12">
               <SkillGraph variant="a" size="md" mirror />
             </div>
+          </>
+        )}
+        {variant === "enterprise" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="c" size="md" />
+            </div>
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="b" size="md" mirror />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={8}
+              seed={8712}
+              cellSize={4}
+              gap={2}
+              className="absolute right-10 top-10"
+            />
           </>
         )}
       </LandingCenteredOverlay>

@@ -48,9 +48,10 @@ const tiers = [
 
 export default function Pricing() {
   const { ctaHref, ctaLabel } = useLandingCta();
+  const enterpriseHref = "mailto:hello@better-skills.dev";
 
   return (
-    <section id="pricing" className="relative overflow-hidden">
+    <section id="pricing" className="relative overflow-hidden scroll-mt-20">
       <SectionBackdrop variant="pricing" />
 
       <LandingContainer>
@@ -111,7 +112,9 @@ export default function Pricing() {
                     size="lg"
                     animated
                     className={`h-10 w-full cursor-pointer text-xs ${tier.highlight ? "hover:bg-primary/80" : ""}`}
-                    render={tier.id === "free" ? <Link href={ctaHref} /> : undefined}
+                    render={
+                      tier.id === "free" ? <Link href={ctaHref} /> : <a href={enterpriseHref} />
+                    }
                   >
                     {tier.id === "free" ? ctaLabel : tier.cta}
                   </Button>
