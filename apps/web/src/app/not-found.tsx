@@ -390,7 +390,7 @@ export default function NotFound() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.35 }}
-            className="relative w-full max-w-md border border-border/70 bg-background/85 px-5 py-4 text-left backdrop-blur-sm"
+            className="relative w-full max-w-md border border-border bg-background/85 px-5 py-4 text-left backdrop-blur-sm"
           >
             {/* Terminal header */}
             <div className="mb-3 flex items-center gap-2 border-b border-border/50 pb-2.5">

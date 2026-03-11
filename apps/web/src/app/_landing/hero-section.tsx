@@ -3,26 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Copy, Check, ArrowRight, Github } from "lucide-react";
+import { ArrowRight, Github } from "lucide-react";
 import { motion } from "motion/react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TextScramble } from "@/components/ui/text-scramble";
-import { LANDING_INSTALL_COMMAND } from "./constants";
 import { HeroGridOverlay } from "./grid-background";
-import { useClipboardCopy } from "./use-clipboard-copy";
+import { InstallCommandButton } from "./install-command-button";
 import { useLandingCta } from "./use-landing-cta";
 import { GeistPixelLine, GeistPixelSquare } from "geist/font/pixel";
 
 export default function HeroSection({ skillCount }: { skillCount: number }) {
-  const { copied: didCopy, copy } = useClipboardCopy();
   const { ctaHref, ctaLabel } = useLandingCta();
   const [shouldScrambleCommand, setShouldScrambleCommand] = useState(false);
-
-  const handleCopy = async () => {
-    await copy(LANDING_INSTALL_COMMAND);
-  };
 
   const skillBadgeText =
     skillCount > 0
@@ -139,34 +132,10 @@ export default function HeroSection({ skillCount }: { skillCount: number }) {
               </Button>
             </div>
 
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleCopy}
-              className="group h-11 w-full sm:w-auto justify-between gap-4 border-border bg-background/80 px-4 font-mono text-xs font-normal text-muted-foreground backdrop-blur-sm hover:text-foreground"
-            >
-              <span className="flex min-w-0 items-center gap-2 text-left">
-                <span className="shrink-0 text-primary/60">$</span>
-                <TextScramble
-                  as="span"
-                  trigger={shouldScrambleCommand}
-                  className={`truncate${shouldScrambleCommand ? "" : " opacity-0"}`}
-                >
-                  {LANDING_INSTALL_COMMAND}
-                </TextScramble>
-              </span>
-              <motion.span
-                className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center border border-border/70 bg-background transition-transform duration-200 ease-out group-hover:scale-105"
-                animate={didCopy ? { scale: [1, 1.12, 1], y: [0, -0.5, 0] } : { scale: 1, y: 0 }}
-                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {didCopy ? (
-                  <Check className="size-3 text-primary" />
-                ) : (
-                  <Copy className="size-3 opacity-70 transition-opacity group-hover:opacity-100" />
-                )}
-              </motion.span>
-            </Button>
+            <InstallCommandButton
+              scrambleTrigger={shouldScrambleCommand}
+              className="h-11 w-full sm:w-auto border-border bg-background/80 px-4 text-muted-foreground backdrop-blur-sm hover:text-foreground"
+            />
           </motion.div>
         </div>
       </div>

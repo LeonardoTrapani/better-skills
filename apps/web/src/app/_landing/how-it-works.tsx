@@ -2,6 +2,7 @@
 
 import { GeistPixelSquare } from "geist/font/pixel";
 
+import { CornerInsetMarks } from "./corner-inset-marks";
 import { LandingContainer, SectionTailSpacer } from "./design-system";
 import { SectionBackdrop, SectionHeader } from "./grid-background";
 
@@ -16,7 +17,7 @@ const steps: {
 }[] = [
   {
     num: "01",
-    title: "Start from the Terminal with the",
+    title: "Start from the Terminal through our",
     titleAccent: " CLI.",
     description:
       "Install Better Skills CLI, sign in once, and sync your local vault so the right context is already in place when work begins.",
@@ -202,48 +203,6 @@ function StepIllustration({ pattern }: { pattern: StepPatternVariant }) {
   );
 }
 
-function CornerInsetMarks() {
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 h-px w-7 bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 h-7 w-px bg-border transition-colors duration-200 group-hover:bg-foreground/45"
-      />
-    </>
-  );
-}
-
 export default function HowItWorks() {
   return (
     <section className="relative overflow-hidden">
@@ -278,9 +237,10 @@ export default function HowItWorks() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="h-px w-10 bg-primary/70 transition-colors duration-200" />
+              <div className="flex items-center">
+                {/* <span className="h-2 w-2 bg-background border border-border rounded-xs transition-colors duration-200" /> */}
                 <span className="h-px flex-1 bg-border transition-colors duration-200" />
+                <span className="h-2 w-2 bg-background border border-border rounded-xs transition-colors duration-200" />
               </div>
 
               <div className="flex flex-col gap-4">
@@ -291,7 +251,9 @@ export default function HowItWorks() {
                   <span className="text-primary">{step.titleAccent}</span>
                 </h3>
 
-                <p className="text-sm text-muted-foreground">{step.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed text-pretty">
+                  {step.description}
+                </p>
               </div>
             </div>
           ))}

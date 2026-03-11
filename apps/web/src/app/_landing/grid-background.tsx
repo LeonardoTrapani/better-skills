@@ -847,17 +847,18 @@ export function SectionBackdrop({
       {/* ── Mobile decorations ── */}
       <div className="lg:hidden">
         {/* Structural lines */}
-        <div className="absolute top-0 bottom-0 left-4 w-px bg-border" />
-        <div className="absolute top-0 bottom-0 right-4 w-px bg-border" />
-        <div className="absolute top-1/2 left-4 right-4 h-px bg-border" />
+        <div className="absolute top-14 left-4 h-px w-[70px] bg-border" />
+        <div className="absolute top-14 right-4 h-px w-[70px] bg-border" />
+        <div className="absolute top-14 left-[80px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+        <div className="absolute top-14 right-[80px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
 
         {/* Graph accents — mobile */}
-        <div className="absolute left-6 top-20">
+        {/* <div className="absolute left-6 top-20">
           <SkillGraph variant="a" />
         </div>
         <div className="absolute right-6 top-20">
           <SkillGraph variant="a" mirror />
-        </div>
+        </div> */}
 
         {/* Extra mobile-only elements per variant */}
         {variant === "features" && (
@@ -923,83 +924,57 @@ export function SectionBackdrop({
         {/* Per-variant graph decorations — positioned cleanly below/above rules */}
         {variant === "default" && (
           <>
-            <div className="absolute left-4 top-30">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-30">
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="a" size="md" mirror />
+            </div>
+            <div className="absolute left-4 bottom-12">
+              <SkillGraph variant="a" size="md" />
+            </div>
+            <div className="absolute right-4 bottom-12">
               <SkillGraph variant="a" size="md" mirror />
             </div>
           </>
         )}
         {variant === "features" && (
           <>
-            <div className="absolute left-4 top-28">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28">
+            <div className="absolute right-4 top-26">
               <SkillGraph variant="c" size="md" mirror />
             </div>
-            <DotBlock
-              rows={3}
-              cols={5}
-              seed={5501}
-              cellSize={4}
-              gap={2}
-              className="absolute left-[60px] top-24"
-            />
-            <DotBlock
-              rows={3}
-              cols={5}
-              seed={5502}
-              cellSize={4}
-              gap={2}
-              className="absolute right-[60px] top-24"
-            />
           </>
         )}
         {variant === "how-it-works" && (
           <>
-            <div className="absolute left-4 top-25">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="b" size="md" />
             </div>
-            <div className="absolute right-4 top-25">
+            <div className="absolute right-4 top-26">
               <SkillGraph variant="b" size="md" mirror />
             </div>
-            <DotBlock
-              rows={3}
-              cols={6}
-              seed={5503}
-              cellSize={4}
-              gap={2}
-              className="absolute left-[50px] bottom-24"
-            />
-            <DotBlock
-              rows={3}
-              cols={6}
-              seed={5504}
-              cellSize={4}
-              gap={2}
-              className="absolute right-[50px] bottom-24"
-            />
           </>
         )}
         {variant === "pricing" && (
           <>
-            <div className="absolute left-4 top-28">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="c" size="md" />
             </div>
-            <div className="absolute right-4 top-28">
-              <SkillGraph variant="a" size="md" mirror />
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="b" size="md" mirror />
             </div>
           </>
         )}
         {variant === "cli-demo" && (
           <>
-            <div className="absolute left-4 top-28">
+            <div className="absolute left-4 bottom-12">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28">
-              <SkillGraph variant="b" size="md" mirror />
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="a" size="md" mirror />
             </div>
           </>
         )}
@@ -1071,12 +1046,12 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ decorator, headline, subtitle }: SectionHeaderProps) {
   return (
-    <div className="relative flex flex-col items-center gap-4 px-14 py-20 text-center lg:py-24">
+    <div className="relative flex flex-col items-center gap-4 px-8 py-20 text-center lg:py-24">
       <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
         // {decorator} \\
       </p>
       <h2
-        className={`text-3xl font-semibold tracking-tight text-foreground sm:text-[2.75rem] ${GeistPixelSquare.className}`}
+        className={`text-[2rem] text-balance font-semibold tracking-tight leading-tight text-foreground sm:text-[2.75rem] ${GeistPixelSquare.className}`}
       >
         {headline}
       </h2>

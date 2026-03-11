@@ -95,7 +95,9 @@ export default function Features() {
                 )}
               </h3>
 
-              <p className="text-sm leading-relaxed text-muted-foreground">{feat.description}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                {feat.description}
+              </p>
             </div>
           ))}
         </div>

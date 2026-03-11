@@ -47,7 +47,7 @@ function CommandBlock({ command }: { command: string }) {
         <span className="shrink-0 select-none text-primary">$</span>
         <code className="min-w-0 flex-1 break-all">{command}</code>
       </span>
-      <span className="inline-flex size-6 shrink-0 items-center justify-center border border-border/70 bg-background sm:size-7">
+      <span className="inline-flex size-6 shrink-0 items-center justify-center border border-border bg-background sm:size-7">
         {copied ? (
           <Check className="size-3 text-primary sm:size-4" aria-hidden="true" />
         ) : (

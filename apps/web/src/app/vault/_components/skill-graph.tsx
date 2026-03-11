@@ -108,7 +108,7 @@ export default function SkillGraph({ height, className, variant = "panel" }: Ski
             {vaultsInGraph.map((vault) => (
               <span key={vault.id} className="inline-flex items-center gap-1">
                 <span
-                  className="inline-block size-2 border border-border/70"
+                  className="inline-block size-2 border border-border"
                   style={{
                     backgroundColor: vault.isEnabled
                       ? (getEffectiveVaultColor(vault) ?? "var(--primary)")
