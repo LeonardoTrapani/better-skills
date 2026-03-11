@@ -21,6 +21,7 @@ const HERO_CORE_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UN
 
 type IntersectionCorner = "tl" | "tr" | "bl" | "br";
 type BackdropVariant = "default" | "how-it-works" | "features" | "pricing" | "cli-demo";
+type PageGridIntersectionEdge = "top" | "bottom";
 
 const CROSS_INTERSECTION: readonly IntersectionCorner[] = ["tl", "tr", "bl", "br"];
 const LEFT_T_INTERSECTION: readonly IntersectionCorner[] = ["tl", "bl"];
@@ -30,6 +31,10 @@ const RIGHT_EDGE_INTERSECTION: readonly IntersectionCorner[] = ["tl", "bl"];
 
 function rowToY(row: number) {
   return `${row}px`;
+}
+
+function edgeToY(edge: PageGridIntersectionEdge) {
+  return edge === "top" ? "0px" : "100%";
 }
 
 function renderRowIntersections({
@@ -45,6 +50,22 @@ function renderRowIntersections({
 }) {
   return rows.map((row) => (
     <Intersection key={`${keyPrefix}-${row}`} x={x} y={rowToY(row)} which={which} />
+  ));
+}
+
+function renderEdgeIntersections({
+  edges,
+  x,
+  which,
+  keyPrefix,
+}: {
+  edges: readonly PageGridIntersectionEdge[];
+  x: string;
+  which: readonly IntersectionCorner[];
+  keyPrefix: string;
+}) {
+  return edges.map((edge) => (
+    <Intersection key={`${keyPrefix}-${edge}`} x={x} y={edgeToY(edge)} which={which} />
   ));
 }
 
@@ -1006,6 +1027,74 @@ export function PageOverlay() {
   );
 }
 
+interface PageGridIntersectionMarkersProps {
+  edges?: readonly PageGridIntersectionEdge[];
+  className?: string;
+}
+
+/**
+ * Reusable markers for any horizontal landing boundary that intersects the
+ * page-level vertical grid borders. Drop this inside a `relative` container.
+ */
+export function PageGridIntersectionMarkers({
+  edges = ["top", "bottom"],
+  className,
+}: PageGridIntersectionMarkersProps) {
+  return (
+    <div
+      className={cn("pointer-events-none absolute inset-0 overflow-visible", className)}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 lg:hidden">
+        {renderEdgeIntersections({
+          edges,
+          x: "1rem",
+          which: CROSS_INTERSECTION,
+          keyPrefix: "page-grid-mobile-left",
+        })}
+        {renderEdgeIntersections({
+          edges,
+          x: "calc(100% - 1rem)",
+          which: CROSS_INTERSECTION,
+          keyPrefix: "page-grid-mobile-right",
+        })}
+      </div>
+
+      <div className="absolute inset-0 hidden lg:block">
+        <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-0 bottom-0 z-[1]">
+          {renderEdgeIntersections({
+            edges,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-outer-left",
+          })}
+          {renderEdgeIntersections({
+            edges,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-outer-right",
+          })}
+        </CenteredFrame>
+
+        <LandingCenteredOverlay className="top-0 bottom-0 z-[1]">
+          {renderEdgeIntersections({
+            edges,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-inner-left",
+          })}
+          {renderEdgeIntersections({
+            edges,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-inner-right",
+          })}
+        </LandingCenteredOverlay>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Section divider with index number                                 */
 /* ------------------------------------------------------------------ */
@@ -1019,7 +1108,8 @@ export function SectionDivider({ index, total, label }: SectionDividerProps) {
   const idx = String(index).padStart(2, "0");
   const tot = String(total).padStart(2, "0");
   return (
-    <div className="border-y border-border">
+    <div className="relative border-y border-border">
+      <PageGridIntersectionMarkers />
       <div className="flex w-full justify-center py-6">
         <div className={cn("relative w-full px-4 lg:px-0", LANDING_CONTENT_MAX_WIDTH_CLASS)}>
           <span className="absolute lg:left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-primary" />
