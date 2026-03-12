@@ -86,18 +86,22 @@ export default function Features() {
                 </span>
               </div>
 
-              <h3 className="text-lg text-foreground">
-                <span className={`font-semibold ${GeistPixelSquare.className}`}>{feat.title}</span>
-                {feat.titleBold && (
-                  <span className={`text-primary ${GeistPixelSquare.className}`}>
-                    {feat.titleBold}
+              <div className="flex flex-col gap-2">
+                <h3 className="text-lg text-foreground">
+                  <span className={`font-semibold ${GeistPixelSquare.className}`}>
+                    {feat.title}
                   </span>
-                )}
-              </h3>
+                  {feat.titleBold && (
+                    <span className={`text-primary ${GeistPixelSquare.className}`}>
+                      {feat.titleBold}
+                    </span>
+                  )}
+                </h3>
 
-              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-                {feat.description}
-              </p>
+                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {feat.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>

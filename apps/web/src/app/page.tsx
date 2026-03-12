@@ -12,7 +12,7 @@ import HowItWorks from "@/app/_landing/how-it-works";
 import WhatIsASkill from "@/app/_landing/what-is-a-skill";
 import { getSkillCount } from "@/lib/landing/get-skill-count";
 
-const TOTAL_SECTIONS = 9;
+const TOTAL_SECTIONS = 8;
 
 export default async function Home() {
   const skillCount = await getSkillCount();
@@ -41,13 +41,13 @@ export default async function Home() {
       <SectionDivider index={6} total={TOTAL_SECTIONS} label="Developer Experience" />
       <CliDemo />
 
-      <SectionDivider index={7} total={TOTAL_SECTIONS} label="Enterprise" />
-      <Enterprise />
+      {/* <SectionDivider index={7} total={TOTAL_SECTIONS} label="Enterprise" />
+      <Enterprise /> */}
 
-      <SectionDivider index={8} total={TOTAL_SECTIONS} label="Pricing" />
+      <SectionDivider index={7} total={TOTAL_SECTIONS} label="Pricing" />
       <Pricing />
 
-      <SectionDivider index={9} total={TOTAL_SECTIONS} label="Get Started" />
+      <SectionDivider index={8} total={TOTAL_SECTIONS} label="Get Started" />
       <CTA />
 
       <Footer />

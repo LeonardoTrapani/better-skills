@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
-import { SectionBackdrop } from "../grid-background";
-import { LandingContainer, SectionTailSpacer } from "../design-system";
+import { GeistPixelSquare } from "geist/font/pixel";
 
+import { Button } from "@/components/ui/button";
+import { LandingContainer, SectionTailSpacer } from "./design-system";
+import { SectionBackdrop } from "./grid-background";
+import { useLandingCta } from "./use-landing-cta";
+
+/* ── Pain-point data with schematic SVG illustrations ── */
 const painPoints = [
   {
     id: "scattered",
     title: "Skills live in scattered places",
     detail:
-      "A prompt in Notion. A guide in Confluence. A context file buried in a local folder. A system prompt hardcoded in an IDE setting. Nobody knows which version is current, or even where to look.",
+      "A prompt in Notion. A guide in Confluence. A context file buried in a local folder. A system prompt hardcoded in an IDE setting. Nobody knows which version is current, or where to look.",
     illustration: (
-      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[400px]" aria-hidden="true">
+      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[360px]" aria-hidden="true">
         {/* Notion */}
         <rect
           x="20"
@@ -237,33 +242,33 @@ const painPoints = [
           Slack
         </text>
 
-        {/* Chaotic connection lines */}
+        {/* Chaotic dashed connections */}
         <path
           d="M90 45 Q160 50 230 35"
           stroke="var(--primary)"
-          strokeOpacity="0.15"
-          strokeWidth="2"
+          strokeOpacity="0.18"
+          strokeWidth="1.5"
           strokeDasharray="4 4"
         />
         <path
           d="M55 70 Q90 105 125 115"
           stroke="var(--primary)"
-          strokeOpacity="0.15"
-          strokeWidth="2"
+          strokeOpacity="0.18"
+          strokeWidth="1.5"
           strokeDasharray="4 4"
         />
         <path
           d="M195 115 Q220 130 230 165"
           stroke="var(--primary)"
-          strokeOpacity="0.15"
-          strokeWidth="2"
+          strokeOpacity="0.18"
+          strokeWidth="1.5"
           strokeDasharray="4 4"
         />
         <path
           d="M90 165 Q160 120 160 115"
           stroke="var(--primary)"
-          strokeOpacity="0.15"
-          strokeWidth="2"
+          strokeOpacity="0.18"
+          strokeWidth="1.5"
           strokeDasharray="4 4"
         />
 
@@ -275,7 +280,7 @@ const painPoints = [
           fontSize="24"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
-          fillOpacity="0.15"
+          fillOpacity="0.12"
         >
           ?
         </text>
@@ -286,7 +291,7 @@ const painPoints = [
           fontSize="18"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
-          fillOpacity="0.12"
+          fillOpacity="0.1"
         >
           ?
         </text>
@@ -297,7 +302,7 @@ const painPoints = [
           fontSize="18"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
-          fillOpacity="0.12"
+          fillOpacity="0.1"
         >
           ?
         </text>
@@ -310,8 +315,21 @@ const painPoints = [
     detail:
       "Every time you switch between Claude Code, Cursor, or Codex, you copy-paste the same context again. There is no shared source of truth — the knowledge lives on your clipboard.",
     illustration: (
-      <svg viewBox="0 0 320 180" fill="none" className="w-full max-w-[400px]" aria-hidden="true">
-        {/* Clipboard/Copy symbol at top */}
+      <svg viewBox="0 0 320 180" fill="none" className="w-full max-w-[360px]" aria-hidden="true">
+        <defs>
+          <marker
+            id="wf-arrowhead"
+            markerWidth="10"
+            markerHeight="10"
+            refX="5"
+            refY="3"
+            orient="auto"
+          >
+            <polygon points="0 0, 6 3, 0 6" fill="var(--primary)" fillOpacity="0.2" />
+          </marker>
+        </defs>
+
+        {/* Clipboard source */}
         <rect
           x="135"
           y="15"
@@ -319,7 +337,7 @@ const painPoints = [
           height="60"
           rx="3"
           fill="var(--primary)"
-          fillOpacity="0.08"
+          fillOpacity="0.07"
           stroke="var(--primary)"
           strokeWidth="2"
           strokeOpacity="0.3"
@@ -353,17 +371,17 @@ const painPoints = [
         />
         <text
           x="160"
-          y="65"
+          y="67"
           textAnchor="middle"
-          fontSize="9"
+          fontSize="8"
           fontFamily="var(--font-mono)"
           fill="var(--primary)"
-          fillOpacity="0.6"
+          fillOpacity="0.5"
         >
           COPY
         </text>
 
-        {/* Claude Code */}
+        {/* Claude */}
         <rect
           x="20"
           y="110"
@@ -406,6 +424,17 @@ const painPoints = [
           fillOpacity="0.6"
         >
           Claude
+        </text>
+        <text
+          x="60"
+          y="170"
+          textAnchor="middle"
+          fontSize="8"
+          fontFamily="var(--font-mono)"
+          fill="var(--muted-foreground)"
+          fillOpacity="0.4"
+        >
+          v1.2
         </text>
 
         {/* Cursor */}
@@ -452,6 +481,17 @@ const painPoints = [
         >
           Cursor
         </text>
+        <text
+          x="160"
+          y="170"
+          textAnchor="middle"
+          fontSize="8"
+          fontFamily="var(--font-mono)"
+          fill="var(--muted-foreground)"
+          fillOpacity="0.4"
+        >
+          v1.5
+        </text>
 
         {/* Codex */}
         <rect
@@ -497,59 +537,9 @@ const painPoints = [
         >
           Codex
         </text>
-
-        {/* Arrows from clipboard to tools */}
-        <path
-          d="M160 80 L60 105"
-          stroke="var(--primary)"
-          strokeWidth="2"
-          strokeOpacity="0.2"
-          strokeDasharray="4 4"
-          markerEnd="url(#arrowhead)"
-        />
-        <path
-          d="M160 80 L160 105"
-          stroke="var(--primary)"
-          strokeWidth="2"
-          strokeOpacity="0.2"
-          strokeDasharray="4 4"
-          markerEnd="url(#arrowhead)"
-        />
-        <path
-          d="M160 80 L260 105"
-          stroke="var(--primary)"
-          strokeWidth="2"
-          strokeOpacity="0.2"
-          strokeDasharray="4 4"
-          markerEnd="url(#arrowhead)"
-        />
-
-        {/* Version labels showing inconsistency */}
-        <text
-          x="60"
-          y="173"
-          textAnchor="middle"
-          fontSize="8"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.4"
-        >
-          v1.2
-        </text>
-        <text
-          x="160"
-          y="173"
-          textAnchor="middle"
-          fontSize="8"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.4"
-        >
-          v1.5
-        </text>
         <text
           x="260"
-          y="173"
+          y="170"
           textAnchor="middle"
           fontSize="8"
           fontFamily="var(--font-mono)"
@@ -559,11 +549,31 @@ const painPoints = [
           v1.3
         </text>
 
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-            <polygon points="0 0, 6 3, 0 6" fill="var(--primary)" fillOpacity="0.2" />
-          </marker>
-        </defs>
+        {/* Arrows from clipboard to tools */}
+        <path
+          d="M160 80 L60 105"
+          stroke="var(--primary)"
+          strokeWidth="1.5"
+          strokeOpacity="0.2"
+          strokeDasharray="4 4"
+          markerEnd="url(#wf-arrowhead)"
+        />
+        <path
+          d="M160 80 L160 105"
+          stroke="var(--primary)"
+          strokeWidth="1.5"
+          strokeOpacity="0.2"
+          strokeDasharray="4 4"
+          markerEnd="url(#wf-arrowhead)"
+        />
+        <path
+          d="M160 80 L260 105"
+          stroke="var(--primary)"
+          strokeWidth="1.5"
+          strokeOpacity="0.2"
+          strokeDasharray="4 4"
+          markerEnd="url(#wf-arrowhead)"
+        />
       </svg>
     ),
   },
@@ -573,9 +583,8 @@ const painPoints = [
     detail:
       "Prompts get stale. Guides go out of date. Nobody notices until an agent does something wrong. There is no versioning, no ownership, no audit trail.",
     illustration: (
-      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[400px]" aria-hidden="true">
-        {/* Timeline visualization with degrading quality */}
-        {/* Current version - bright and clear */}
+      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[360px]" aria-hidden="true">
+        {/* Current version — bright */}
         <rect
           x="30"
           y="30"
@@ -601,7 +610,7 @@ const painPoints = [
           v1.0 — current
         </text>
 
-        {/* 3 months ago - fading */}
+        {/* 3 months ago */}
         <rect
           x="30"
           y="70"
@@ -637,7 +646,7 @@ const painPoints = [
           ?
         </text>
 
-        {/* 8 months ago - more faded */}
+        {/* 8 months ago */}
         <rect
           x="30"
           y="110"
@@ -659,7 +668,7 @@ const painPoints = [
           fill="var(--foreground)"
           fillOpacity="0.4"
         >
-          v0.8 — 8 months ago
+          v0.8 — 8 months
         </text>
         <text
           x="200"
@@ -668,12 +677,12 @@ const painPoints = [
           fontSize="18"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
-          fillOpacity="0.25"
+          fillOpacity="0.2"
         >
           ?
         </text>
 
-        {/* 1 year ago - very faded */}
+        {/* 1 year ago */}
         <rect
           x="30"
           y="150"
@@ -695,7 +704,7 @@ const painPoints = [
           fill="var(--foreground)"
           fillOpacity="0.3"
         >
-          v0.1 — 1 year
+          v0.1 — 1 yr
         </text>
         <text
           x="140"
@@ -709,7 +718,7 @@ const painPoints = [
           ?
         </text>
 
-        {/* Decay indicator - clock/time symbol */}
+        {/* Clock symbol */}
         <circle
           cx="280"
           cy="100"
@@ -738,7 +747,7 @@ const painPoints = [
           strokeOpacity="0.2"
         />
 
-        {/* Downward trend arrow */}
+        {/* Downward trend */}
         <path
           d="M240 45 L200 125"
           stroke="var(--muted-foreground)"
@@ -760,8 +769,8 @@ const painPoints = [
     detail:
       "A new engineer joins and has no idea what skills exist. No roles, no access controls, no way to understand who manages what — or what the team's agents are actually capable of.",
     illustration: (
-      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[400px]" aria-hidden="true">
-        {/* Three confused team members */}
+      <svg viewBox="0 0 320 200" fill="none" className="w-full max-w-[360px]" aria-hidden="true">
+        {/* Three team members */}
         <circle
           cx="80"
           cy="50"
@@ -784,7 +793,7 @@ const painPoints = [
           x="80"
           y="90"
           textAnchor="middle"
-          fontSize="10"
+          fontSize="9"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
           fillOpacity="0.4"
@@ -814,7 +823,7 @@ const painPoints = [
           x="160"
           y="90"
           textAnchor="middle"
-          fontSize="10"
+          fontSize="9"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
           fillOpacity="0.4"
@@ -844,7 +853,7 @@ const painPoints = [
           x="240"
           y="90"
           textAnchor="middle"
-          fontSize="10"
+          fontSize="9"
           fontFamily="var(--font-mono)"
           fill="var(--muted-foreground)"
           fillOpacity="0.4"
@@ -852,7 +861,7 @@ const painPoints = [
           member?
         </text>
 
-        {/* Unclear knowledge box */}
+        {/* Shared but unclear knowledge box */}
         <rect
           x="80"
           y="115"
@@ -863,7 +872,7 @@ const painPoints = [
           strokeWidth="2"
           strokeDasharray="8 8"
           fill="var(--muted)"
-          fillOpacity="0.05"
+          fillOpacity="0.04"
         />
         <text
           x="160"
@@ -899,53 +908,7 @@ const painPoints = [
           deployment.md
         </text>
 
-        {/* Question marks floating around */}
-        <text
-          x="45"
-          y="115"
-          textAnchor="middle"
-          fontSize="18"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.15"
-        >
-          ?
-        </text>
-        <text
-          x="275"
-          y="115"
-          textAnchor="middle"
-          fontSize="18"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.15"
-        >
-          ?
-        </text>
-        <text
-          x="30"
-          y="155"
-          textAnchor="middle"
-          fontSize="22"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.12"
-        >
-          ?
-        </text>
-        <text
-          x="290"
-          y="155"
-          textAnchor="middle"
-          fontSize="22"
-          fontFamily="var(--font-mono)"
-          fill="var(--muted-foreground)"
-          fillOpacity="0.12"
-        >
-          ?
-        </text>
-
-        {/* Disconnected lines showing no clear ownership */}
+        {/* Disconnected ownership lines */}
         <line
           x1="80"
           y1="72"
@@ -976,61 +939,100 @@ const painPoints = [
           strokeOpacity="0.15"
           strokeDasharray="4 4"
         />
+
+        {/* Floating question marks */}
+        <text
+          x="45"
+          y="115"
+          textAnchor="middle"
+          fontSize="18"
+          fontFamily="var(--font-mono)"
+          fill="var(--muted-foreground)"
+          fillOpacity="0.12"
+        >
+          ?
+        </text>
+        <text
+          x="275"
+          y="115"
+          textAnchor="middle"
+          fontSize="18"
+          fontFamily="var(--font-mono)"
+          fill="var(--muted-foreground)"
+          fillOpacity="0.12"
+        >
+          ?
+        </text>
       </svg>
     ),
   },
 ];
 
 export default function WhyWorkflowsFail() {
+  const { ctaHref, ctaLabel } = useLandingCta();
   const [active, setActive] = useState(0);
-  const point = painPoints[active]!;
-
-  // Auto-rotate tabs every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActive((prev) => (prev + 1) % painPoints.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <section id="why-workflows-fail" className="relative overflow-hidden">
       <SectionBackdrop variant="problem" />
+
       <LandingContainer>
-        <div className="flex flex-col border-y border-border/50 bg-background lg:flex-row">
-          {/* Left: Vertical tabs + title + CTAs (50% width on desktop) */}
-          <div className="flex flex-col lg:w-5/11 border-r border-border/70 lg:order-1 order-2">
-            {/* Title section - NO PARAGRAPH */}
-            <div className="flex flex-col gap-4 px-8 pb-8 pt-16 lg:px-12">
-              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="flex flex-col overflow-hidden border border-border bg-background lg:flex-row">
+          {/* Left: section title + vertical tabs */}
+          <div className="flex flex-col border-b border-border lg:w-5/12 lg:border-b-0 lg:border-r">
+            {/* Title area */}
+            <div className="px-8 pb-8 pt-16 lg:px-10 lg:pt-14">
+              <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
                 // The Problem \\
               </p>
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground leading-[1.15] sm:text-4xl">
-                Why current skill workflows <span className="text-primary">break down</span>
+              <h2
+                className={`mt-4 text-[2rem] text-balance leading-tight tracking-tight text-foreground sm:text-[2.5rem] ${GeistPixelSquare.className}`}
+              >
+                Why workflows
+                <br />
+                <span className="text-primary">break down</span>
               </h2>
             </div>
 
-            {/* Vertical tabs */}
-            <div className="flex-1 flex flex-col">
+            {/* Vertical tab list */}
+            <div
+              role="tablist"
+              aria-label="Problem areas"
+              className="flex flex-1 flex-col border-t border-border"
+            >
               {painPoints.map((p, i) => (
                 <button
                   key={p.id}
+                  role="tab"
+                  id={`wf-tab-${p.id}`}
+                  aria-selected={active === i}
+                  aria-controls={`wf-panel-${p.id}`}
                   type="button"
+                  tabIndex={active === i ? 0 : -1}
                   onClick={() => setActive(i)}
-                  className={`group flex items-center gap-4 px-12 py-6 text-left transition-all duration-300 hover:bg-muted/20 ${
-                    active === i ? "bg-muted/30" : ""
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActive((prev) => (prev + 1) % painPoints.length);
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActive((prev) => (prev - 1 + painPoints.length) % painPoints.length);
+                    }
+                  }}
+                  className={`group flex cursor-pointer items-center gap-4 border-b border-border px-8 py-5 text-left last:border-b-0 transition-colors duration-200 hover:bg-muted/[0.04] lg:px-10 ${
+                    active === i ? "bg-muted/[0.06]" : ""
                   }`}
                 >
                   <span
-                    className={`h-px flex-shrink-0 transition-all duration-300 ${
-                      active === i ? "w-7 bg-primary" : "w-3 bg-muted-foreground/30"
+                    aria-hidden="true"
+                    className={`h-px shrink-0 bg-primary transition-all duration-200 ${
+                      active === i ? "w-6 opacity-100" : "w-2.5 opacity-30"
                     }`}
                   />
                   <span
-                    className={`font-medium transition-colors ${
-                      active === i
-                        ? "text-foreground"
-                        : "text-muted-foreground group-hover:text-foreground/80"
+                    className={`text-sm font-medium transition-colors duration-200 ${
+                      active === i ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     {p.title}
@@ -1039,51 +1041,61 @@ export default function WhyWorkflowsFail() {
               ))}
             </div>
 
-            {/* CTAs at bottom */}
-            <div className="flex flex-wrap items-center gap-3 px-8 py-8 lg:px-12 lg:py-10 border-t border-border/70">
-              <a
-                href="#enterprise"
-                onClick={(e) => {
-                  const el = document.querySelector<HTMLElement>("#enterprise");
-                  if (!el) return;
-                  e.preventDefault();
-                  window.scrollTo({
-                    top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 60),
-                    behavior: "smooth",
-                  });
-                }}
-                className="inline-flex h-11 items-center gap-2 border border-border bg-background px-6 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            {/* CTAs */}
+            <div className="flex flex-wrap items-center gap-3 border-t border-border px-8 py-8 lg:px-10 lg:py-10">
+              <Button
+                variant="outline"
+                animated
+                className="h-10 gap-2 px-5 text-xs"
+                render={<a href="mailto:hello@better-skills.dev" rel="noopener noreferrer" />}
               >
-                See enterprise
-                <ArrowRight className="size-4" />
-              </a>
-              <Link
-                href={"/login" as Route}
-                className="inline-flex h-11 items-center gap-2 bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                Talk to us
+                <ArrowRight className="size-3" aria-hidden="true" />
+              </Button>
+              <Button
+                animated
+                className="h-10 gap-2 px-5 text-xs"
+                render={<Link href={ctaHref as Route} />}
               >
-                Get started
-                <ArrowRight className="size-4" />
-              </Link>
+                {ctaLabel}
+                <ArrowRight className="size-3" aria-hidden="true" />
+              </Button>
             </div>
           </div>
 
-          {/* Right: Animated content (50% width on desktop) - NO PROGRESS DOTS */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-10 px-8 py-16 lg:px-16 lg:py-20 lg:w-6/11 lg:order-2 order-1 min-h-[500px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={point.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center gap-10 text-center w-full"
+          {/* Right: animated illustration + description */}
+          <div className="flex min-h-[420px] flex-1 flex-col items-center justify-center gap-8 px-8 py-16 lg:px-12 lg:py-20">
+            {painPoints.map((p) => (
+              <div
+                key={p.id}
+                role="tabpanel"
+                id={`wf-panel-${p.id}`}
+                aria-labelledby={`wf-tab-${p.id}`}
+                hidden={active !== painPoints.indexOf(p)}
+                className="w-full"
               >
-                <div className="flex justify-center w-full">{point.illustration}</div>
-                <p className="max-w-lg leading-relaxed text-muted-foreground">{point.detail}</p>
-              </motion.div>
-            </AnimatePresence>
+                {active === painPoints.indexOf(p) && (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col items-center gap-8 text-center"
+                    >
+                      <div className="flex w-full max-w-sm justify-center">{p.illustration}</div>
+                      <p className="max-w-md text-sm leading-relaxed text-muted-foreground text-pretty">
+                        {p.detail}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+              </div>
+            ))}
           </div>
         </div>
+
         <SectionTailSpacer />
       </LandingContainer>
     </section>
