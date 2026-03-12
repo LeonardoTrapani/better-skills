@@ -1,6 +1,5 @@
 import CliDemo from "@/app/_landing/cli-demo";
 import CTA from "@/app/_landing/cta";
-import Enterprise from "@/app/_landing/enterprise";
 import Features from "@/app/_landing/features";
 import Footer from "@/app/_landing/footer";
 import HowWeSolveIt from "@/app/_landing/how-we-solve-it";

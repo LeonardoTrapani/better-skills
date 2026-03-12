@@ -1,9 +1,8 @@
-"use client";
-
 import { Brain, TerminalSquare, Globe, Bot, Network, RefreshCcw } from "lucide-react";
-import { SectionHeader, SectionBackdrop } from "./grid-background";
-import { LandingContainer, SectionTailSpacer } from "./design-system";
 import { GeistPixelSquare } from "geist/font/pixel";
+
+import { SectionHeader } from "./grid-background";
+import { LandingSection } from "./landing-section";
 
 const features = [
   {
@@ -58,55 +57,48 @@ const features = [
 
 export default function Features() {
   return (
-    <section id="features" className="relative overflow-hidden">
-      <SectionBackdrop variant="features" />
+    <LandingSection id="features" variant="features" bottomSpacer>
+      <SectionHeader
+        decorator="Features"
+        headline={
+          <>
+            Everything your agent
+            <span className="text-primary"> needs</span>
+          </>
+        }
+        subtitle="Fully interactive through an API, MCP, or CLI. Open source and extensible."
+      />
 
-      <LandingContainer>
-        <SectionHeader
-          decorator="Features"
-          headline={
-            <>
-              Everything your agent
-              <span className="text-primary"> needs</span>
-            </>
-          }
-          subtitle="Fully interactive through an API, MCP, or CLI. Open source and extensible."
-        />
-
-        <div className="flex flex-wrap gap-px border border-border bg-border">
-          {features.map((feat) => (
-            <div
-              key={feat.label}
-              className="flex min-w-[280px] flex-1 basis-full flex-col gap-4 bg-background p-10 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 sm:basis-[calc(50%-1px)] lg:basis-[calc(33.333%-1px)] group"
-            >
-              <div className="flex items-center gap-3 transition-all">
-                <feat.icon className="size-4 text-primary" />
-                <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground group-hover:text-foreground transition-all">
-                  {feat.label}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <h3 className="text-lg text-foreground">
-                  <span className={`font-semibold ${GeistPixelSquare.className}`}>
-                    {feat.title}
-                  </span>
-                  {feat.titleBold && (
-                    <span className={`text-primary ${GeistPixelSquare.className}`}>
-                      {feat.titleBold}
-                    </span>
-                  )}
-                </h3>
-
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-                  {feat.description}
-                </p>
-              </div>
+      <div className="flex flex-wrap gap-px border border-border bg-border">
+        {features.map((feat) => (
+          <div
+            key={feat.label}
+            className="flex min-w-[280px] flex-1 basis-full flex-col gap-4 bg-background p-10 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 sm:basis-[calc(50%-1px)] lg:basis-[calc(33.333%-1px)] group"
+          >
+            <div className="flex items-center gap-3 transition-all">
+              <feat.icon className="size-4 text-primary" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground group-hover:text-foreground transition-all">
+                {feat.label}
+              </span>
             </div>
-          ))}
-        </div>
-        <SectionTailSpacer />
-      </LandingContainer>
-    </section>
+
+            <div className="flex flex-col gap-2">
+              <h3 className="text-lg text-foreground">
+                <span className={`font-semibold ${GeistPixelSquare.className}`}>{feat.title}</span>
+                {feat.titleBold && (
+                  <span className={`text-primary ${GeistPixelSquare.className}`}>
+                    {feat.titleBold}
+                  </span>
+                )}
+              </h3>
+
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                {feat.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </LandingSection>
   );
 }

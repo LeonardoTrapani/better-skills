@@ -1,17 +1,16 @@
-import { LandingContainer, SectionTailSpacer } from "./design-system";
-import { SectionBackdrop } from "./grid-background";
+import { LandingSection } from "./landing-section";
 import SkillTreeShowcase from "./skill-tree-showcase";
 
 export default function WhatIsASkill() {
   return (
-    <section id="what-is-a-skill" className="relative overflow-hidden scroll-mt-20">
-      <SectionBackdrop variant="cli-demo" />
-
-      <LandingContainer>
-        <SectionTailSpacer />
-        <SkillTreeShowcase />
-        <SectionTailSpacer />
-      </LandingContainer>
-    </section>
+    <LandingSection
+      id="what-is-a-skill"
+      className="scroll-mt-20"
+      variant="cli-demo"
+      topSpacer
+      bottomSpacer
+    >
+      <SkillTreeShowcase />
+    </LandingSection>
   );
 }

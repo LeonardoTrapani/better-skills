@@ -7,6 +7,7 @@ import { GeistPixelSquare } from "geist/font/pixel";
 
 import { File, FileTree, Folder } from "@/components/ui/file-tree";
 import { useIsDesktopLg } from "@/hooks/use-is-desktop-lg";
+import { LandingWindowHeader } from "./landing-window-header";
 
 type SkillShowcase = {
   id: string;
@@ -127,16 +128,7 @@ export default function SkillTreeShowcase() {
         className="flex w-full flex-col overflow-hidden bg-muted/[0.25] lg:min-h-0 lg:flex-1"
         style={isDesktopLg && desktopExplorerHeight ? { height: desktopExplorerHeight } : undefined}
       >
-        <div className="flex border-b border-border">
-          <div className="flex w-auto items-center gap-2 border-r border-border px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
-            <span className="inline-block size-2 border border-border/80 bg-muted sm:size-2.5" />
-            <span className="inline-block size-2 border border-border/80 bg-muted sm:size-2.5" />
-            <span className="inline-block size-2 border border-border/80 bg-muted sm:size-2.5" />
-          </div>
-          <div className="px-5 py-3 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground sm:px-6 sm:py-4">
-            Vault Explorer
-          </div>
-        </div>
+        <LandingWindowHeader label="Vault Explorer" />
 
         <div className="min-h-[380px] border-b border-border lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:border-b-0">
           <div className="w-full text-left">

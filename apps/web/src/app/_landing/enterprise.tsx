@@ -2,8 +2,8 @@ import { ArrowRight, Building2, Link2, Shield, Users } from "lucide-react";
 import { GeistPixelSquare } from "geist/font/pixel";
 
 import { Button } from "@/components/ui/button";
-import { LandingContainer, SectionTailSpacer } from "./design-system";
-import { SectionBackdrop, SectionHeader } from "./grid-background";
+import { SectionHeader } from "./grid-background";
+import { LandingSection } from "./landing-section";
 
 const enterpriseCapabilities = [
   {
@@ -117,96 +117,90 @@ function EnterpriseBlueprint() {
 
 export default function Enterprise() {
   return (
-    <section id="enterprise" className="relative overflow-hidden scroll-mt-20">
-      <SectionBackdrop variant="enterprise" />
+    <LandingSection id="enterprise" className="scroll-mt-20" variant="enterprise" bottomSpacer>
+      <SectionHeader
+        decorator="Enterprise"
+        headline={
+          <>
+            One company system, <span className="text-primary">multiple team vaults</span>
+          </>
+        }
+        subtitle="Bring shared governance to agent knowledge without forcing every team into the same folder, workflow, or toolchain."
+      />
 
-      <LandingContainer>
-        <SectionHeader
-          decorator="Enterprise"
-          headline={
-            <>
-              One company system, <span className="text-primary">multiple team vaults</span>
-            </>
-          }
-          subtitle="Bring shared governance to agent knowledge without forcing every team into the same folder, workflow, or toolchain."
-        />
+      <div className="overflow-hidden border border-border bg-background lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="flex flex-col border-b border-border lg:border-b-0 lg:border-r">
+          <div className="px-8 py-10 lg:px-10 lg:py-12">
+            <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+              // Company Rollout \\
+            </p>
+            <h3
+              className={`mt-4 text-[2rem] text-balance leading-[1.08] tracking-tight text-foreground sm:text-[2.35rem] ${GeistPixelSquare.className}`}
+            >
+              Shared knowledge without <span className="text-primary">copy-paste ops.</span>
+            </h3>
+            <p className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
+              Better Skills gives teams a governed path from authoring to rollout: shared vaults,
+              visible ownership, and synced local mirrors for every engineer who uses agents.
+            </p>
+          </div>
 
-        <div className="overflow-hidden border border-border bg-background lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="flex flex-col border-b border-border lg:border-b-0 lg:border-r">
-            <div className="px-8 py-10 lg:px-10 lg:py-12">
-              <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                // Company Rollout \\
-              </p>
-              <h3
-                className={`mt-4 text-[2rem] text-balance leading-[1.08] tracking-tight text-foreground sm:text-[2.35rem] ${GeistPixelSquare.className}`}
-              >
-                Shared knowledge without <span className="text-primary">copy-paste ops.</span>
-              </h3>
-              <p className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
-                Better Skills gives teams a governed path from authoring to rollout: shared vaults,
-                visible ownership, and synced local mirrors for every engineer who uses agents.
-              </p>
-            </div>
+          <div className="grid gap-px bg-border sm:grid-cols-2">
+            {enterpriseCapabilities.map((item) => {
+              const Icon = item.icon;
 
-            <div className="grid gap-px bg-border sm:grid-cols-2">
-              {enterpriseCapabilities.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div key={item.title} className="bg-background px-6 py-6 lg:px-7 lg:py-7">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex size-8 items-center justify-center border border-border bg-muted/[0.18]">
-                        <Icon aria-hidden="true" className="size-4 text-primary" />
-                      </span>
-                      <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                        {item.label}
-                      </span>
-                    </div>
-
-                    <h4
-                      className={`mt-4 text-[1.2rem] text-balance leading-[1.15] tracking-tight text-foreground ${GeistPixelSquare.className}`}
-                    >
-                      {item.title}
-                    </h4>
-                    <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
-                      {item.description}
-                    </p>
+              return (
+                <div key={item.title} className="bg-background px-6 py-6 lg:px-7 lg:py-7">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex size-8 items-center justify-center border border-border bg-muted/[0.18]">
+                      <Icon aria-hidden="true" className="size-4 text-primary" />
+                    </span>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                      {item.label}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          <div className="border-t border-border lg:border-t-0">
-            <EnterpriseBlueprint />
+                  <h4
+                    className={`mt-4 text-[1.2rem] text-balance leading-[1.15] tracking-tight text-foreground ${GeistPixelSquare.className}`}
+                  >
+                    {item.title}
+                  </h4>
+                  <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3 pt-8 sm:flex-row sm:justify-center">
-          <Button
-            size="lg"
-            animated
-            className="h-11 w-full gap-2 px-6 text-sm sm:w-auto"
-            render={<a href="mailto:hello@better-skills.dev" />}
-          >
-            Talk to Founders
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            animated
-            className="h-11 w-full gap-2 px-6 text-sm sm:w-auto"
-            render={<a href="#pricing" />}
-          >
-            See Pricing
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Button>
+        <div className="border-t border-border lg:border-t-0">
+          <EnterpriseBlueprint />
         </div>
+      </div>
 
-        <SectionTailSpacer />
-      </LandingContainer>
-    </section>
+      <div className="flex flex-col items-center gap-3 pt-8 sm:flex-row sm:justify-center">
+        <Button
+          size="lg"
+          animated
+          className="h-11 w-full gap-2 px-6 text-sm sm:w-auto"
+          render={<a href="mailto:hello@better-skills.dev" />}
+        >
+          Talk to Founders
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          animated
+          className="h-11 w-full gap-2 px-6 text-sm sm:w-auto"
+          render={<a href="#pricing" />}
+        >
+          See Pricing
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Button>
+      </div>
+    </LandingSection>
   );
 }
