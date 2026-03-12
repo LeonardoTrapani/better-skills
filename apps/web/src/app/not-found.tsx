@@ -321,8 +321,8 @@ export default function NotFound() {
           <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[910px] -translate-x-1/2 border-x border-border/40" />
           <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[708px] -translate-x-1/2 border-x border-border/40">
             {/* Accent marks */}
-            <span className="pointer-events-none absolute top-[100px] -left-[6px] z-[2] block size-3 -translate-y-1/2 bg-amber-400/90" />
-            <span className="pointer-events-none absolute top-[100px] -right-[6px] z-[2] block size-3 -translate-y-1/2 bg-amber-400/90" />
+            <span className="pointer-events-none absolute top-[100px] -left-[6px] z-[2] block size-3 -translate-y-1/2 bg-amber-500/90" />
+            <span className="pointer-events-none absolute top-[100px] -right-[6px] z-[2] block size-3 -translate-y-1/2 bg-amber-500/90" />
             <div className="absolute top-[100px] left-0 h-px w-full bg-border/40" />
             <div className="absolute bottom-[100px] left-0 h-px w-full bg-border/40" />
           </div>
@@ -390,7 +390,7 @@ export default function NotFound() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.35 }}
-            className="relative w-full max-w-md border border-border/70 bg-background/85 px-5 py-4 text-left backdrop-blur-sm"
+            className="relative w-full max-w-md border border-border bg-background/85 px-5 py-4 text-left backdrop-blur-sm"
           >
             {/* Terminal header */}
             <div className="mb-3 flex items-center gap-2 border-b border-border/50 pb-2.5">

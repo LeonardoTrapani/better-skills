@@ -56,14 +56,14 @@ export function SkillPanel({
       {collapsible ? (
         <button
           type="button"
-          className="flex w-full items-center justify-between border-b border-border/70 px-5 py-3.5 transition-colors duration-150 hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex w-full items-center justify-between border-b border-border px-5 py-3.5 transition-colors duration-150 hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           onClick={() => setOpen((prev) => !prev)}
           aria-expanded={open}
         >
           {headerContent}
         </button>
       ) : (
-        <div className="flex items-center justify-between border-b border-border/70 px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           {headerContent}
         </div>
       )}

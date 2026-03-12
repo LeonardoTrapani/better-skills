@@ -350,7 +350,7 @@ export default function WelcomeWizard() {
                     <Button
                       variant="outline"
                       onClick={goBack}
-                      className="h-9 gap-2 border-border/70 px-4"
+                      className="h-9 gap-2 border-border px-4"
                     >
                       <ArrowLeft className="size-3.5" data-icon="inline-start" />
                       Back
@@ -365,7 +365,7 @@ export default function WelcomeWizard() {
                     variant="outline"
                     onClick={finish}
                     disabled={finishMutation.isPending}
-                    className="h-9 border-border/70 px-4 text-muted-foreground hover:text-foreground"
+                    className="h-9 border-border px-4 text-muted-foreground hover:text-foreground"
                   >
                     Skip for now
                   </Button>

@@ -1,6 +1,123 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+
+import { cn } from "@/lib/utils";
+
+import {
+  LandingCenteredOverlay,
+  LANDING_CONTENT_MAX_WIDTH_CLASS,
+  LANDING_CONTENT_MAX_WIDTH_PX,
+} from "./design-system";
+import { GeistPixelSquare } from "geist/font/pixel";
+
+const HERO_GRID_SIDE_UNIT_PX = 100;
+const HERO_OUTER_FRAME_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX + HERO_GRID_SIDE_UNIT_PX * 2;
+const HERO_MID_COLUMN_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
+const HERO_INNER_COLUMN_WIDTH_PX = LANDING_CONTENT_MAX_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
+const HERO_UPPER_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 2;
+const HERO_CORE_COLUMN_WIDTH_PX = HERO_INNER_COLUMN_WIDTH_PX - HERO_GRID_SIDE_UNIT_PX * 4;
+
+type IntersectionCorner = "tl" | "tr" | "bl" | "br";
+type BackdropVariant =
+  | "default"
+  | "how-it-works"
+  | "features"
+  | "problem"
+  | "skill"
+  | "solution"
+  | "pricing"
+  | "cli-demo"
+  | "enterprise";
+type PageGridIntersectionEdge = "top" | "bottom";
+
+const CROSS_INTERSECTION: readonly IntersectionCorner[] = ["tl", "tr", "bl", "br"];
+const LEFT_T_INTERSECTION: readonly IntersectionCorner[] = ["tl", "bl"];
+const RIGHT_T_INTERSECTION: readonly IntersectionCorner[] = ["tr", "br"];
+const LEFT_EDGE_INTERSECTION: readonly IntersectionCorner[] = ["tr", "br"];
+const RIGHT_EDGE_INTERSECTION: readonly IntersectionCorner[] = ["tl", "bl"];
+
+function rowToY(row: number) {
+  return `${row}px`;
+}
+
+function edgeToY(edge: PageGridIntersectionEdge) {
+  return edge === "top" ? "0px" : "100%";
+}
+
+function renderRowIntersections({
+  rows,
+  x,
+  which,
+  keyPrefix,
+}: {
+  rows: readonly number[];
+  x: string;
+  which: readonly IntersectionCorner[];
+  keyPrefix: string;
+}) {
+  return rows.map((row) => (
+    <Intersection key={`${keyPrefix}-${row}`} x={x} y={rowToY(row)} which={which} />
+  ));
+}
+
+function renderEdgeIntersections({
+  edges,
+  x,
+  which,
+  keyPrefix,
+}: {
+  edges: readonly PageGridIntersectionEdge[];
+  x: string;
+  which: readonly IntersectionCorner[];
+  keyPrefix: string;
+}) {
+  return edges.map((edge) => (
+    <Intersection key={`${keyPrefix}-${edge}`} x={x} y={edgeToY(edge)} which={which} />
+  ));
+}
+
+function renderSideRules({
+  rows,
+  side,
+  width,
+  keyPrefix,
+}: {
+  rows: readonly number[];
+  side: "left" | "right";
+  width: number;
+  keyPrefix: string;
+}) {
+  const sideClass = side === "left" ? "left-0" : "right-0";
+
+  return rows.map((row) => (
+    <div
+      key={`${keyPrefix}-${row}`}
+      className={cn("absolute h-px bg-border", sideClass)}
+      style={{ top: row, width }}
+    />
+  ));
+}
+
+function CenteredFrame({
+  maxWidth,
+  className,
+  children,
+}: {
+  maxWidth: number;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className={cn("absolute left-1/2 -translate-x-1/2", className)}
+      style={{ width: maxWidth }}
+    >
+      {children}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Seeded PRNG                                                       */
@@ -125,71 +242,9 @@ export function DotMatrix({
 function AccentMark({ className }: { className?: string }) {
   return (
     <span
-      className={`pointer-events-none absolute z-100 block size-3 bg-amber-400/90 ${className ?? ""}`}
+      className={`pointer-events-none absolute z-[3] block size-3 rounded-[2px] bg-amber-500 ${className ?? ""}`}
       aria-hidden="true"
     />
-  );
-}
-
-/** Rounded-corner cut SVG (11x11) — placed at box intersections */
-function CurvyCorner({
-  rotate,
-  className,
-}: {
-  rotate: "tl" | "tr" | "bl" | "br";
-  className?: string;
-}) {
-  const rotateClass =
-    rotate === "tl"
-      ? "-rotate-90"
-      : rotate === "tr"
-        ? ""
-        : rotate === "bl"
-          ? "rotate-180"
-          : "rotate-90";
-  const posClass =
-    rotate === "tl"
-      ? "top-0 left-0"
-      : rotate === "tr"
-        ? "top-0 right-0"
-        : rotate === "bl"
-          ? "bottom-0 left-0"
-          : "bottom-0 right-0";
-  return (
-    <svg
-      fill="none"
-      height="11"
-      viewBox="0 0 11 11"
-      width="11"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`absolute ${posClass} ${rotateClass} ${className ?? ""}`}
-      aria-hidden="true"
-    >
-      <path
-        d="M11 1L11 11L10 11L10 7C10 3.68629 7.31371 1 4 1L-4.37114e-08 1L0 -4.80825e-07L11 4.37114e-07L11 1Z"
-        fill="var(--border)"
-        fillOpacity="0.45"
-      />
-    </svg>
-  );
-}
-
-/** A bordered rectangle with optional curvy corners at each corner */
-function CurvyRect({
-  className,
-  corners = "all",
-}: {
-  className?: string;
-  corners?: "all" | "tl" | "tr" | "bl" | "br" | ("tl" | "tr" | "bl" | "br")[];
-}) {
-  const all = corners === "all";
-  const arr = Array.isArray(corners) ? corners : all ? ["tl", "tr", "bl", "br"] : [corners];
-  return (
-    <div className={`pointer-events-none absolute ${className ?? ""}`} aria-hidden="true">
-      {(arr as ("tl" | "tr" | "bl" | "br")[]).map((c) => (
-        <CurvyCorner key={c} rotate={c} />
-      ))}
-    </div>
   );
 }
 
@@ -204,18 +259,24 @@ function Intersection({
 }: {
   x: string;
   y: string;
-  which: ("tl" | "tr" | "bl" | "br")[];
+  which: readonly IntersectionCorner[];
 }) {
-  const size = 6;
+  const size = 7;
+  const half = Math.floor(size / 2);
+  const normalizedX = x.replaceAll(" ", "");
+  const normalizedY = y.replaceAll(" ", "");
+  const xOffset = normalizedX === "100%" ? -1 : 0;
+  const yOffset = normalizedY === "100%" ? -1 : 0;
   const _shape = which;
+
   return (
     <span
-      className="pointer-events-none absolute block bg-border/55"
+      className="pointer-events-none absolute z-[2] block rounded-[2px] border border-border bg-background"
       style={{
         width: size,
         height: size,
-        left: `calc(${x} - ${size / 2}px)`,
-        top: `calc(${y} - ${size / 2}px)`,
+        left: `calc(${x} - ${half}px + ${xOffset}px)`,
+        top: `calc(${y} - ${half}px + ${yOffset}px)`,
       }}
       data-shape={_shape.length}
       aria-hidden="true"
@@ -255,7 +316,7 @@ function DotBlock({
         cells.push({
           x: c * (cellSize + gap),
           y: r * (cellSize + gap),
-          opacity: 0.1 + v * 0.18,
+          opacity: 0.2 + v * 0.2,
         });
       }
     }
@@ -293,251 +354,265 @@ function DotBlock({
 /* ------------------------------------------------------------------ */
 
 export function HeroGridOverlay() {
+  const contentToMidInset = Math.round(
+    (LANDING_CONTENT_MAX_WIDTH_PX - HERO_MID_COLUMN_WIDTH_PX) / 2,
+  );
+  const contentToInnerInset = Math.round(
+    (LANDING_CONTENT_MAX_WIDTH_PX - HERO_INNER_COLUMN_WIDTH_PX) / 2,
+  );
+  const outerRuleReach = Math.round((HERO_OUTER_FRAME_WIDTH_PX - HERO_INNER_COLUMN_WIDTH_PX) / 2);
+
+  const contentToMidInsetX = `${contentToMidInset}px`;
+  const contentToMidInsetMirrorX = `calc(100% - ${contentToMidInset}px)`;
+  const contentToInnerInsetX = `${contentToInnerInset}px`;
+  const contentToInnerInsetMirrorX = `calc(100% - ${contentToInnerInset}px)`;
+
+  const majorRows = [100, 200, 300, 400] as const;
+  const topAndMajorRows = [0, 100, 200, 300, 400] as const;
+  const contentInnerBoundaryRows = [300, 400] as const;
+  const innerColumnNodeRows = [0, 100] as const;
+
+  const sideGraphPrimaryOffset = Math.round((contentToMidInset - 36) / 2);
+  const sideGraphSecondaryOffset = contentToMidInset + 14;
+  const topClusterInnerOffset = contentToMidInset + 19;
+  const topRightClusterOffset = contentToMidInset - 1;
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div className="absolute inset-0 lg:hidden">
-        <div className="absolute top-0 bottom-0 left-4 w-px bg-border/40" />
-        <div className="absolute top-0 bottom-0 right-4 w-px bg-border/40" />
-        <div className="absolute top-[96px] left-4 right-4 h-px bg-border/40" />
-        <div className="absolute top-[196px] left-4 right-4 h-px bg-border/40" />
-        <AccentMark className="absolute left-4 top-[196px] -translate-x-1/2 -translate-y-1/2" />
-        <AccentMark className="absolute right-4 top-[196px] translate-x-1/2 -translate-y-1/2" />
-        <Intersection x="1rem" y="96px" which={["tl", "tr", "bl", "br"]} />
-        <Intersection x="calc(100% - 1rem)" y="96px" which={["tl", "tr", "bl", "br"]} />
-        <Intersection x="1rem" y="196px" which={["tl", "tr", "bl", "br"]} />
-        <Intersection x="calc(100% - 1rem)" y="196px" which={["tl", "tr", "bl", "br"]} />
-        <div className="absolute left-4 top-8 opacity-75">
-          <DotBlock rows={4} cols={5} seed={2201} cellSize={4} gap={2} />
-        </div>
-        <div className="absolute right-4 top-8 opacity-75">
-          <DotBlock rows={4} cols={5} seed={2202} cellSize={4} gap={2} />
-        </div>
+        <div className="absolute top-0 bottom-0 left-4 w-px bg-border" />
+        <div className="absolute top-0 bottom-0 right-4 w-px bg-border" />
+        <Intersection x="1rem" y="0px" which={CROSS_INTERSECTION} />
+        <Intersection x="calc(100% - 1rem)" y="0px" which={CROSS_INTERSECTION} />
+        <div className="absolute top-[100px] left-4 right-4 h-px bg-border" />
+        <AccentMark className="absolute left-4 top-[100px] -translate-x-1/2 -translate-y-1/2" />
+        <AccentMark className="absolute right-4 top-[100px] translate-x-1/2 -translate-y-1/2" />
+
         {/* Small graph accents on mobile */}
-        <div className="absolute left-5 bottom-[120px] opacity-65">
+        <div className="absolute left-5 bottom-[120px]">
           <SkillGraph variant="b" />
         </div>
-        <div className="absolute right-5 bottom-[120px] opacity-65">
+        <div className="absolute right-5 bottom-[120px]">
           <SkillGraph variant="b" mirror />
         </div>
       </div>
 
       <div className="absolute inset-0 hidden lg:block">
-        {/* ── Outer frame: 1314px ── */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[1314px] -translate-x-1/2">
+        <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-0 bottom-0 z-[2]">
           {/* Bracket labels */}
-          <span className="absolute top-6 -left-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground/45">
+          <span className="absolute top-6 -left-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground">
             [ SKILL ]
           </span>
-          <span className="absolute top-6 -right-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground/45">
+          <span className="absolute top-6 -right-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground">
             [ SYNC ]
           </span>
-          <span className="absolute bottom-6 -left-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground/45">
+          <span className="absolute bottom-6 -left-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground">
             [ .MD ]
           </span>
-          <span className="absolute bottom-6 -right-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground/45">
+          <span className="absolute bottom-6 -right-1 w-[102px] select-none text-center font-mono text-[10px] tracking-widest text-muted-foreground">
             [ GRAPH ]
           </span>
 
-          {/* Horizontal rules — left side */}
-          <div className="absolute top-[100px] left-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[200px] left-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[300px] left-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[400px] left-0 h-px w-[303px] bg-border/40" />
-          {/* Horizontal rules — right side */}
-          <div className="absolute top-[100px] right-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[200px] right-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[300px] right-0 h-px w-[303px] bg-border/40" />
-          <div className="absolute top-[400px] right-0 h-px w-[303px] bg-border/40" />
+          {renderSideRules({
+            rows: majorRows,
+            side: "left",
+            width: outerRuleReach,
+            keyPrefix: "outer-left-rule",
+          })}
+          {renderSideRules({
+            rows: majorRows,
+            side: "right",
+            width: outerRuleReach,
+            keyPrefix: "outer-right-rule",
+          })}
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: "0px",
+            which: LEFT_EDGE_INTERSECTION,
+            keyPrefix: "outer-left-int",
+          })}
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: "100%",
+            which: RIGHT_EDGE_INTERSECTION,
+            keyPrefix: "outer-right-int",
+          })}
+        </CenteredFrame>
 
-          {/*
-           * Intersections along 1314px edges (left=0, right=100%).
-           * The 1314px vertical lines meet h-lines at y=100,200,300,400.
-           * These are T-intersections (line ends at edge), so 2 corners each.
-           */}
-          {/* Left edge × h-lines: tr + br (line comes from the right) */}
-          <Intersection x="0px" y="100px" which={["tr", "br"]} />
-          <Intersection x="0px" y="200px" which={["tr", "br"]} />
-          <Intersection x="0px" y="300px" which={["tr", "br"]} />
-          <Intersection x="0px" y="400px" which={["tr", "br"]} />
-          {/* Right edge × h-lines: tl + bl */}
-          <Intersection x="100%" y="100px" which={["tl", "bl"]} />
-          <Intersection x="100%" y="200px" which={["tl", "bl"]} />
-          <Intersection x="100%" y="300px" which={["tl", "bl"]} />
-          <Intersection x="100%" y="400px" which={["tl", "bl"]} />
-        </div>
+        <LandingCenteredOverlay className="top-0 bottom-0 z-[2]">
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "content-left-edge-int",
+          })}
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "content-right-edge-int",
+          })}
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: contentToMidInsetX,
+            which: CROSS_INTERSECTION,
+            keyPrefix: "content-mid-left-int",
+          })}
+          {renderRowIntersections({
+            rows: topAndMajorRows,
+            x: contentToMidInsetMirrorX,
+            which: CROSS_INTERSECTION,
+            keyPrefix: "content-mid-right-int",
+          })}
+          {renderRowIntersections({
+            rows: contentInnerBoundaryRows,
+            x: contentToInnerInsetX,
+            which: LEFT_T_INTERSECTION,
+            keyPrefix: "content-inner-left-int",
+          })}
+          {renderRowIntersections({
+            rows: contentInnerBoundaryRows,
+            x: contentToInnerInsetMirrorX,
+            which: RIGHT_T_INTERSECTION,
+            keyPrefix: "content-inner-right-int",
+          })}
+        </LandingCenteredOverlay>
 
-        {/* ── 1112px column ── */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[1112px] -translate-x-1/2">
-          {/* Horizontal rules — left side (reaching inward 202px) */}
-          <div className="absolute top-[200px] left-0 h-px w-[202px] bg-border/40" />
-          <div className="absolute top-[300px] left-0 h-px w-[202px] bg-border/40" />
-          <div className="absolute top-[400px] left-0 h-px w-[202px] bg-border/40" />
-          {/* Horizontal rules — right side */}
-          <div className="absolute top-[200px] right-0 h-px w-[202px] bg-border/40" />
-          <div className="absolute top-[300px] right-0 h-px w-[202px] bg-border/40" />
-          <div className="absolute top-[400px] right-0 h-px w-[202px] bg-border/40" />
+        <CenteredFrame
+          maxWidth={HERO_MID_COLUMN_WIDTH_PX}
+          className="top-0 bottom-0 border-x border-border"
+        />
 
-          {/*
-           * 1112px vertical edges cross the 1314px h-lines at y=100,200,300,400
-           * and also the 1112px h-lines at y=200,300,400.
-           *
-           * y=100: only 1314px h-line crosses → 4-way
-           * y=200,300,400: both 1314px + 1112px h-lines → 4-way
-           */}
-          {/* Left edge (0px in 1112 container) */}
-          <Intersection x="0px" y="100px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="0px" y="200px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="0px" y="300px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="0px" y="400px" which={["tl", "tr", "bl", "br"]} />
-          {/* Right edge */}
-          <Intersection x="100%" y="100px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="200px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="300px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="400px" which={["tl", "tr", "bl", "br"]} />
-
-          {/*
-           * Inner vertical at 101px from each edge of 1112px
-           * (= 910px column edges). These cross h-lines at y=100..400 (1314px)
-           * and y=200..400 (1112px h-lines reach 202px inward, so they reach 101px).
-           *
-           * y=100: 1314px h-line reaches 303px into 1314px = 202px into 1112px — crosses 101px ✓
-           * y=200,300,400: both 1314px (303px) and 1112px (202px) reach past 101px ✓
-           */}
-          <Intersection x="101px" y="100px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="101px" y="200px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="101px" y="300px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="101px" y="400px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="calc(100% - 101px)" y="100px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="calc(100% - 101px)" y="200px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="calc(100% - 101px)" y="300px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="calc(100% - 101px)" y="400px" which={["tl", "tr", "bl", "br"]} />
-
-          {/*
-           * Inner vertical at 202px from each edge of 1112px
-           * (end of 1112px h-lines). The 1314px h-lines extend 303px into 1314px = 202px into 1112px,
-           * so they also reach this point.
-           * y=100: 1314px h-line reaches 202px ✓ → T-intersection (h-line ends)
-           * y=200,300,400: 1112px h-line ends here + 1314px h-line passes → T-intersection
-           */}
-          <Intersection x="202px" y="100px" which={["tl", "bl"]} />
-          <Intersection x="202px" y="200px" which={["tl", "bl"]} />
-          <Intersection x="202px" y="300px" which={["tl", "bl"]} />
-          <Intersection x="202px" y="400px" which={["tl", "bl"]} />
-          <Intersection x="calc(100% - 202px)" y="100px" which={["tr", "br"]} />
-          <Intersection x="calc(100% - 202px)" y="200px" which={["tr", "br"]} />
-          <Intersection x="calc(100% - 202px)" y="300px" which={["tr", "br"]} />
-          <Intersection x="calc(100% - 202px)" y="400px" which={["tr", "br"]} />
-        </div>
-
-        {/* ── 910px column ── */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[910px] -translate-x-1/2 border-x border-border/40" />
-
-        {/* ── 708px column ── */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[708px] -translate-x-1/2 border-x border-border/40">
-          {/* Accent marks aligned to hero frame edge */}
-          <AccentMark className="absolute top-[200px] -left-[6px] -translate-y-1/2 z-[2]" />
-          <AccentMark className="absolute top-[200px] -right-[6px] -translate-y-1/2 z-[2]" />
+        <CenteredFrame
+          maxWidth={HERO_INNER_COLUMN_WIDTH_PX}
+          className="top-0 bottom-0 border-x border-border"
+        >
           {/* Full-width h-lines at y=100 and y=200 */}
-          <div className="absolute top-[100px] left-0 h-px w-full bg-border/40" />
-          <div className="absolute top-[200px] left-0 h-px w-full bg-border/40" />
-          {/* 708px edges × y=100: 4-way crossing (h-line spans full width) */}
-          <Intersection x="0px" y="100px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="100px" which={["tl", "tr", "bl", "br"]} />
-          {/* 708px edges × y=200: 4-way crossing */}
-          <Intersection x="0px" y="200px" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="200px" which={["tl", "tr", "bl", "br"]} />
+          <div className="absolute top-[100px] left-0 h-px w-full bg-border" />
+          <div className="absolute top-[200px] left-0 h-px w-full bg-border" />
+          {renderRowIntersections({
+            rows: innerColumnNodeRows,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "inner-column-left-int",
+          })}
+          {renderRowIntersections({
+            rows: innerColumnNodeRows,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "inner-column-right-int",
+          })}
           {/* Bottom column endpoints as graph nodes */}
-          <Intersection x="0px" y="100%" which={["tl", "tr", "bl", "br"]} />
-          <Intersection x="100%" y="100%" which={["tl", "tr", "bl", "br"]} />
-        </div>
+          <Intersection x="0px" y="100%" which={CROSS_INTERSECTION} />
+          <Intersection x="100%" y="100%" which={CROSS_INTERSECTION} />
+        </CenteredFrame>
 
-        {/* ── Narrower inner columns (visible y=100–201) ── */}
-        <div className="absolute top-[100px] left-1/2 h-[101px] w-full max-w-[506px] -translate-x-1/2 border-x border-border/40">
-          {/* 506px edges × y=100: T-intersection (column starts) → bl + br */}
+        <CenteredFrame maxWidth={HERO_INNER_COLUMN_WIDTH_PX} className="top-0 bottom-0 z-[3]">
+          <AccentMark className="absolute top-[200px] -left-[6px] -translate-y-1/2" />
+          <AccentMark className="absolute top-[200px] -right-[6px] -translate-y-1/2" />
+        </CenteredFrame>
+
+        <CenteredFrame
+          maxWidth={HERO_UPPER_COLUMN_WIDTH_PX}
+          className="top-0 h-[200px] border-x border-border"
+        >
+          {/* Top-edge half nodes */}
           <Intersection x="0px" y="0px" which={["bl", "br"]} />
           <Intersection x="100%" y="0px" which={["bl", "br"]} />
-          {/* 506px edges × y=201: T-intersection (column ends) → tl + tr */}
+          {/* Midpoint nodes where top rule crosses */}
+          <Intersection x="0px" y="50%" which={CROSS_INTERSECTION} />
+          <Intersection x="100%" y="50%" which={CROSS_INTERSECTION} />
+          {/* Upper-column edges × y=200: T-intersection (column ends) → tl + tr */}
           <Intersection x="0px" y="100%" which={["tl", "tr"]} />
           <Intersection x="100%" y="100%" which={["tl", "tr"]} />
-        </div>
-        <div className="absolute top-[100px] left-1/2 h-[101px] w-full max-w-[304px] -translate-x-1/2 border-x border-border/40">
+        </CenteredFrame>
+        <CenteredFrame
+          maxWidth={HERO_CORE_COLUMN_WIDTH_PX}
+          className="top-0 h-[200px] border-x border-border"
+        >
           <Intersection x="0px" y="0px" which={["bl", "br"]} />
           <Intersection x="100%" y="0px" which={["bl", "br"]} />
+          <Intersection x="0px" y="50%" which={CROSS_INTERSECTION} />
+          <Intersection x="100%" y="50%" which={CROSS_INTERSECTION} />
           <Intersection x="0px" y="100%" which={["tl", "tr"]} />
           <Intersection x="100%" y="100%" which={["tl", "tr"]} />
-        </div>
+        </CenteredFrame>
 
-        {/* ── Dot-block decorations ── */}
-        {/* Top-left cluster */}
-        <div className="absolute top-[30px] left-1/2 w-full max-w-[1112px] -translate-x-1/2">
+        <LandingCenteredOverlay className="top-0">
           <div className="absolute left-[10px] top-0">
-            <DotBlock rows={10} cols={10} seed={101} />
+            <DotBlock rows={6} cols={10} seed={101} />
           </div>
-          <div className="absolute left-[120px] top-[5px]">
+          <div className="absolute top-[5px]" style={{ left: topClusterInnerOffset }}>
             <DotBlock rows={6} cols={6} seed={102} />
           </div>
-          <div className="absolute left-[120px] top-[80px]">
+          <div className="absolute top-[80px]" style={{ left: topClusterInnerOffset }}>
             <DotBlock rows={4} cols={4} seed={103} cellSize={6} gap={2} />
           </div>
-        </div>
+        </LandingCenteredOverlay>
 
-        {/* Top-right cluster */}
-        <div className="absolute top-[30px] left-1/2 w-full max-w-[1112px] -translate-x-1/2">
+        <LandingCenteredOverlay className="top-0">
           <div className="absolute right-[10px] top-0">
             <DotBlock rows={3} cols={8} seed={201} cellSize={6} gap={2} />
           </div>
           <div className="absolute right-[10px] top-[35px]">
             <DotBlock rows={2} cols={12} seed={202} cellSize={4} gap={2} />
           </div>
-          <div className="absolute right-[100px] top-[10px]">
+          <div className="absolute top-[10px]" style={{ right: topRightClusterOffset }}>
             <DotBlock rows={4} cols={4} seed={203} />
           </div>
-        </div>
+        </LandingCenteredOverlay>
 
-        {/* Mid-left decorations */}
-        <div className="absolute top-[250px] left-1/2 w-full max-w-[1314px] -translate-x-1/2">
-          <div className="absolute left-[10px] top-0">
+        <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-[220px]">
+          <div className="absolute left-[20px] top-[120px]">
             <DotBlock rows={6} cols={6} seed={301} cellSize={6} gap={3} />
           </div>
-          <div className="absolute left-[86px] top-[90px] opacity-80">
+          <div className="absolute left-[100px]">
             <DotBlock rows={2} cols={10} seed={302} cellSize={4} gap={2} />
           </div>
-        </div>
+          <div className="absolute top-[50px] left-[0px]">
+            <DotBlock rows={4} cols={6} seed={210} cellSize={5} gap={2} />
+          </div>
+        </CenteredFrame>
 
-        {/* Mid-right decorations */}
-        <div className="absolute top-[250px] left-1/2 w-full max-w-[1314px] -translate-x-1/2">
+        <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-[250px]">
           <div className="absolute right-[10px] top-0">
             <DotBlock rows={5} cols={5} seed={401} cellSize={7} gap={3} />
           </div>
-          <div className="absolute right-[86px] top-[90px] opacity-80">
-            <DotBlock rows={2} cols={10} seed={402} cellSize={4} gap={2} />
+          <div className="absolute -top-[130px] right-[200px]">
+            <DotBlock rows={10} cols={6} seed={210} cellSize={6} gap={2} />
           </div>
-        </div>
+          <div className="absolute top-[120px] right-[120px]">
+            <DotBlock rows={4} cols={6} seed={402} cellSize={4} gap={2} />
+          </div>
+        </CenteredFrame>
 
-        {/* ── Graph patterns — placed inside the grid cells, between rows ── */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-full max-w-[1112px] -translate-x-1/2">
-          {/* Left gutter: centered within the 101px cells */}
-          <div className="absolute left-[30px] top-[120px] opacity-70">
+        <LandingCenteredOverlay className="top-0 bottom-0">
+          <div className="absolute left-[220px] top-[40px]">
+            <SkillGraph variant="b" />
+          </div>
+          <div className="absolute top-[150px] -left-[80px]">
             <SkillGraph variant="a" />
           </div>
-          <div className="absolute left-[115px] top-[225px] opacity-60">
+          <div className="absolute top-[150px]" style={{ left: sideGraphSecondaryOffset }}>
             <SkillGraph variant="c" />
           </div>
-          <div className="absolute left-[30px] top-[330px] opacity-55">
+          <div className="absolute top-[330px]" style={{ left: sideGraphPrimaryOffset }}>
             <SkillGraph variant="b" />
           </div>
 
-          {/* Right gutter: mirrored */}
-          <div className="absolute right-[30px] top-[120px] opacity-70">
-            <SkillGraph variant="a" mirror />
-          </div>
-          <div className="absolute right-[115px] top-[225px] opacity-60">
-            <SkillGraph variant="c" mirror />
-          </div>
-          <div className="absolute right-[30px] top-[330px] opacity-55">
+          <div className="absolute right-[220px] top-[40px]">
             <SkillGraph variant="b" mirror />
           </div>
-        </div>
+          <div className="absolute top-[120px]" style={{ right: sideGraphPrimaryOffset }}>
+            <SkillGraph variant="b" mirror />
+          </div>
+          <div className="absolute top-[225px] -right-[80px]">
+            <SkillGraph variant="a" mirror />
+          </div>
+          <div className="absolute top-[330px]" style={{ right: sideGraphPrimaryOffset }}>
+            <SkillGraph variant="c" mirror />
+          </div>
+        </LandingCenteredOverlay>
       </div>
     </div>
   );
@@ -547,6 +622,75 @@ export function HeroGridOverlay() {
  * SkillGraph — a compact graph diagram with square nodes + orthogonal edges.
  * Sized to fit cleanly inside the grid gutters without overlapping rules.
  */
+function hashToSeed(value: string) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (Math.imul(hash, 31) + value.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+function PrimaryPulseNode({
+  x,
+  y,
+  size,
+  seed,
+  baseOpacity = 0.72,
+}: {
+  x: number;
+  y: number;
+  size: number;
+  seed: number;
+  baseOpacity?: number;
+}) {
+  const reduceMotion = useReducedMotion();
+  const pulse = useMemo(() => {
+    const rng = mulberry32(seed);
+    const peak = Math.min(1, baseOpacity + 0.14 + rng() * 0.2);
+    const low = Math.max(0.18, baseOpacity - (0.2 + rng() * 0.16));
+    const settle = Math.min(0.95, baseOpacity + 0.04 + rng() * 0.12);
+    return {
+      duration: 1.7 + rng() * 1.5,
+      delay: rng() * 1.3,
+      repeatDelay: 0.1 + rng() * 0.8,
+      opacity: [baseOpacity, peak, low, settle, baseOpacity],
+    };
+  }, [baseOpacity, seed]);
+
+  if (reduceMotion) {
+    return (
+      <rect
+        x={x}
+        y={y}
+        width={size}
+        height={size}
+        fill="var(--primary)"
+        fillOpacity={baseOpacity}
+      />
+    );
+  }
+
+  return (
+    <motion.rect
+      x={x}
+      y={y}
+      width={size}
+      height={size}
+      fill="var(--primary)"
+      initial={{ opacity: baseOpacity }}
+      animate={{ opacity: pulse.opacity }}
+      transition={{
+        duration: pulse.duration,
+        ease: "easeInOut",
+        times: [0, 0.22, 0.5, 0.78, 1],
+        repeat: Number.POSITIVE_INFINITY,
+        delay: pulse.delay,
+        repeatDelay: pulse.repeatDelay,
+      }}
+    />
+  );
+}
+
 function SkillGraph({
   className,
   mirror = false,
@@ -560,6 +704,10 @@ function SkillGraph({
 }) {
   const s = size === "md" ? 1.25 : 1;
   const nodeSize = 6 * s;
+  const instanceId = useId();
+  const instanceSeed = hashToSeed(
+    `${instanceId}-${variant}-${mirror ? "mirror" : "default"}-${size}`,
+  );
 
   const graphs = {
     /* L-shape: 3 nodes */
@@ -584,29 +732,20 @@ function SkillGraph({
             stroke="var(--border)"
             strokeOpacity="0.45"
           />
-          <rect
+          <PrimaryPulseNode
             x={1 * s}
             y={1 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.65"
+            size={nodeSize}
+            seed={instanceSeed + 11}
+            baseOpacity={0.75}
           />
-          <rect
-            x={1 * s}
-            y={23 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--border)"
-            fillOpacity="0.55"
-          />
-          <rect
+          <rect x={1 * s} y={23 * s} width={nodeSize} height={nodeSize} fill="var(--border)" />
+          <PrimaryPulseNode
             x={29 * s}
             y={23 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.55"
+            size={nodeSize}
+            seed={instanceSeed + 29}
+            baseOpacity={0.86}
           />
         </>
       ),
@@ -641,29 +780,20 @@ function SkillGraph({
             stroke="var(--border)"
             strokeOpacity="0.4"
           />
-          <rect
+          <PrimaryPulseNode
             x={1 * s}
             y={1 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.6"
+            size={nodeSize}
+            seed={instanceSeed + 41}
+            baseOpacity={0.6}
           />
-          <rect
-            x={1 * s}
-            y={14 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--border)"
-            fillOpacity="0.48"
-          />
-          <rect
+          <rect x={1 * s} y={14 * s} width={nodeSize} height={nodeSize} fill="var(--border)" />
+          <PrimaryPulseNode
             x={25 * s}
             y={25 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.5"
+            size={nodeSize}
+            seed={instanceSeed + 59}
+            baseOpacity={0.88}
           />
         </>
       ),
@@ -690,29 +820,20 @@ function SkillGraph({
             stroke="var(--border)"
             strokeOpacity="0.42"
           />
-          <rect
+          <PrimaryPulseNode
             x={1 * s}
             y={1 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.6"
+            size={nodeSize}
+            seed={instanceSeed + 71}
+            baseOpacity={0.7}
           />
-          <rect
-            x={29 * s}
-            y={1 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--border)"
-            fillOpacity="0.5"
-          />
-          <rect
+          <rect x={29 * s} y={1 * s} width={nodeSize} height={nodeSize} fill="var(--border)" />
+          <PrimaryPulseNode
             x={15 * s}
             y={21 * s}
-            width={nodeSize}
-            height={nodeSize}
-            fill="var(--primary)"
-            fillOpacity="0.48"
+            size={nodeSize}
+            seed={instanceSeed + 89}
+            baseOpacity={0.86}
           />
         </>
       ),
@@ -746,7 +867,7 @@ export function SectionBackdrop({
   variant = "default",
 }: {
   className?: string;
-  variant?: "default" | "how-it-works" | "features" | "pricing" | "cli-demo";
+  variant?: BackdropVariant;
 }) {
   return (
     <div
@@ -756,36 +877,33 @@ export function SectionBackdrop({
       {/* ── Mobile decorations ── */}
       <div className="lg:hidden">
         {/* Structural lines */}
-        <div className="absolute top-0 bottom-0 left-4 w-px bg-border/45" />
-        <div className="absolute top-0 bottom-0 right-4 w-px bg-border/45" />
-        <div className="absolute top-1/2 left-4 right-4 h-px bg-border/45" />
+        <div className="absolute top-14 left-4 h-px w-[70px] bg-border" />
+        <div className="absolute top-14 right-4 h-px w-[70px] bg-border" />
+        <div className="absolute top-14 left-[80px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+        <div className="absolute top-14 right-[80px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
 
         {/* Graph accents — mobile */}
-        <div className="absolute left-6 top-20 opacity-70">
+        {/* <div className="absolute left-6 top-20">
           <SkillGraph variant="a" />
         </div>
-        <div className="absolute right-6 top-20 opacity-70">
+        <div className="absolute right-6 top-20">
           <SkillGraph variant="a" mirror />
-        </div>
-
-        {/* Corner brackets — mobile */}
-        <CurvyRect className="left-0 top-14 size-[48px]" corners={["tl", "bl"]} />
-        <CurvyRect className="right-0 top-14 size-[48px]" corners={["tr", "br"]} />
+        </div> */}
 
         {/* Extra mobile-only elements per variant */}
         {variant === "features" && (
           <>
-            <div className="absolute left-6 bottom-16 opacity-55">
+            <div className="absolute left-6 bottom-16">
               <SkillGraph variant="b" />
             </div>
-            <div className="absolute right-6 bottom-16 opacity-55">
+            <div className="absolute right-6 bottom-16">
               <SkillGraph variant="c" mirror />
             </div>
           </>
         )}
         {variant === "how-it-works" && (
           <>
-            <div className="absolute right-7 bottom-20 opacity-60">
+            <div className="absolute right-7 bottom-20">
               <SkillGraph variant="b" mirror />
             </div>
             <DotBlock
@@ -794,13 +912,53 @@ export function SectionBackdrop({
               seed={7701}
               cellSize={3}
               gap={2}
-              className="absolute left-6 bottom-24 opacity-50"
+              className="absolute left-6 bottom-24"
             />
+          </>
+        )}
+        {variant === "problem" && (
+          <>
+            <div className="absolute left-6 bottom-16">
+              <SkillGraph variant="c" />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={6}
+              seed={7705}
+              cellSize={3}
+              gap={2}
+              className="absolute right-7 bottom-24"
+            />
+          </>
+        )}
+        {variant === "skill" && (
+          <>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="a" mirror />
+            </div>
+            <DotBlock
+              rows={3}
+              cols={4}
+              seed={7706}
+              cellSize={3}
+              gap={2}
+              className="absolute left-6 bottom-24"
+            />
+          </>
+        )}
+        {variant === "solution" && (
+          <>
+            <div className="absolute left-6 bottom-16">
+              <SkillGraph variant="b" />
+            </div>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="a" mirror />
+            </div>
           </>
         )}
         {variant === "pricing" && (
           <>
-            <div className="absolute left-6 bottom-20 opacity-55">
+            <div className="absolute left-6 bottom-20">
               <SkillGraph variant="c" />
             </div>
             <DotBlock
@@ -809,139 +967,159 @@ export function SectionBackdrop({
               seed={7702}
               cellSize={3}
               gap={2}
-              className="absolute right-7 bottom-28 opacity-45"
+              className="absolute right-7 bottom-28"
             />
           </>
         )}
         {variant === "cli-demo" && (
-          <div className="absolute right-6 bottom-16 opacity-55">
+          <div className="absolute right-6 bottom-16">
             <SkillGraph variant="b" mirror />
           </div>
+        )}
+        {variant === "enterprise" && (
+          <>
+            <div className="absolute right-6 bottom-16">
+              <SkillGraph variant="c" mirror />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={6}
+              seed={7707}
+              cellSize={3}
+              gap={2}
+              className="absolute left-6 bottom-24"
+            />
+          </>
         )}
       </div>
 
       {/* ── Desktop decorations ── */}
-      <div className="absolute top-0 bottom-0 left-1/2 hidden w-full max-w-[1112px] -translate-x-1/2 lg:block">
+      <LandingCenteredOverlay className="top-0 bottom-0 hidden lg:block">
         {/* Horizontal rules — structural rhythm */}
-        <div className="absolute top-20 left-0 h-px w-[140px] bg-border/45" />
-        <div className="absolute top-20 right-0 h-px w-[140px] bg-border/45" />
-        <div className="absolute bottom-20 left-0 h-px w-[140px] bg-border/45" />
-        <div className="absolute bottom-20 right-0 h-px w-[140px] bg-border/45" />
+        <div className="absolute top-40 left-0 h-px w-[140px] bg-border" />
+        <div className="absolute top-40 right-0 h-px w-[140px] bg-border" />
+        <div className="absolute top-40 left-[140px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+        <div className="absolute top-40 right-[140px] size-2 -translate-y-1/2 bg-background border-border border rounded-xs lg:block" />
+
+        <div className="absolute top-20 left-0 h-px w-[180px] bg-border" />
+        <div className="absolute top-20 right-0 h-px w-[180px] bg-border" />
+        <div className="absolute top-20 left-[180px] size-2 -translate-y-1/2 bg-primary rounded-xs lg:block" />
+        <div className="absolute top-20 right-[180px] size-2 -translate-y-1/2 bg-primary rounded-xs lg:block" />
 
         {/* Per-variant graph decorations — positioned cleanly below/above rules */}
         {variant === "default" && (
           <>
-            <div className="absolute left-4 top-28 opacity-75">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28 opacity-75">
+            <div className="absolute right-4 top-26">
               <SkillGraph variant="a" size="md" mirror />
             </div>
-            <div className="absolute left-6 bottom-28 opacity-65">
-              <SkillGraph variant="b" />
+            <div className="absolute left-4 bottom-12">
+              <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-6 bottom-28 opacity-65">
-              <SkillGraph variant="b" mirror />
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="a" size="md" mirror />
             </div>
           </>
         )}
         {variant === "features" && (
           <>
-            <div className="absolute left-4 top-28 opacity-70">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28 opacity-70">
+            <div className="absolute right-4 top-26">
               <SkillGraph variant="c" size="md" mirror />
             </div>
-            <div className="absolute left-8 bottom-28 opacity-60">
-              <SkillGraph variant="c" />
-            </div>
-            <div className="absolute right-8 bottom-28 opacity-60">
-              <SkillGraph variant="b" mirror />
-            </div>
-            <DotBlock
-              rows={3}
-              cols={5}
-              seed={5501}
-              cellSize={4}
-              gap={2}
-              className="absolute left-[60px] top-24 opacity-40"
-            />
-            <DotBlock
-              rows={3}
-              cols={5}
-              seed={5502}
-              cellSize={4}
-              gap={2}
-              className="absolute right-[60px] top-24 opacity-40"
-            />
           </>
         )}
         {variant === "how-it-works" && (
           <>
-            <div className="absolute left-4 top-28 opacity-75">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="b" size="md" />
             </div>
-            <div className="absolute right-4 top-28 opacity-75">
+            <div className="absolute right-4 top-26">
               <SkillGraph variant="b" size="md" mirror />
             </div>
-            <div className="absolute left-6 bottom-28 opacity-60">
-              <SkillGraph variant="a" />
+          </>
+        )}
+        {variant === "problem" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="b" size="md" />
             </div>
-            <div className="absolute right-6 bottom-28 opacity-60">
-              <SkillGraph variant="c" mirror />
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="c" size="md" mirror />
             </div>
             <DotBlock
               rows={3}
-              cols={6}
-              seed={5503}
+              cols={5}
+              seed={8711}
               cellSize={4}
               gap={2}
-              className="absolute left-[50px] bottom-24 opacity-40"
+              className="absolute left-10 bottom-12"
             />
-            <DotBlock
-              rows={3}
-              cols={6}
-              seed={5504}
-              cellSize={4}
-              gap={2}
-              className="absolute right-[50px] bottom-24 opacity-40"
-            />
+          </>
+        )}
+        {variant === "skill" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="a" size="md" />
+            </div>
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="b" size="md" mirror />
+            </div>
+          </>
+        )}
+        {variant === "solution" && (
+          <>
+            <div className="absolute left-4 bottom-12">
+              <SkillGraph variant="b" size="md" />
+            </div>
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="a" size="md" mirror />
+            </div>
           </>
         )}
         {variant === "pricing" && (
           <>
-            <div className="absolute left-4 top-28 opacity-70">
+            <div className="absolute left-4 top-26">
               <SkillGraph variant="c" size="md" />
             </div>
-            <div className="absolute right-4 top-28 opacity-70">
-              <SkillGraph variant="a" size="md" mirror />
-            </div>
-            <div className="absolute left-6 bottom-28 opacity-60">
-              <SkillGraph variant="b" />
-            </div>
-            <div className="absolute right-6 bottom-28 opacity-60">
-              <SkillGraph variant="a" mirror />
+            <div className="absolute right-4 top-26">
+              <SkillGraph variant="b" size="md" mirror />
             </div>
           </>
         )}
         {variant === "cli-demo" && (
           <>
-            <div className="absolute left-4 top-28 opacity-70">
+            <div className="absolute left-4 bottom-12">
               <SkillGraph variant="a" size="md" />
             </div>
-            <div className="absolute right-4 top-28 opacity-70">
-              <SkillGraph variant="b" size="md" mirror />
-            </div>
-            <div className="absolute left-8 bottom-28 opacity-55">
-              <SkillGraph variant="c" />
-            </div>
-            <div className="absolute right-8 bottom-28 opacity-55">
-              <SkillGraph variant="c" mirror />
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="a" size="md" mirror />
             </div>
           </>
         )}
-      </div>
+        {variant === "enterprise" && (
+          <>
+            <div className="absolute left-4 top-26">
+              <SkillGraph variant="c" size="md" />
+            </div>
+            <div className="absolute right-4 bottom-12">
+              <SkillGraph variant="b" size="md" mirror />
+            </div>
+            <DotBlock
+              rows={2}
+              cols={8}
+              seed={8712}
+              cellSize={4}
+              gap={2}
+              className="absolute right-10 top-10"
+            />
+          </>
+        )}
+      </LandingCenteredOverlay>
     </div>
   );
 }
@@ -953,15 +1131,86 @@ export function SectionBackdrop({
 
 export function PageOverlay() {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden="true">
-      <div className="absolute top-[52px] bottom-0 left-4 w-px bg-border/45 lg:hidden" />
-      <div className="absolute top-[52px] bottom-0 right-4 w-px bg-border/45 lg:hidden" />
+    <div className="pointer-events-none fixed inset-0 z-[0]" aria-hidden="true">
+      <div className="absolute top-[52px] bottom-0 left-4 w-px bg-border lg:hidden" />
+      <div className="absolute top-[52px] bottom-0 right-4 w-px bg-border lg:hidden" />
 
       {/* Outer columns - max content width */}
-      <div className="absolute top-[52px] bottom-0 left-1/2 hidden w-full max-w-[1314px] -translate-x-1/2 border-x border-border/45 lg:block" />
+      <CenteredFrame
+        maxWidth={HERO_OUTER_FRAME_WIDTH_PX}
+        className="top-[52px] bottom-0 hidden border-x border-border lg:block"
+      />
 
       {/* Inner columns - content width */}
-      <div className="absolute top-[52px] bottom-0 left-1/2 hidden w-full max-w-[1112px] -translate-x-1/2 border-x border-border/45 lg:block" />
+      <LandingCenteredOverlay className="top-[52px] bottom-0 hidden border-x border-border lg:block" />
+    </div>
+  );
+}
+
+interface PageGridIntersectionMarkersProps {
+  edges?: readonly PageGridIntersectionEdge[];
+  className?: string;
+}
+
+/**
+ * Reusable markers for any horizontal landing boundary that intersects the
+ * page-level vertical grid borders. Drop this inside a `relative` container.
+ */
+export function PageGridIntersectionMarkers({
+  edges = ["top", "bottom"],
+  className,
+}: PageGridIntersectionMarkersProps) {
+  return (
+    <div
+      className={cn("pointer-events-none absolute inset-0 overflow-visible", className)}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 lg:hidden">
+        {renderEdgeIntersections({
+          edges,
+          x: "1rem",
+          which: CROSS_INTERSECTION,
+          keyPrefix: "page-grid-mobile-left",
+        })}
+        {renderEdgeIntersections({
+          edges,
+          x: "calc(100% - 1rem)",
+          which: CROSS_INTERSECTION,
+          keyPrefix: "page-grid-mobile-right",
+        })}
+      </div>
+
+      <div className="absolute inset-0 hidden lg:block">
+        <CenteredFrame maxWidth={HERO_OUTER_FRAME_WIDTH_PX} className="top-0 bottom-0 z-[1]">
+          {renderEdgeIntersections({
+            edges,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-outer-left",
+          })}
+          {renderEdgeIntersections({
+            edges,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-outer-right",
+          })}
+        </CenteredFrame>
+
+        <LandingCenteredOverlay className="top-0 bottom-0 z-[1]">
+          {renderEdgeIntersections({
+            edges,
+            x: "0px",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-inner-left",
+          })}
+          {renderEdgeIntersections({
+            edges,
+            x: "100%",
+            which: CROSS_INTERSECTION,
+            keyPrefix: "page-grid-inner-right",
+          })}
+        </LandingCenteredOverlay>
+      </div>
     </div>
   );
 }
@@ -979,11 +1228,12 @@ export function SectionDivider({ index, total, label }: SectionDividerProps) {
   const idx = String(index).padStart(2, "0");
   const tot = String(total).padStart(2, "0");
   return (
-    <div className="border-y border-border/45">
+    <div className="relative border-y border-border">
+      <PageGridIntersectionMarkers />
       <div className="flex w-full justify-center py-6">
-        <div className="relative w-full max-w-[1112px] px-4 sm:px-6 lg:px-0">
-          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-primary" />
-          <div className="flex items-center gap-3 lg:px-16">
+        <div className={cn("relative w-full px-4 lg:px-0", LANDING_CONTENT_MAX_WIDTH_CLASS)}>
+          <span className="absolute lg:left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 bg-primary" />
+          <div className="flex items-center gap-3 px-6 lg:px-12">
             <span className="font-mono text-xs tracking-wider text-muted-foreground">
               [ <span className="text-primary">{idx}</span> / {tot} ] &middot;{" "}
               <span className="uppercase">{label}</span>
@@ -1006,23 +1256,13 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ decorator, headline, subtitle }: SectionHeaderProps) {
   return (
-    <div className="relative flex flex-col items-center gap-4 py-20 text-center lg:py-24">
-      {/* Desktop: horizontal rails — extend from heading to page edges */}
-      <div className="absolute left-0 top-1/2 hidden h-px w-[80px] bg-border/40 lg:block" />
-      <div className="absolute left-[80px] top-1/2 hidden size-1.5 -translate-y-1/2 bg-primary/40 lg:block" />
-      <div className="absolute right-0 top-1/2 hidden h-px w-[80px] bg-border/40 lg:block" />
-      <div className="absolute right-[80px] top-1/2 hidden size-1.5 -translate-y-1/2 bg-primary/40 lg:block" />
-
-      {/* Mobile: shorter rails */}
-      <div className="absolute left-0 top-1/2 h-px w-[40px] bg-border/35 lg:hidden" />
-      <div className="absolute left-[40px] top-1/2 size-1 -translate-y-1/2 bg-primary/35 lg:hidden" />
-      <div className="absolute right-0 top-1/2 h-px w-[40px] bg-border/35 lg:hidden" />
-      <div className="absolute right-[40px] top-1/2 size-1 -translate-y-1/2 bg-primary/35 lg:hidden" />
-
-      <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="relative flex flex-col items-center gap-4 px-8 py-20 text-center lg:py-24">
+      <p className="text-[11px] font-mono uppercase tracking-[0.08em] text-muted-foreground/50">
         // {decorator} \\
       </p>
-      <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+      <h2
+        className={`text-[2rem] text-balance font-semibold tracking-tight leading-tight text-foreground sm:text-[2.75rem] ${GeistPixelSquare.className}`}
+      >
         {headline}
       </h2>
       {subtitle && (

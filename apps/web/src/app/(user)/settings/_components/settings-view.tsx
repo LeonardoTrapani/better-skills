@@ -303,7 +303,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
               <div className="space-y-3">
                 <div className="flex items-center gap-4">
                   {userImage ? (
-                    <span className="size-11 shrink-0 overflow-hidden rounded-full border border-border/70 bg-muted/40">
+                    <span className="size-11 shrink-0 overflow-hidden rounded-full border border-border bg-muted/40">
                       <Image
                         src={userImage}
                         alt={userName}
@@ -314,7 +314,7 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                       />
                     </span>
                   ) : (
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-sm font-semibold text-muted-foreground select-none">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-sm font-semibold text-muted-foreground select-none">
                       {userInitial}
                     </span>
                   )}
@@ -439,7 +439,10 @@ export default function SettingsView({ userName, userEmail }: SettingsViewProps)
                     {enterpriseMemberships.map((m) => (
                       <div key={m.vaultId} className="flex items-center gap-3 px-4 py-3.5">
                         <VaultColorHex
-                          color={getVaultHexColor({ type: m.vault.type, color: m.vault.color })}
+                          color={getVaultHexColor({
+                            type: m.vault.type,
+                            color: m.vault.color,
+                          })}
                           className="size-4"
                         />
                         <div className="min-w-0 flex-1">

@@ -46,7 +46,7 @@ function UserAvatar({
   if (image) {
     return (
       <span
-        className={`${dimensions} rounded-full border border-border/70 bg-muted/40 overflow-hidden`}
+        className={`${dimensions} rounded-full border border-border bg-muted/40 overflow-hidden`}
       >
         <Image
           src={image}
@@ -62,7 +62,7 @@ function UserAvatar({
 
   return (
     <span
-      className={`${dimensions} rounded-full bg-muted border border-border/70 flex items-center justify-center ${textSize} font-medium text-muted-foreground select-none`}
+      className={`${dimensions} rounded-full bg-muted border border-border flex items-center justify-center ${textSize} font-medium text-muted-foreground select-none`}
     >
       {initials || "?"}
     </span>
